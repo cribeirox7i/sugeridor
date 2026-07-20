@@ -1,0 +1,13 @@
+# Python (scraper/)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Supabase CLI
+supabase/.temp/
+supabase/.branches/
+
+# Editor/OS
+.DS_Store
+.vscode/
