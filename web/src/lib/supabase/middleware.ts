@@ -27,9 +27,20 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && request.nextUrl.pathname.startsWith("/admin")) {
+  // A própria página de login fica fora da proteção — senão redireciona pra si
+  // mesma em loop quando não há usuário.
+  const isLoginPage = request.nextUrl.pathname === "/admin/login";
+
+  if (!user && !isLoginPage && request.nextUrl.pathname.startsWith("/admin")) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
+    return NextResponse.redirect(url);
+  }
+
+  // Já logado abrindo a tela de login? Manda pro painel.
+  if (user && isLoginPage) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin";
     return NextResponse.redirect(url);
   }
 
