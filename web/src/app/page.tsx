@@ -1,12 +1,85 @@
-export default function Home() {
+import { createClient } from "@/lib/supabase/server";
+import { listOffers, distinctAttributeValues, listStoresLite } from "@/lib/queries";
+import OfferCard from "@/components/OfferCard";
+import FilterBar from "@/components/FilterBar";
+
+export const dynamic = "force-dynamic";
+
+function toNumber(v: string | undefined): number | undefined {
+  if (!v) return undefined;
+  const n = Number(v.replace(",", "."));
+  return Number.isFinite(n) ? n : undefined;
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    estilo?: string;
+    pais?: string;
+    loja?: string;
+    min?: string;
+    max?: string;
+  }>;
+}) {
+  const sp = await searchParams;
+  const supabase = await createClient();
+
+  const filters = {
+    estilo: sp.estilo || undefined,
+    pais: sp.pais || undefined,
+    storeId: sp.loja || undefined,
+    precoMin: toNumber(sp.min),
+    precoMax: toNumber(sp.max),
+  };
+
+  const [offers, estilos, paises, stores] = await Promise.all([
+    listOffers(supabase, filters),
+    distinctAttributeValues(supabase, "estilo"),
+    distinctAttributeValues(supabase, "pais"),
+    listStoresLite(supabase),
+  ]);
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-neutral-950 px-6 text-neutral-100">
-      <div className="max-w-xl text-center">
-        <h1 className="text-3xl font-semibold">Sugeridor</h1>
-        <p className="mt-3 text-neutral-400">
-          Hub de ofertas de cervejas artesanais e especiais. Catálogo, filtros e histórico de
-          preço chegando em breve.
+    <div className="min-h-screen bg-neutral-950 text-neutral-100">
+      <header className="border-b border-neutral-800">
+        <div className="mx-auto max-w-6xl px-6 py-6">
+          <h1 className="text-2xl font-semibold">Sugeridor</h1>
+          <p className="text-sm text-neutral-400">
+            Ofertas de cervejas artesanais e especiais, reunidas de várias lojas.
+          </p>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-6xl space-y-6 px-6 py-6">
+        <FilterBar
+          estilos={estilos}
+          paises={paises}
+          stores={stores}
+          current={{
+            estilo: sp.estilo,
+            pais: sp.pais,
+            storeId: sp.loja,
+            precoMin: sp.min,
+            precoMax: sp.max,
+          }}
+        />
+
+        <p className="text-sm text-neutral-500">
+          {offers.length} {offers.length === 1 ? "oferta" : "ofertas"}
         </p>
+
+        {offers.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-neutral-800 p-12 text-center text-neutral-500">
+            Nenhuma oferta encontrada.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {offers.map((offer) => (
+              <OfferCard key={offer.id} offer={offer} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
