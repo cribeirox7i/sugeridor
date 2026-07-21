@@ -40,14 +40,31 @@ export default async function LojasPage({
             />
           </label>
           <label className="space-y-1">
-            <span className="text-sm text-neutral-400">Site (URL)</span>
+            <span className="text-sm text-neutral-400">
+              URL de listagem (pra coleta)
+            </span>
             <input
               name="site_url"
               type="url"
-              placeholder="https://..."
+              placeholder="https://loja.com/cervejas?pagina=1"
               defaultValue={editing?.site_url ?? ""}
               className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2"
             />
+          </label>
+          <label className="space-y-1">
+            <span className="text-sm text-neutral-400">
+              Scraper (opcional)
+            </span>
+            <input
+              name="scraper_key"
+              placeholder="ex: clubedomalte"
+              defaultValue={editing?.scraper_key ?? ""}
+              className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2"
+            />
+            <span className="text-xs text-neutral-600">
+              Deixe vazio para lojas só de cadastro manual. Preencha com a chave do scraper
+              (ex: <code>clubedomalte</code>) para incluir na coleta automática.
+            </span>
           </label>
         </div>
 

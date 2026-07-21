@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "sugeridor-dev",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": ["/c", "set PATH=C:\\Program Files\\nodejs;%PATH% && cd /d C:\\Claude\\Sugeridor\\web && npm run dev"],
+      "port": 3010,
+      "autoPort": true
+    }
+  ]
+}

@@ -8,6 +8,7 @@ const NAV = [
   { href: "/admin/lojas", label: "Lojas" },
   { href: "/admin/produtos", label: "Produtos" },
   { href: "/admin/ofertas", label: "Ofertas" },
+  { href: "/admin/coleta", label: "Coleta" },
 ];
 
 export default async function PainelLayout({
