@@ -1,3 +1,4 @@
+import { useTranslations } from "next-intl";
 import type { PriceHistoryPoint } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 
@@ -10,12 +11,10 @@ export default function PriceHistoryChart({
   points: PriceHistoryPoint[];
   currency?: string;
 }) {
+  const t = useTranslations("product");
+
   if (points.length < 2) {
-    return (
-      <p className="text-sm text-neutral-500">
-        Ainda não há histórico suficiente para mostrar a variação de preço.
-      </p>
-    );
+    return <p className="text-sm text-neutral-500">{t("notEnoughHistory")}</p>;
   }
 
   const W = 640;
@@ -45,7 +44,7 @@ export default function PriceHistoryChart({
     new Date(t).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Histórico de preço">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={t("historyTitle")}>
       {/* eixo Y: min e max */}
       {[pMax, (pMax + pMin) / 2, pMin].map((val, i) => {
         const yy = y(val);

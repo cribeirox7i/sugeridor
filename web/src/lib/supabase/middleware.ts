@@ -1,9 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
-
+// Recebe a response que o middleware de i18n já preparou (rewrite/redirect de
+// locale) e escreve os cookies de sessão nela, em vez de criar uma nova —
+// senão perderíamos o trabalho do next-intl. loginPath/homePath já vêm com o
+// prefixo de locale resolvido pelo caller (proxy.ts).
+export async function updateSession(
+  request: NextRequest,
+  response: NextResponse,
+  loginPath: string,
+  homePath: string,
+): Promise<NextResponse> {
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -14,9 +21,8 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
+            response.cookies.set(name, value, options),
           );
         },
       },
@@ -29,20 +35,20 @@ export async function updateSession(request: NextRequest) {
 
   // A própria página de login fica fora da proteção — senão redireciona pra si
   // mesma em loop quando não há usuário.
-  const isLoginPage = request.nextUrl.pathname === "/admin/login";
+  const isLoginPage = request.nextUrl.pathname === loginPath;
 
-  if (!user && !isLoginPage && request.nextUrl.pathname.startsWith("/admin")) {
+  if (!user && !isLoginPage) {
     const url = request.nextUrl.clone();
-    url.pathname = "/admin/login";
+    url.pathname = loginPath;
     return NextResponse.redirect(url);
   }
 
   // Já logado abrindo a tela de login? Manda pro painel.
   if (user && isLoginPage) {
     const url = request.nextUrl.clone();
-    url.pathname = "/admin";
+    url.pathname = homePath;
     return NextResponse.redirect(url);
   }
 
-  return supabaseResponse;
+  return response;
 }

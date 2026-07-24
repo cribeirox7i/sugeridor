@@ -1,0 +1,147 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "stores": "Tiendas",
+    "products": "Productos",
+    "offers": "Ofertas",
+    "collection": "Recolección",
+    "signOut": "Salir"
+  },
+  "home": {
+    "title": "Sugeridor",
+    "subtitle": "Ofertas de cervezas artesanales y especiales, reunidas de varias tiendas.",
+    "offerCount": "{count, plural, =1 {1 oferta} other {# ofertas}}",
+    "noOffers": "No se encontraron ofertas.",
+    "featuredTitle": "🔥 Ofertas destacadas"
+  },
+  "filters": {
+    "style": "Estilo",
+    "country": "País",
+    "store": "Tienda",
+    "all": "Todos",
+    "allFem": "Todas",
+    "minPrice": "Precio mín.",
+    "maxPrice": "Precio máx.",
+    "filter": "Filtrar",
+    "clear": "Limpiar"
+  },
+  "offerCard": {
+    "viewOffer": "Ver oferta",
+    "otherStores": "Otras tiendas",
+    "loadingStores": "Cargando...",
+    "noOtherStores": "Ninguna otra tienda con oferta activa."
+  },
+  "product": {
+    "backToCatalog": "← Volver al catálogo",
+    "offersTitle": "Ofertas",
+    "noActiveOffers": "Ninguna oferta activa en este momento.",
+    "historyTitle": "Historial de precios",
+    "notEnoughHistory": "Aún no hay historial suficiente para mostrar la variación de precio.",
+    "storeColumn": "Tienda",
+    "priceColumn": "Precio"
+  },
+  "theme": {
+    "toggle": "Alternar tema claro/oscuro"
+  },
+  "language": {
+    "label": "Idioma"
+  },
+  "attributes": {
+    "estilo": "Estilo",
+    "pais": "País",
+    "volume_ml": "Volumen (ml)",
+    "abv": "Alcohol (%)"
+  },
+  "admin": {
+    "login": {
+      "title": "Admin — acceso",
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "submit": "Entrar"
+    },
+    "home": {
+      "title": "Panel",
+      "stores": "Tiendas",
+      "products": "Productos",
+      "offers": "Ofertas",
+      "hint": "Registra tiendas, luego productos y ofertas. Las ofertas alimentan el catálogo público y el historial de precios."
+    },
+    "stores": {
+      "title": "Tiendas",
+      "newTitle": "Nueva tienda",
+      "editTitle": "Editar tienda",
+      "name": "Nombre *",
+      "listingUrl": "URL de listado (para la recolección)",
+      "collectionField": "Recolección automática",
+      "collectionNone": "Ninguna (solo registro manual)",
+      "configField": "Config",
+      "configHint": "Las ofertas recolectadas se marcan con origen scrape; el origen de cada oferta se registra automáticamente, no el de la tienda.",
+      "configInvalid": "El campo Config no es un JSON válido. Corrígelo y guarda de nuevo.",
+      "save": "Guardar",
+      "add": "Agregar",
+      "cancel": "Cancelar",
+      "empty": "Todavía no hay tiendas registradas.",
+      "nameColumn": "Nombre",
+      "site": "Sitio",
+      "collectionColumn": "Recolección",
+      "edit": "Editar",
+      "delete": "Eliminar"
+    },
+    "products": {
+      "title": "Productos",
+      "newTitle": "Nuevo producto",
+      "editTitle": "Editar producto",
+      "type": "Tipo *",
+      "name": "Nombre *",
+      "brand": "Marca",
+      "image": "Imagen (URL)",
+      "attributesOf": "Atributos de {type}",
+      "save": "Guardar",
+      "add": "Agregar",
+      "cancel": "Cancelar",
+      "empty": "Todavía no hay productos registrados.",
+      "nameColumn": "Nombre",
+      "brandColumn": "Marca",
+      "typeColumn": "Tipo",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "noTypes": "Ningún tipo de producto registrado. Ejecuta la migration 0002 (que crea \"Cerveza\") en Supabase antes de registrar productos."
+    },
+    "offers": {
+      "title": "Ofertas",
+      "newTitle": "Nueva oferta / actualizar precio",
+      "hint": "Si ya existe una oferta de este producto en esta tienda, el precio se actualiza y se agrega un nuevo punto al historial.",
+      "product": "Producto *",
+      "store": "Tienda *",
+      "price": "Precio *",
+      "currency": "Moneda",
+      "url": "URL de la página de venta *",
+      "save": "Guardar oferta",
+      "missingPrereq": "Registra al menos una tienda y un producto antes de crear ofertas.",
+      "empty": "Todavía no hay ofertas registradas.",
+      "active": "Activa",
+      "inactive": "Inactiva",
+      "delete": "Eliminar"
+    },
+    "collection": {
+      "title": "Recolección",
+      "runTitle": "Ejecutar recolección manual",
+      "runHint": "Dispara el scraper en GitHub Actions para todas las tiendas con scraper configurado. El resultado aparece en el historial de abajo en cerca de 1 minuto.",
+      "runButton": "Ejecutar recolección ahora",
+      "running": "Disparando...",
+      "dispatchedOk": "¡Recolección disparada! Sigue el resultado abajo (actualiza en ~1 min).",
+      "dispatchFail": "Error al disparar.",
+      "networkError": "Error de red al llamar la API.",
+      "storesIncluded": "Tiendas incluidas en la recolección ({count}):",
+      "storesEmpty": "Ninguna. Define la \"Recolección automática\" en alguna tienda para incluirla.",
+      "lastRuns": "Últimas ejecuciones",
+      "empty": "Todavía no se ejecutó ninguna recolección.",
+      "storeColumn": "Tienda",
+      "statusColumn": "Estado",
+      "offersColumn": "Ofertas",
+      "newColumn": "Nuevas",
+      "startColumn": "Inicio",
+      "endColumn": "Fin"
+    }
+  }
+}

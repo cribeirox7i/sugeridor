@@ -1,8 +1,10 @@
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import type { OfferListItem } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 
 export default function OfferCard({ offer }: { offer: OfferListItem }) {
+  const t = useTranslations("offerCard");
   const { product, store } = offer;
   const estilo = product.attributes?.estilo as string | undefined;
   const pais = product.attributes?.pais as string | undefined;
@@ -62,7 +64,7 @@ export default function OfferCard({ offer }: { offer: OfferListItem }) {
             rel="noopener noreferrer"
             className="rounded bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
           >
-            Ver oferta
+            {t("viewOffer")}
           </a>
         </div>
       </div>

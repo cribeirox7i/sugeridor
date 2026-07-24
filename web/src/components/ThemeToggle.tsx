@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 export default function ThemeToggle() {
+  const t = useTranslations("theme");
   // Evita mismatch de hidratação: só sabe o estado real depois de montar (o
   // servidor já decidiu a classe inicial via cookie, isso só sincroniza o ícone).
   const [isDark, setIsDark] = useState<boolean | null>(null);
@@ -21,7 +23,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      aria-label="Alternar tema claro/escuro"
+      aria-label={t("toggle")}
       className="rounded border border-neutral-300 p-1.5 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
     >
       {isDark === null ? (

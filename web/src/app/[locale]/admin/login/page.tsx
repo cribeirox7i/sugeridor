@@ -1,0 +1,63 @@
+import { getTranslations } from "next-intl/server";
+import { login } from "./actions";
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  const t = await getTranslations("admin.login");
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-white px-4 dark:bg-neutral-950">
+      <form
+        action={login}
+        className="w-full max-w-sm space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-8 dark:border-neutral-800 dark:bg-neutral-900"
+      >
+        <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
+          {t("title")}
+        </h1>
+
+        {error && (
+          <p className="rounded bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+            {error}
+          </p>
+        )}
+
+        <div className="space-y-1">
+          <label htmlFor="email" className="text-sm text-neutral-500 dark:text-neutral-400">
+            {t("email")}
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="password" className="text-sm text-neutral-500 dark:text-neutral-400">
+            {t("password")}
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="w-full rounded bg-amber-600 px-3 py-2 font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
+        >
+          {t("submit")}
+        </button>
+      </form>
+    </div>
+  );
+}

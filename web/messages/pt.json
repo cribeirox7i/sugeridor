@@ -1,0 +1,147 @@
+{
+  "nav": {
+    "home": "Início",
+    "stores": "Lojas",
+    "products": "Produtos",
+    "offers": "Ofertas",
+    "collection": "Coleta",
+    "signOut": "Sair"
+  },
+  "home": {
+    "title": "Sugeridor",
+    "subtitle": "Ofertas de cervejas artesanais e especiais, reunidas de várias lojas.",
+    "offerCount": "{count, plural, =1 {1 oferta} other {# ofertas}}",
+    "noOffers": "Nenhuma oferta encontrada.",
+    "featuredTitle": "🔥 Ofertas em destaque"
+  },
+  "filters": {
+    "style": "Estilo",
+    "country": "País",
+    "store": "Loja",
+    "all": "Todos",
+    "allFem": "Todas",
+    "minPrice": "Preço mín.",
+    "maxPrice": "Preço máx.",
+    "filter": "Filtrar",
+    "clear": "Limpar"
+  },
+  "offerCard": {
+    "viewOffer": "Ver oferta",
+    "otherStores": "Outras lojas",
+    "loadingStores": "Carregando...",
+    "noOtherStores": "Nenhuma outra loja com oferta ativa."
+  },
+  "product": {
+    "backToCatalog": "← Voltar ao catálogo",
+    "offersTitle": "Ofertas",
+    "noActiveOffers": "Nenhuma oferta ativa no momento.",
+    "historyTitle": "Histórico de preço",
+    "notEnoughHistory": "Ainda não há histórico suficiente para mostrar a variação de preço.",
+    "storeColumn": "Loja",
+    "priceColumn": "Preço"
+  },
+  "theme": {
+    "toggle": "Alternar tema claro/escuro"
+  },
+  "language": {
+    "label": "Idioma"
+  },
+  "attributes": {
+    "estilo": "Estilo",
+    "pais": "País",
+    "volume_ml": "Volume (ml)",
+    "abv": "Teor alcoólico (%)"
+  },
+  "admin": {
+    "login": {
+      "title": "Admin — login",
+      "email": "E-mail",
+      "password": "Senha",
+      "submit": "Entrar"
+    },
+    "home": {
+      "title": "Painel",
+      "stores": "Lojas",
+      "products": "Produtos",
+      "offers": "Ofertas",
+      "hint": "Cadastre lojas, depois produtos e ofertas. As ofertas alimentam o catálogo público e o histórico de preço."
+    },
+    "stores": {
+      "title": "Lojas",
+      "newTitle": "Nova loja",
+      "editTitle": "Editar loja",
+      "name": "Nome *",
+      "listingUrl": "URL de listagem (pra coleta)",
+      "collectionField": "Coleta automática",
+      "collectionNone": "Nenhuma (só cadastro manual)",
+      "configField": "Config",
+      "configHint": "As ofertas coletadas ficam marcadas com origem scrape; a origem de cada oferta é registrada automaticamente por oferta, não pela loja.",
+      "configInvalid": "O campo Config não é um JSON válido. Corrija e salve de novo.",
+      "save": "Salvar",
+      "add": "Adicionar",
+      "cancel": "Cancelar",
+      "empty": "Nenhuma loja cadastrada ainda.",
+      "nameColumn": "Nome",
+      "site": "Site",
+      "collectionColumn": "Coleta",
+      "edit": "Editar",
+      "delete": "Excluir"
+    },
+    "products": {
+      "title": "Produtos",
+      "newTitle": "Novo produto",
+      "editTitle": "Editar produto",
+      "type": "Tipo *",
+      "name": "Nome *",
+      "brand": "Marca",
+      "image": "Imagem (URL)",
+      "attributesOf": "Atributos de {type}",
+      "save": "Salvar",
+      "add": "Adicionar",
+      "cancel": "Cancelar",
+      "empty": "Nenhum produto cadastrado ainda.",
+      "nameColumn": "Nome",
+      "brandColumn": "Marca",
+      "typeColumn": "Tipo",
+      "edit": "Editar",
+      "delete": "Excluir",
+      "noTypes": "Nenhum tipo de produto cadastrado. Rode a migration 0002 (que faz o seed de \"Cerveja\") no Supabase antes de cadastrar produtos."
+    },
+    "offers": {
+      "title": "Ofertas",
+      "newTitle": "Nova oferta / atualizar preço",
+      "hint": "Se já existir oferta desse produto nessa loja, o preço é atualizado e um novo ponto entra no histórico.",
+      "product": "Produto *",
+      "store": "Loja *",
+      "price": "Preço *",
+      "currency": "Moeda",
+      "url": "URL da página de venda *",
+      "save": "Salvar oferta",
+      "missingPrereq": "Cadastre ao menos uma loja e um produto antes de criar ofertas.",
+      "empty": "Nenhuma oferta cadastrada ainda.",
+      "active": "Ativa",
+      "inactive": "Inativa",
+      "delete": "Excluir"
+    },
+    "collection": {
+      "title": "Coleta",
+      "runTitle": "Rodar coleta manual",
+      "runHint": "Dispara o scraper no GitHub Actions para todas as lojas com scraper configurado. O resultado aparece no histórico abaixo em cerca de 1 minuto.",
+      "runButton": "Rodar coleta agora",
+      "running": "Disparando...",
+      "dispatchedOk": "Coleta disparada! Acompanhe o resultado abaixo (atualize em ~1 min).",
+      "dispatchFail": "Falha ao disparar.",
+      "networkError": "Erro de rede ao chamar a API.",
+      "storesIncluded": "Lojas incluídas na coleta ({count}):",
+      "storesEmpty": "Nenhuma. Defina a \"Coleta automática\" em alguma loja para incluí-la.",
+      "lastRuns": "Últimas execuções",
+      "empty": "Nenhuma coleta executada ainda.",
+      "storeColumn": "Loja",
+      "statusColumn": "Status",
+      "offersColumn": "Ofertas",
+      "newColumn": "Novos",
+      "startColumn": "Início",
+      "endColumn": "Fim"
+    }
+  }
+}

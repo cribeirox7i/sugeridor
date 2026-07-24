@@ -1,0 +1,147 @@
+{
+  "nav": {
+    "home": "Home",
+    "stores": "Stores",
+    "products": "Products",
+    "offers": "Offers",
+    "collection": "Collection",
+    "signOut": "Sign out"
+  },
+  "home": {
+    "title": "Sugeridor",
+    "subtitle": "Craft and specialty beer deals, gathered from multiple stores.",
+    "offerCount": "{count, plural, =1 {1 offer} other {# offers}}",
+    "noOffers": "No offers found.",
+    "featuredTitle": "🔥 Featured deals"
+  },
+  "filters": {
+    "style": "Style",
+    "country": "Country",
+    "store": "Store",
+    "all": "All",
+    "allFem": "All",
+    "minPrice": "Min. price",
+    "maxPrice": "Max. price",
+    "filter": "Filter",
+    "clear": "Clear"
+  },
+  "offerCard": {
+    "viewOffer": "View offer",
+    "otherStores": "Other stores",
+    "loadingStores": "Loading...",
+    "noOtherStores": "No other store has an active offer."
+  },
+  "product": {
+    "backToCatalog": "← Back to catalog",
+    "offersTitle": "Offers",
+    "noActiveOffers": "No active offer right now.",
+    "historyTitle": "Price history",
+    "notEnoughHistory": "Not enough history yet to show the price trend.",
+    "storeColumn": "Store",
+    "priceColumn": "Price"
+  },
+  "theme": {
+    "toggle": "Toggle light/dark theme"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "attributes": {
+    "estilo": "Style",
+    "pais": "Country",
+    "volume_ml": "Volume (ml)",
+    "abv": "ABV (%)"
+  },
+  "admin": {
+    "login": {
+      "title": "Admin — login",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Sign in"
+    },
+    "home": {
+      "title": "Dashboard",
+      "stores": "Stores",
+      "products": "Products",
+      "offers": "Offers",
+      "hint": "Register stores, then products and offers. Offers feed the public catalog and the price history."
+    },
+    "stores": {
+      "title": "Stores",
+      "newTitle": "New store",
+      "editTitle": "Edit store",
+      "name": "Name *",
+      "listingUrl": "Listing URL (for collection)",
+      "collectionField": "Automatic collection",
+      "collectionNone": "None (manual entry only)",
+      "configField": "Config",
+      "configHint": "Collected offers are marked with source scrape; each offer's source is recorded automatically, not the store's.",
+      "configInvalid": "The Config field is not valid JSON. Fix it and save again.",
+      "save": "Save",
+      "add": "Add",
+      "cancel": "Cancel",
+      "empty": "No stores registered yet.",
+      "nameColumn": "Name",
+      "site": "Site",
+      "collectionColumn": "Collection",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "products": {
+      "title": "Products",
+      "newTitle": "New product",
+      "editTitle": "Edit product",
+      "type": "Type *",
+      "name": "Name *",
+      "brand": "Brand",
+      "image": "Image (URL)",
+      "attributesOf": "{type} attributes",
+      "save": "Save",
+      "add": "Add",
+      "cancel": "Cancel",
+      "empty": "No products registered yet.",
+      "nameColumn": "Name",
+      "brandColumn": "Brand",
+      "typeColumn": "Type",
+      "edit": "Edit",
+      "delete": "Delete",
+      "noTypes": "No product type registered. Run migration 0002 (which seeds \"Beer\") on Supabase before registering products."
+    },
+    "offers": {
+      "title": "Offers",
+      "newTitle": "New offer / update price",
+      "hint": "If an offer for this product at this store already exists, the price is updated and a new point is added to the history.",
+      "product": "Product *",
+      "store": "Store *",
+      "price": "Price *",
+      "currency": "Currency",
+      "url": "Sale page URL *",
+      "save": "Save offer",
+      "missingPrereq": "Register at least one store and one product before creating offers.",
+      "empty": "No offers registered yet.",
+      "active": "Active",
+      "inactive": "Inactive",
+      "delete": "Delete"
+    },
+    "collection": {
+      "title": "Collection",
+      "runTitle": "Run manual collection",
+      "runHint": "Triggers the scraper on GitHub Actions for every store with a scraper configured. Results appear in the history below in about 1 minute.",
+      "runButton": "Run collection now",
+      "running": "Triggering...",
+      "dispatchedOk": "Collection triggered! Watch the results below (refresh in ~1 min).",
+      "dispatchFail": "Failed to trigger.",
+      "networkError": "Network error calling the API.",
+      "storesIncluded": "Stores included in the collection ({count}):",
+      "storesEmpty": "None. Set \"Automatic collection\" on a store to include it.",
+      "lastRuns": "Latest runs",
+      "empty": "No collection run yet.",
+      "storeColumn": "Store",
+      "statusColumn": "Status",
+      "offersColumn": "Offers",
+      "newColumn": "New",
+      "startColumn": "Start",
+      "endColumn": "End"
+    }
+  }
+}

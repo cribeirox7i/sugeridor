@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
 type Props = {
   estilos: string[];
@@ -16,6 +17,7 @@ type Props = {
 // Formulário GET puro: submeter recarrega a página com os filtros na query string.
 // Sem JS no cliente — funciona com cache/SSR e é simples de linkar/compartilhar.
 export default function FilterBar({ estilos, paises, stores, current }: Props) {
+  const t = useTranslations("filters");
   const inputCls =
     "rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
   const hasFilters =
@@ -24,9 +26,9 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
   return (
     <form method="get" className="flex flex-wrap items-end gap-3">
       <label className="flex flex-col gap-1">
-        <span className="text-xs text-neutral-500">Estilo</span>
+        <span className="text-xs text-neutral-500">{t("style")}</span>
         <select name="estilo" defaultValue={current.estilo ?? ""} className={inputCls}>
-          <option value="">Todos</option>
+          <option value="">{t("all")}</option>
           {estilos.map((e) => (
             <option key={e} value={e}>
               {e}
@@ -36,9 +38,9 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs text-neutral-500">País</span>
+        <span className="text-xs text-neutral-500">{t("country")}</span>
         <select name="pais" defaultValue={current.pais ?? ""} className={inputCls}>
-          <option value="">Todos</option>
+          <option value="">{t("all")}</option>
           {paises.map((p) => (
             <option key={p} value={p}>
               {p}
@@ -48,9 +50,9 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs text-neutral-500">Loja</span>
+        <span className="text-xs text-neutral-500">{t("store")}</span>
         <select name="loja" defaultValue={current.storeId ?? ""} className={inputCls}>
-          <option value="">Todas</option>
+          <option value="">{t("allFem")}</option>
           {stores.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -60,7 +62,7 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs text-neutral-500">Preço mín.</span>
+        <span className="text-xs text-neutral-500">{t("minPrice")}</span>
         <input
           name="min"
           inputMode="decimal"
@@ -71,7 +73,7 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
       </label>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs text-neutral-500">Preço máx.</span>
+        <span className="text-xs text-neutral-500">{t("maxPrice")}</span>
         <input
           name="max"
           inputMode="decimal"
@@ -85,7 +87,7 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
         type="submit"
         className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
       >
-        Filtrar
+        {t("filter")}
       </button>
 
       {hasFilters && (
@@ -93,7 +95,7 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
           href="/"
           className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
         >
-          Limpar
+          {t("clear")}
         </Link>
       )}
     </form>
