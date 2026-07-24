@@ -5,6 +5,7 @@
     "products": "Productos",
     "offers": "Ofertas",
     "collection": "Recolección",
+    "branding": "Logotipo",
     "signOut": "Salir"
   },
   "home": {
@@ -45,6 +46,22 @@
   },
   "language": {
     "label": "Idioma"
+  },
+  "footer": {
+    "tagline": "Ofertas de cervezas artesanales y especiales, reunidas de varias tiendas.",
+    "menuTitle": "Menú",
+    "catalog": "Catálogo",
+    "about": "Quiénes Somos",
+    "terms": "Términos de Uso",
+    "rights": "Todos los derechos reservados."
+  },
+  "aboutPage": {
+    "title": "Quiénes Somos",
+    "body": "Sugeridor nació para resolver un problema simple: seguir el precio de cervezas artesanales y especiales repartidas en varias tiendas al mismo tiempo es trabajoso. Reunimos ofertas de distintas tiendas en un solo lugar, guardamos el historial de precio de cada producto y destacamos cuando algo está realmente barato — para que no te pierdas una buena oferta ni pagues de más por impaciencia.\n\nEl catálogo se actualiza periódicamente a partir de las tiendas asociadas. Los enlaces \"Ver oferta\" llevan directo a la página de venta en la tienda de origen — la compra siempre se hace allí, no aquí."
+  },
+  "termsPage": {
+    "title": "Términos de Uso",
+    "body": "Sugeridor es un sitio de comparación y agregación de ofertas. No vendemos ningún producto directamente — cada oferta listada aquí pertenece y es vendida por la tienda de origen, a donde eres redirigido al hacer clic en \"Ver oferta\".\n\nLos precios mostrados reflejan el momento de la última recolección y pueden haber cambiado ya en la tienda de origen; confirma siempre el precio final antes de completar una compra. No nos hacemos responsables por diferencias de precio, disponibilidad de stock o la política de ventas de cada tienda asociada.\n\nAlgunos enlaces podrán, en el futuro, ser enlaces de afiliado — esto será señalado cuando entre en vigor."
   },
   "attributes": {
     "estilo": "Estilo",
@@ -141,6 +158,14 @@
       "deleteBlocked": "No se pudo eliminar esta oferta.",
       "confirmDelete": "¿Eliminar esta oferta? Esta acción no se puede deshacer.",
       "searchPlaceholder": "Buscar oferta..."
+    },
+    "branding": {
+      "title": "Logotipo del sitio",
+      "blackLabel": "Logotipo negro (usado en el tema claro)",
+      "whiteLabel": "Logotipo blanco (usado en el tema oscuro)",
+      "save": "Guardar",
+      "preview": "Vista previa",
+      "noLogo": "Ningún logotipo definido — se muestra el nombre \"Sugeridor\" en su lugar."
     },
     "collection": {
       "title": "Recolección",

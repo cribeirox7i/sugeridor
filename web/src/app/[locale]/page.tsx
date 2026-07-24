@@ -6,12 +6,15 @@ import {
   listStoresLite,
   getFeaturedDeals,
   getPriceHistoryForOffers,
+  getSiteSettings,
 } from "@/lib/queries";
 import OfferCard from "@/components/OfferCard";
 import FilterBar from "@/components/FilterBar";
 import FeaturedDeals from "@/components/FeaturedDeals";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import Logo from "@/components/Logo";
+import Footer from "@/components/Footer";
 
 export const dynamic = "force-dynamic";
 
@@ -44,12 +47,13 @@ export default async function Home({
     precoMax: toNumber(sp.max),
   };
 
-  const [offers, estilos, paises, stores, featuredDeals] = await Promise.all([
+  const [offers, estilos, paises, stores, featuredDeals, siteSettings] = await Promise.all([
     listOffers(supabase, filters),
     distinctAttributeValues(supabase, "estilo"),
     distinctAttributeValues(supabase, "pais"),
     listStoresLite(supabase),
     getFeaturedDeals(supabase),
+    getSiteSettings(supabase),
   ]);
 
   // Histórico de todas as ofertas visíveis, numa query só (evita N+1 por card).
@@ -59,12 +63,12 @@ export default async function Home({
   );
 
   return (
-    <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
+    <div className="flex min-h-screen flex-col bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       <header className="border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto flex max-w-6xl items-start justify-between px-6 py-6">
           <div>
-            <h1 className="text-2xl font-semibold">{t("title")}</h1>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("subtitle")}</p>
+            <Logo settings={siteSettings} fallbackText={t("title")} className="h-8" />
+            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("subtitle")}</p>
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
@@ -73,7 +77,7 @@ export default async function Home({
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl space-y-6 px-6 py-6">
+      <div className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-6 py-6">
         <FeaturedDeals deals={featuredDeals} />
 
         <FilterBar
@@ -105,6 +109,8 @@ export default async function Home({
           </div>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 }

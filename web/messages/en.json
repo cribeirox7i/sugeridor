@@ -5,6 +5,7 @@
     "products": "Products",
     "offers": "Offers",
     "collection": "Collection",
+    "branding": "Logo",
     "signOut": "Sign out"
   },
   "home": {
@@ -45,6 +46,22 @@
   },
   "language": {
     "label": "Language"
+  },
+  "footer": {
+    "tagline": "Craft and specialty beer deals, gathered from multiple stores.",
+    "menuTitle": "Menu",
+    "catalog": "Catalog",
+    "about": "About Us",
+    "terms": "Terms of Use",
+    "rights": "All rights reserved."
+  },
+  "aboutPage": {
+    "title": "About Us",
+    "body": "Sugeridor was built to solve a simple problem: tracking craft and specialty beer prices across several stores at once is tedious. We gather offers from different stores in one place, keep a price history for each product, and highlight when something is a genuinely good deal — so you don't miss a good offer or overpay out of impatience.\n\nThe catalog is updated periodically from partner stores. \"View offer\" links take you straight to the sale page on the store where the purchase actually happens — never here."
+  },
+  "termsPage": {
+    "title": "Terms of Use",
+    "body": "Sugeridor is a price-comparison and offer-aggregation site. We don't sell any product directly — every offer listed here belongs to and is sold by the store you're redirected to when clicking \"View offer\".\n\nPrices shown reflect the last time we collected them and may have already changed at the store; always confirm the final price before completing a purchase. We're not responsible for price discrepancies, stock availability, or the sales policies of partner stores.\n\nSome links may become affiliate links in the future — this will be disclosed when it happens."
   },
   "attributes": {
     "estilo": "Style",
@@ -141,6 +158,14 @@
       "deleteBlocked": "Couldn't delete this offer.",
       "confirmDelete": "Delete this offer? This cannot be undone.",
       "searchPlaceholder": "Search offer..."
+    },
+    "branding": {
+      "title": "Site logo",
+      "blackLabel": "Black logo (used in light theme)",
+      "whiteLabel": "White logo (used in dark theme)",
+      "save": "Save",
+      "preview": "Preview",
+      "noLogo": "No logo set — the name \"Sugeridor\" is shown instead."
     },
     "collection": {
       "title": "Collection",

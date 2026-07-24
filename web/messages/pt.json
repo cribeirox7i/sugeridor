@@ -5,6 +5,7 @@
     "products": "Produtos",
     "offers": "Ofertas",
     "collection": "Coleta",
+    "branding": "Logomarca",
     "signOut": "Sair"
   },
   "home": {
@@ -45,6 +46,22 @@
   },
   "language": {
     "label": "Idioma"
+  },
+  "footer": {
+    "tagline": "Ofertas de cervejas artesanais e especiais, reunidas de várias lojas.",
+    "menuTitle": "Menu",
+    "catalog": "Catálogo",
+    "about": "Quem Somos",
+    "terms": "Termos de Uso",
+    "rights": "Todos os direitos reservados."
+  },
+  "aboutPage": {
+    "title": "Quem Somos",
+    "body": "O Sugeridor nasceu pra resolver um problema simples: acompanhar o preço de cervejas artesanais e especiais espalhadas por várias lojas ao mesmo tempo é trabalhoso. Reunimos ofertas de diferentes lojas num só lugar, guardamos o histórico de preço de cada produto e destacamos quando algo está realmente barato — pra você não perder uma boa oferta e não pagar mais caro por impaciência.\n\nO catálogo é atualizado periodicamente a partir das lojas parceiras. Os links de \"Ver oferta\" levam direto pra página de venda na loja de origem — a compra é sempre feita lá, não aqui."
+  },
+  "termsPage": {
+    "title": "Termos de Uso",
+    "body": "O Sugeridor é um site de comparação e agregação de ofertas. Não vendemos nenhum produto diretamente — cada oferta listada aqui pertence e é vendida pela loja de origem, pra onde você é redirecionado ao clicar em \"Ver oferta\".\n\nOs preços exibidos refletem o momento da última coleta e podem já ter mudado na loja de origem; sempre confira o preço final antes de finalizar uma compra. Não nos responsabilizamos por divergências de preço, disponibilidade de estoque ou pela política de vendas de cada loja parceira.\n\nAlguns links podem, no futuro, ser links de afiliado — isso será sinalizado quando entrar em vigor."
   },
   "attributes": {
     "estilo": "Estilo",
@@ -141,6 +158,14 @@
       "deleteBlocked": "Não foi possível excluir esta oferta.",
       "confirmDelete": "Excluir esta oferta? Essa ação não pode ser desfeita.",
       "searchPlaceholder": "Buscar oferta..."
+    },
+    "branding": {
+      "title": "Logomarca do site",
+      "blackLabel": "Logomarca preta (usada no tema claro)",
+      "whiteLabel": "Logomarca branca (usada no tema escuro)",
+      "save": "Salvar",
+      "preview": "Pré-visualização",
+      "noLogo": "Nenhuma logomarca cadastrada — o nome \"Sugeridor\" é exibido no lugar."
     },
     "collection": {
       "title": "Coleta",

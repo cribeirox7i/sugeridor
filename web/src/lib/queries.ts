@@ -1,7 +1,7 @@
 // Funções de leitura do catálogo, usadas pelas páginas públicas (Server
 // Components). Recebem um client Supabase já criado pelo caller.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { OfferListItem, Product, PriceHistoryPoint, Offer, Store } from "./types";
+import type { OfferListItem, Product, PriceHistoryPoint, Offer, Store, SiteSettings } from "./types";
 
 export type OfferFilters = {
   estilo?: string;
@@ -57,6 +57,14 @@ export async function distinctAttributeValues(
     else if (typeof v === "number") set.add(String(v));
   }
   return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+// Linha singleton com a logomarca do site. Se a migration 0004 ainda não
+// rodou (coluna/tabela não existe), retorna null em vez de derrubar a página.
+export async function getSiteSettings(supabase: SupabaseClient): Promise<SiteSettings | null> {
+  const { data, error } = await supabase.from("site_settings").select("*").eq("id", 1).maybeSingle();
+  if (error) return null;
+  return data as SiteSettings | null;
 }
 
 export async function listStoresLite(

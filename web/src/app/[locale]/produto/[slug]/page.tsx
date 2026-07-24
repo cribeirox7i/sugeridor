@@ -9,6 +9,7 @@ import {
 } from "@/lib/queries";
 import { formatPrice } from "@/lib/format";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
+import Footer from "@/components/Footer";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function ProdutoPage({
   const attrEntries = Object.entries(product.attributes ?? {});
 
   return (
-    <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
+    <div className="flex min-h-screen flex-col bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       <header className="border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto max-w-5xl px-6 py-4">
           <Link
@@ -47,7 +48,7 @@ export default async function ProdutoPage({
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl space-y-10 px-6 py-8">
+      <div className="mx-auto w-full max-w-5xl flex-1 space-y-10 px-6 py-8">
         <div className="grid gap-8 md:grid-cols-[280px_1fr]">
           <div className="flex aspect-square items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
             {product.image_url ? (
@@ -125,6 +126,8 @@ export default async function ProdutoPage({
           </div>
         </section>
       </div>
+
+      <Footer />
     </div>
   );
 }
