@@ -53,6 +53,9 @@
     "abv": "Alcohol (%)"
   },
   "admin": {
+    "common": {
+      "include": "Incluir"
+    },
     "login": {
       "title": "Admin — acceso",
       "email": "Correo electrónico",
@@ -117,6 +120,7 @@
       "currency": "Moneda",
       "url": "URL de la página de venta *",
       "save": "Guardar oferta",
+      "cancel": "Cancelar",
       "missingPrereq": "Registra al menos una tienda y un producto antes de crear ofertas.",
       "empty": "Todavía no hay ofertas registradas.",
       "active": "Activa",

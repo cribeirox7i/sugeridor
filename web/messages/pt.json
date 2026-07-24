@@ -53,6 +53,9 @@
     "abv": "Teor alcoólico (%)"
   },
   "admin": {
+    "common": {
+      "include": "Incluir"
+    },
     "login": {
       "title": "Admin — login",
       "email": "E-mail",
@@ -117,6 +120,7 @@
       "currency": "Moeda",
       "url": "URL da página de venda *",
       "save": "Salvar oferta",
+      "cancel": "Cancelar",
       "missingPrereq": "Cadastre ao menos uma loja e um produto antes de criar ofertas.",
       "empty": "Nenhuma oferta cadastrada ainda.",
       "active": "Ativa",

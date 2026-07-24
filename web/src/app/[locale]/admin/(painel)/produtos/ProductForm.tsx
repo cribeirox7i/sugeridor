@@ -26,10 +26,7 @@ export default function ProductForm({
   const labelCls = "text-sm text-neutral-500 dark:text-neutral-400";
 
   return (
-    <form
-      action={saveProduct}
-      className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900"
-    >
+    <form action={saveProduct} className="space-y-4">
       <h2 className="font-medium">{editing ? t("editTitle") : t("newTitle")}</h2>
       {editing && <input type="hidden" name="id" value={editing.id} />}
 
@@ -115,14 +112,12 @@ export default function ProductForm({
         >
           {editing ? t("save") : t("add")}
         </button>
-        {editing && (
-          <Link
-            href="/admin/produtos"
-            className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-          >
-            {t("cancel")}
-          </Link>
-        )}
+        <Link
+          href="/admin/produtos"
+          className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+        >
+          {t("cancel")}
+        </Link>
       </div>
     </form>
   );

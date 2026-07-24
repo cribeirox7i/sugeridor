@@ -53,6 +53,9 @@
     "abv": "ABV (%)"
   },
   "admin": {
+    "common": {
+      "include": "Add new"
+    },
     "login": {
       "title": "Admin — login",
       "email": "Email",
@@ -117,6 +120,7 @@
       "currency": "Currency",
       "url": "Sale page URL *",
       "save": "Save offer",
+      "cancel": "Cancel",
       "missingPrereq": "Register at least one store and one product before creating offers.",
       "empty": "No offers registered yet.",
       "active": "Active",
