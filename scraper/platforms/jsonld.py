@@ -46,6 +46,17 @@ def _product_links(listing_html: str, base_url: str, link_selector: str, url_con
     return list(dict.fromkeys(links))
 
 
+def _first_image_url(image) -> str | None:
+    """O campo `image` do schema.org Product varia de formato entre sites:
+    string única, lista de strings, ou ImageObject ({"url": "..."}) — às vezes
+    numa lista. Pega a primeira URL utilizável em qualquer um desses casos."""
+    if isinstance(image, list):
+        image = image[0] if image else None
+    if isinstance(image, dict):
+        image = image.get("url")
+    return image if isinstance(image, str) and image else None
+
+
 def _parse_product(html_text: str, fallback_url: str) -> Candidate | None:
     soup = BeautifulSoup(html_text, "html.parser")
     for tag in soup.find_all("script", type="application/ld+json"):
@@ -89,6 +100,7 @@ def _parse_product(html_text: str, fallback_url: str) -> Candidate | None:
                 price=price,
                 currency=offers.get("priceCurrency") or "BRL",
                 url=offers.get("url") or fallback_url,
+                image_url=absolute_url(fallback_url, _first_image_url(obj.get("image"))),
                 available=available,
                 attributes=attributes,
             )

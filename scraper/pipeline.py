@@ -30,11 +30,16 @@ def _candidate_slug(cand: Candidate) -> str:
 def process_candidate(cand: Candidate, store_id: str) -> bool:
     """Grava um candidato. Retorna True se criou um produto novo."""
     slug = _candidate_slug(cand)
-    existing = db.select("products", {"canonical_slug": f"eq.{slug}", "select": "id"})
+    existing = db.select("products", {"canonical_slug": f"eq.{slug}", "select": "id,image_url"})
 
     if existing:
         product_id = existing[0]["id"]
         is_new = False
+        # Backfill: produto já existia sem imagem (ex: criado antes do
+        # coletor extrair `image` do JSON-LD) — completa sem sobrescrever
+        # uma imagem já definida (que pode ter sido curada manualmente).
+        if not existing[0].get("image_url") and cand.image_url:
+            db.update("products", {"id": f"eq.{product_id}"}, {"image_url": cand.image_url})
     else:
         created = db.insert(
             "products",
