@@ -31,7 +31,7 @@ export default async function ColetaPage() {
   const supabase = await createClient();
 
   const [{ data: storesData }, { data: jobsData }] = await Promise.all([
-    supabase.from("stores").select("id, name, scraper_key").not("scraper_key", "is", null),
+    supabase.from("stores").select("id, name, platform").not("platform", "is", null),
     supabase
       .from("ingestion_jobs")
       .select("*, store:stores ( name )")
@@ -39,7 +39,7 @@ export default async function ColetaPage() {
       .limit(20),
   ]);
 
-  const scraperStores = (storesData ?? []) as { id: string; name: string; scraper_key: string }[];
+  const scraperStores = (storesData ?? []) as { id: string; name: string; platform: string }[];
   const jobs = (jobsData ?? []) as unknown as Job[];
 
   return (
@@ -63,14 +63,13 @@ export default async function ColetaPage() {
           </p>
           {scraperStores.length === 0 ? (
             <p className="mt-1 text-neutral-600">
-              Nenhuma. Defina o campo &quot;Scraper&quot; em alguma loja (ex:{" "}
-              <code>clubedomalte</code>) para incluí-la.
+              Nenhuma. Defina a &quot;Coleta automática&quot; em alguma loja para incluí-la.
             </p>
           ) : (
             <ul className="mt-1 list-inside list-disc text-neutral-300">
               {scraperStores.map((s) => (
                 <li key={s.id}>
-                  {s.name} <span className="text-neutral-600">({s.scraper_key})</span>
+                  {s.name} <span className="text-neutral-600">({s.platform})</span>
                 </li>
               ))}
             </ul>

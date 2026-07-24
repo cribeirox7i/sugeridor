@@ -16,3 +16,16 @@ class Candidate:
     attributes: dict = field(default_factory=dict)
     # slug do product_type ao qual o candidato pertence
     product_type_slug: str = "cerveja"
+
+
+@dataclass
+class StoreRecord:
+    """Loja lida do banco, pronta pra ser coletada. `config` é o JSONB
+    `stores.config` — a "receita" que diz como ler aquele site específico
+    dentro da plataforma escolhida (ver docs/04-conectores-ingestao.md)."""
+
+    id: str
+    name: str
+    site_url: str
+    platform: str
+    config: dict = field(default_factory=dict)

@@ -21,11 +21,14 @@ export type ProductType = {
   created_at: string;
 };
 
+export type ScraperPlatform = "vtex" | "shopify" | "tray" | "jsonld" | "html" | "txt";
+
 export type Store = {
   id: string;
   name: string;
   site_url: string | null;
-  scraper_key: string | null;
+  platform: ScraperPlatform | null;
+  config: Record<string, unknown>;
   affiliate_program_id: string | null;
   created_at: string;
 };

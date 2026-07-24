@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { Store } from "@/lib/types";
-import { AVAILABLE_SCRAPERS } from "@/lib/scrapers";
 import { saveStore, deleteStore } from "./actions";
+import PlatformFields from "./PlatformFields";
 
 export const dynamic = "force-dynamic";
 
 export default async function LojasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string }>;
+  searchParams: Promise<{ edit?: string; error?: string }>;
 }) {
-  const { edit } = await searchParams;
+  const { edit, error } = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.from("stores").select("*").order("name");
   const stores = (data ?? []) as Store[];
@@ -29,6 +29,12 @@ export default async function LojasPage({
       >
         <h2 className="font-medium">{editing ? "Editar loja" : "Nova loja"}</h2>
         {editing && <input type="hidden" name="id" value={editing.id} />}
+
+        {error === "config-invalido" && (
+          <p className="rounded bg-red-950 px-3 py-2 text-sm text-red-300">
+            O campo Config não é um JSON válido. Corrija e salve de novo.
+          </p>
+        )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1">
@@ -52,26 +58,15 @@ export default async function LojasPage({
               className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2"
             />
           </label>
-          <label className="space-y-1">
-            <span className="text-sm text-neutral-400">Coleta automática</span>
-            <select
-              name="scraper_key"
-              defaultValue={editing?.scraper_key ?? ""}
-              className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2"
-            >
-              <option value="">Nenhuma (só cadastro manual)</option>
-              {AVAILABLE_SCRAPERS.map((s) => (
-                <option key={s.key} value={s.key}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs text-neutral-600">
-              Escolha o leitor do site desta loja para incluí-la na coleta automática. As ofertas
-              coletadas ficam marcadas como origem <code>scrape</code>; a origem de cada oferta
-              (manual, scrape, etc.) é registrada automaticamente.
-            </span>
-          </label>
+
+          <PlatformFields
+            defaultPlatform={editing?.platform ?? ""}
+            defaultConfig={
+              editing?.config && Object.keys(editing.config).length > 0
+                ? JSON.stringify(editing.config, null, 2)
+                : ""
+            }
+          />
         </div>
 
         <div className="flex gap-2">
@@ -98,13 +93,14 @@ export default async function LojasPage({
             <tr>
               <th className="px-4 py-2 font-medium">Nome</th>
               <th className="px-4 py-2 font-medium">Site</th>
+              <th className="px-4 py-2 font-medium">Coleta</th>
               <th className="px-4 py-2" />
             </tr>
           </thead>
           <tbody>
             {stores.length === 0 && (
               <tr>
-                <td colSpan={3} className="px-4 py-6 text-center text-neutral-500">
+                <td colSpan={4} className="px-4 py-6 text-center text-neutral-500">
                   Nenhuma loja cadastrada ainda.
                 </td>
               </tr>
@@ -121,6 +117,7 @@ export default async function LojasPage({
                     "—"
                   )}
                 </td>
+                <td className="px-4 py-2 text-neutral-400">{s.platform ?? "—"}</td>
                 <td className="px-4 py-2 text-right">
                   <div className="flex justify-end gap-2">
                     <Link
