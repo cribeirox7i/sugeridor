@@ -54,7 +54,10 @@
   },
   "admin": {
     "common": {
-      "include": "Add new"
+      "include": "Add new",
+      "viewGrid": "Cards",
+      "viewList": "List",
+      "search": "Search"
     },
     "login": {
       "title": "Admin — login",
@@ -80,6 +83,8 @@
       "configField": "Config",
       "configHint": "Collected offers are marked with source scrape; each offer's source is recorded automatically, not the store's.",
       "configInvalid": "The Config field is not valid JSON. Fix it and save again.",
+      "deleteBlocked": "Couldn't delete: there are offers registered for this store. Delete its offers first (Offers screen).",
+      "confirmDelete": "Delete store \"{name}\"? This cannot be undone.",
       "save": "Save",
       "add": "Add",
       "cancel": "Cancel",
@@ -88,7 +93,11 @@
       "site": "Site",
       "collectionColumn": "Collection",
       "edit": "Edit",
-      "delete": "Delete"
+      "delete": "Delete",
+      "logo": "Logo (URL)",
+      "description": "Description",
+      "searchPlaceholder": "Search store...",
+      "logoColumn": "Logo"
     },
     "products": {
       "title": "Products",
@@ -108,6 +117,9 @@
       "typeColumn": "Type",
       "edit": "Edit",
       "delete": "Delete",
+      "deleteBlocked": "Couldn't delete: there are offers registered for this product. Delete its offers first (Offers screen).",
+      "confirmDelete": "Delete product \"{name}\"? This cannot be undone.",
+      "searchPlaceholder": "Search product...",
       "noTypes": "No product type registered. Run migration 0002 (which seeds \"Beer\") on Supabase before registering products."
     },
     "offers": {
@@ -125,7 +137,10 @@
       "empty": "No offers registered yet.",
       "active": "Active",
       "inactive": "Inactive",
-      "delete": "Delete"
+      "delete": "Delete",
+      "deleteBlocked": "Couldn't delete this offer.",
+      "confirmDelete": "Delete this offer? This cannot be undone.",
+      "searchPlaceholder": "Search offer..."
     },
     "collection": {
       "title": "Collection",

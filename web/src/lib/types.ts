@@ -29,6 +29,8 @@ export type Store = {
   site_url: string | null;
   platform: ScraperPlatform | null;
   config: Record<string, unknown>;
+  logo_url: string | null;
+  description: string | null;
   affiliate_program_id: string | null;
   created_at: string;
 };
@@ -74,4 +76,13 @@ export type OfferListItem = Offer & {
     "id" | "name" | "brand" | "attributes" | "image_url" | "canonical_slug"
   >;
   store: Pick<Store, "id" | "name">;
+};
+
+// Linha única (singleton) com a logomarca do site em duas variantes — preta
+// (pro tema claro) e branca (pro tema escuro).
+export type SiteSettings = {
+  id: number;
+  logo_black_url: string | null;
+  logo_white_url: string | null;
+  updated_at: string;
 };

@@ -1,5 +1,7 @@
 "use server";
 
+import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 import { revalidateAllLocales } from "@/lib/revalidate";
@@ -59,7 +61,15 @@ export async function deleteProduct(formData: FormData) {
   const id = formData.get("id") as string;
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("products").delete().eq("id", id);
+  const { error } = await supabase.from("products").delete().eq("id", id);
+
+  if (error) {
+    // Mesma proteção de lojas: sem CASCADE de propósito, avisa em vez de
+    // falhar silenciosamente quando há oferta vinculada ao produto.
+    const locale = await getLocale();
+    redirect(`/${locale}/admin/produtos?error=delete-blocked`);
+  }
+
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
 }

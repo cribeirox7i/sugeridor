@@ -54,7 +54,10 @@
   },
   "admin": {
     "common": {
-      "include": "Incluir"
+      "include": "Incluir",
+      "viewGrid": "Cartões",
+      "viewList": "Lista",
+      "search": "Buscar"
     },
     "login": {
       "title": "Admin — login",
@@ -80,6 +83,8 @@
       "configField": "Config",
       "configHint": "As ofertas coletadas ficam marcadas com origem scrape; a origem de cada oferta é registrada automaticamente por oferta, não pela loja.",
       "configInvalid": "O campo Config não é um JSON válido. Corrija e salve de novo.",
+      "deleteBlocked": "Não foi possível excluir: existem ofertas cadastradas para esta loja. Exclua as ofertas dela primeiro (tela Ofertas).",
+      "confirmDelete": "Excluir a loja \"{name}\"? Essa ação não pode ser desfeita.",
       "save": "Salvar",
       "add": "Adicionar",
       "cancel": "Cancelar",
@@ -88,7 +93,11 @@
       "site": "Site",
       "collectionColumn": "Coleta",
       "edit": "Editar",
-      "delete": "Excluir"
+      "delete": "Excluir",
+      "logo": "Logomarca (URL)",
+      "description": "Descrição",
+      "searchPlaceholder": "Buscar loja...",
+      "logoColumn": "Logo"
     },
     "products": {
       "title": "Produtos",
@@ -108,6 +117,9 @@
       "typeColumn": "Tipo",
       "edit": "Editar",
       "delete": "Excluir",
+      "deleteBlocked": "Não foi possível excluir: existem ofertas cadastradas para este produto. Exclua as ofertas dele primeiro (tela Ofertas).",
+      "confirmDelete": "Excluir o produto \"{name}\"? Essa ação não pode ser desfeita.",
+      "searchPlaceholder": "Buscar produto...",
       "noTypes": "Nenhum tipo de produto cadastrado. Rode a migration 0002 (que faz o seed de \"Cerveja\") no Supabase antes de cadastrar produtos."
     },
     "offers": {
@@ -125,7 +137,10 @@
       "empty": "Nenhuma oferta cadastrada ainda.",
       "active": "Ativa",
       "inactive": "Inativa",
-      "delete": "Excluir"
+      "delete": "Excluir",
+      "deleteBlocked": "Não foi possível excluir esta oferta.",
+      "confirmDelete": "Excluir esta oferta? Essa ação não pode ser desfeita.",
+      "searchPlaceholder": "Buscar oferta..."
     },
     "collection": {
       "title": "Coleta",

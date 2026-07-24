@@ -1,5 +1,7 @@
 "use server";
 
+import { redirect } from "next/navigation";
+import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateAllLocales } from "@/lib/revalidate";
 
@@ -61,7 +63,13 @@ export async function deleteOffer(formData: FormData) {
   if (!id) return;
   const supabase = await createClient();
   // price_history tem ON DELETE CASCADE, então some junto.
-  await supabase.from("offers").delete().eq("id", id);
+  const { error } = await supabase.from("offers").delete().eq("id", id);
+
+  if (error) {
+    const locale = await getLocale();
+    redirect(`/${locale}/admin/ofertas?error=delete-blocked`);
+  }
+
   revalidateAllLocales("/admin/ofertas");
   revalidateAllLocales("/");
 }

@@ -54,7 +54,10 @@
   },
   "admin": {
     "common": {
-      "include": "Incluir"
+      "include": "Incluir",
+      "viewGrid": "Tarjetas",
+      "viewList": "Lista",
+      "search": "Buscar"
     },
     "login": {
       "title": "Admin — acceso",
@@ -80,6 +83,8 @@
       "configField": "Config",
       "configHint": "Las ofertas recolectadas se marcan con origen scrape; el origen de cada oferta se registra automáticamente, no el de la tienda.",
       "configInvalid": "El campo Config no es un JSON válido. Corrígelo y guarda de nuevo.",
+      "deleteBlocked": "No se pudo eliminar: hay ofertas registradas para esta tienda. Elimina sus ofertas primero (pantalla Ofertas).",
+      "confirmDelete": "¿Eliminar la tienda \"{name}\"? Esta acción no se puede deshacer.",
       "save": "Guardar",
       "add": "Agregar",
       "cancel": "Cancelar",
@@ -88,7 +93,11 @@
       "site": "Sitio",
       "collectionColumn": "Recolección",
       "edit": "Editar",
-      "delete": "Eliminar"
+      "delete": "Eliminar",
+      "logo": "Logotipo (URL)",
+      "description": "Descripción",
+      "searchPlaceholder": "Buscar tienda...",
+      "logoColumn": "Logo"
     },
     "products": {
       "title": "Productos",
@@ -108,6 +117,9 @@
       "typeColumn": "Tipo",
       "edit": "Editar",
       "delete": "Eliminar",
+      "deleteBlocked": "No se pudo eliminar: hay ofertas registradas para este producto. Elimina sus ofertas primero (pantalla Ofertas).",
+      "confirmDelete": "¿Eliminar el producto \"{name}\"? Esta acción no se puede deshacer.",
+      "searchPlaceholder": "Buscar producto...",
       "noTypes": "Ningún tipo de producto registrado. Ejecuta la migration 0002 (que crea \"Cerveza\") en Supabase antes de registrar productos."
     },
     "offers": {
@@ -125,7 +137,10 @@
       "empty": "Todavía no hay ofertas registradas.",
       "active": "Activa",
       "inactive": "Inactiva",
-      "delete": "Eliminar"
+      "delete": "Eliminar",
+      "deleteBlocked": "No se pudo eliminar esta oferta.",
+      "confirmDelete": "¿Eliminar esta oferta? Esta acción no se puede deshacer.",
+      "searchPlaceholder": "Buscar oferta..."
     },
     "collection": {
       "title": "Recolección",
