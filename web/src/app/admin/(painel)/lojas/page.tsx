@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { Store } from "@/lib/types";
+import { AVAILABLE_SCRAPERS } from "@/lib/scrapers";
 import { saveStore, deleteStore } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -52,18 +53,23 @@ export default async function LojasPage({
             />
           </label>
           <label className="space-y-1">
-            <span className="text-sm text-neutral-400">
-              Scraper (opcional)
-            </span>
-            <input
+            <span className="text-sm text-neutral-400">Coleta automática</span>
+            <select
               name="scraper_key"
-              placeholder="ex: clubedomalte"
               defaultValue={editing?.scraper_key ?? ""}
               className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2"
-            />
+            >
+              <option value="">Nenhuma (só cadastro manual)</option>
+              {AVAILABLE_SCRAPERS.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
             <span className="text-xs text-neutral-600">
-              Deixe vazio para lojas só de cadastro manual. Preencha com a chave do scraper
-              (ex: <code>clubedomalte</code>) para incluir na coleta automática.
+              Escolha o leitor do site desta loja para incluí-la na coleta automática. As ofertas
+              coletadas ficam marcadas como origem <code>scrape</code>; a origem de cada oferta
+              (manual, scrape, etc.) é registrada automaticamente.
             </span>
           </label>
         </div>
