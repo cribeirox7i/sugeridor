@@ -118,3 +118,78 @@ export async function getPriceHistoryForProduct(
   if (error) throw error;
   return (data ?? []) as PriceHistoryPoint[];
 }
+
+// Histórico de várias ofertas de uma vez (evita N+1 numa listagem), agrupado
+// por offer_id.
+export async function getPriceHistoryForOffers(
+  supabase: SupabaseClient,
+  offerIds: string[],
+): Promise<Map<string, PriceHistoryPoint[]>> {
+  const map = new Map<string, PriceHistoryPoint[]>();
+  if (offerIds.length === 0) return map;
+
+  const { data, error } = await supabase
+    .from("price_history")
+    .select("*")
+    .in("offer_id", offerIds)
+    .order("captured_at", { ascending: true });
+  if (error) throw error;
+
+  for (const point of (data ?? []) as PriceHistoryPoint[]) {
+    const list = map.get(point.offer_id);
+    if (list) list.push(point);
+    else map.set(point.offer_id, [point]);
+  }
+  return map;
+}
+
+export type FeaturedDeal = OfferListItem & {
+  dropPercent: number;
+  referencePrice: number;
+};
+
+// Função pura (sem I/O) — separada pra dar pra testar isoladamente com dados
+// sintéticos, sem precisar de rede/banco. Calcula a queda de preço de cada
+// oferta frente ao "preço de referência" (média do histórico anterior ao
+// ponto mais recente — mesma lógica descrita em docs/03-modelo-dados.md) e
+// devolve as `limit` maiores quedas reais (> 0.5%, pra ignorar ruído).
+export function computeFeaturedDeals(
+  offers: OfferListItem[],
+  historyByOffer: Map<string, PriceHistoryPoint[]>,
+  limit = 5,
+): FeaturedDeal[] {
+  const deals: FeaturedDeal[] = [];
+  for (const offer of offers) {
+    const history = historyByOffer.get(offer.id) ?? [];
+    if (history.length < 2) continue; // sem histórico suficiente pra comparar
+
+    // exclui o ponto mais recente (é o preço atual) da referência
+    const previous = history.slice(0, -1);
+    const referencePrice = previous.reduce((sum, p) => sum + p.price, 0) / previous.length;
+    if (referencePrice <= 0) continue;
+
+    const dropPercent = ((referencePrice - offer.price) / referencePrice) * 100;
+    if (dropPercent > 0.5) {
+      deals.push({ ...offer, dropPercent, referencePrice });
+    }
+  }
+
+  return deals.sort((a, b) => b.dropPercent - a.dropPercent).slice(0, limit);
+}
+
+// Base do carrossel de destaques da home — busca ofertas + histórico e aplica
+// computeFeaturedDeals.
+export async function getFeaturedDeals(
+  supabase: SupabaseClient,
+  limit = 5,
+): Promise<FeaturedDeal[]> {
+  const offers = await listOffers(supabase);
+  if (offers.length === 0) return [];
+
+  const historyByOffer = await getPriceHistoryForOffers(
+    supabase,
+    offers.map((o) => o.id),
+  );
+
+  return computeFeaturedDeals(offers, historyByOffer, limit);
+}

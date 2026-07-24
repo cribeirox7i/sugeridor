@@ -1,8 +1,9 @@
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { listOffers, distinctAttributeValues, listStoresLite } from "@/lib/queries";
+import { listOffers, distinctAttributeValues, listStoresLite, getFeaturedDeals } from "@/lib/queries";
 import OfferCard from "@/components/OfferCard";
 import FilterBar from "@/components/FilterBar";
+import FeaturedDeals from "@/components/FeaturedDeals";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
@@ -37,11 +38,12 @@ export default async function Home({
     precoMax: toNumber(sp.max),
   };
 
-  const [offers, estilos, paises, stores] = await Promise.all([
+  const [offers, estilos, paises, stores, featuredDeals] = await Promise.all([
     listOffers(supabase, filters),
     distinctAttributeValues(supabase, "estilo"),
     distinctAttributeValues(supabase, "pais"),
     listStoresLite(supabase),
+    getFeaturedDeals(supabase),
   ]);
 
   return (
@@ -60,6 +62,8 @@ export default async function Home({
       </header>
 
       <div className="mx-auto max-w-6xl space-y-6 px-6 py-6">
+        <FeaturedDeals deals={featuredDeals} />
+
         <FilterBar
           estilos={estilos}
           paises={paises}
