@@ -1,9 +1,17 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import type { OfferListItem } from "@/lib/types";
+import type { OfferListItem, PriceHistoryPoint } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
+import MiniSparkline from "@/components/MiniSparkline";
+import StoreOffersPopover from "@/components/StoreOffersPopover";
 
-export default function OfferCard({ offer }: { offer: OfferListItem }) {
+export default function OfferCard({
+  offer,
+  history = [],
+}: {
+  offer: OfferListItem;
+  history?: PriceHistoryPoint[];
+}) {
   const t = useTranslations("offerCard");
   const { product, store } = offer;
   const estilo = product.attributes?.estilo as string | undefined;
@@ -51,12 +59,17 @@ export default function OfferCard({ offer }: { offer: OfferListItem }) {
           </div>
         </div>
 
+        <MiniSparkline points={history} />
+
         <div className="flex items-end justify-between">
           <div>
             <div className="text-lg font-semibold text-amber-600 dark:text-amber-400">
               {formatPrice(offer.price, offer.currency)}
             </div>
-            <div className="text-xs text-neutral-500">{store.name}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-neutral-500">{store.name}</span>
+              <StoreOffersPopover productId={product.id} currentOfferId={offer.id} />
+            </div>
           </div>
           <a
             href={`/go/${offer.id}`}

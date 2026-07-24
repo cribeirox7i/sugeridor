@@ -1,6 +1,12 @@
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { listOffers, distinctAttributeValues, listStoresLite, getFeaturedDeals } from "@/lib/queries";
+import {
+  listOffers,
+  distinctAttributeValues,
+  listStoresLite,
+  getFeaturedDeals,
+  getPriceHistoryForOffers,
+} from "@/lib/queries";
 import OfferCard from "@/components/OfferCard";
 import FilterBar from "@/components/FilterBar";
 import FeaturedDeals from "@/components/FeaturedDeals";
@@ -46,6 +52,12 @@ export default async function Home({
     getFeaturedDeals(supabase),
   ]);
 
+  // Histórico de todas as ofertas visíveis, numa query só (evita N+1 por card).
+  const historyByOffer = await getPriceHistoryForOffers(
+    supabase,
+    offers.map((o) => o.id),
+  );
+
   return (
     <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       <header className="border-b border-neutral-200 dark:border-neutral-800">
@@ -88,7 +100,7 @@ export default async function Home({
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {offers.map((offer) => (
-              <OfferCard key={offer.id} offer={offer} />
+              <OfferCard key={offer.id} offer={offer} history={historyByOffer.get(offer.id)} />
             ))}
           </div>
         )}
