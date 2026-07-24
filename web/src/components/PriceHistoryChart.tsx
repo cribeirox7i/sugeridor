@@ -51,8 +51,21 @@ export default function PriceHistoryChart({
         const yy = y(val);
         return (
           <g key={i}>
-            <line x1={pad.left} y1={yy} x2={W - pad.right} y2={yy} stroke="#262626" strokeWidth={1} />
-            <text x={pad.left - 8} y={yy + 4} textAnchor="end" fontSize={11} fill="#737373">
+            <line
+              x1={pad.left}
+              y1={yy}
+              x2={W - pad.right}
+              y2={yy}
+              strokeWidth={1}
+              className="stroke-neutral-200 dark:stroke-neutral-800"
+            />
+            <text
+              x={pad.left - 8}
+              y={yy + 4}
+              textAnchor="end"
+              fontSize={11}
+              className="fill-neutral-500 dark:fill-neutral-400"
+            >
               {formatPrice(val, currency)}
             </text>
           </g>
@@ -60,16 +73,22 @@ export default function PriceHistoryChart({
       })}
 
       {/* eixo X: primeira e última data */}
-      <text x={pad.left} y={H - 8} fontSize={11} fill="#737373">
+      <text x={pad.left} y={H - 8} fontSize={11} className="fill-neutral-500 dark:fill-neutral-400">
         {fmtDate(tMin)}
       </text>
-      <text x={W - pad.right} y={H - 8} textAnchor="end" fontSize={11} fill="#737373">
+      <text
+        x={W - pad.right}
+        y={H - 8}
+        textAnchor="end"
+        fontSize={11}
+        className="fill-neutral-500 dark:fill-neutral-400"
+      >
         {fmtDate(tMax)}
       </text>
 
-      <path d={path} fill="none" stroke="#f59e0b" strokeWidth={2} />
+      <path d={path} fill="none" strokeWidth={2} className="stroke-amber-500" />
       {points.map((p, i) => (
-        <circle key={i} cx={x(times[i])} cy={y(p.price)} r={3} fill="#f59e0b" />
+        <circle key={i} cx={x(times[i])} cy={y(p.price)} r={3} className="fill-amber-500" />
       ))}
     </svg>
   );

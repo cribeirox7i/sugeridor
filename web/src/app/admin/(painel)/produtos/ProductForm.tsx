@@ -19,19 +19,20 @@ export default function ProductForm({
   const fields = selected?.attribute_schema?.fields ?? [];
 
   const inputCls =
-    "w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2";
+    "w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
+  const labelCls = "text-sm text-neutral-500 dark:text-neutral-400";
 
   return (
     <form
       action={saveProduct}
-      className="space-y-4 rounded-lg border border-neutral-800 bg-neutral-900 p-5"
+      className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900"
     >
       <h2 className="font-medium">{editing ? "Editar produto" : "Novo produto"}</h2>
       {editing && <input type="hidden" name="id" value={editing.id} />}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="space-y-1">
-          <span className="text-sm text-neutral-400">Tipo *</span>
+          <span className={labelCls}>Tipo *</span>
           <select
             name="product_type_id"
             value={typeId}
@@ -47,17 +48,17 @@ export default function ProductForm({
         </label>
 
         <label className="space-y-1">
-          <span className="text-sm text-neutral-400">Nome *</span>
+          <span className={labelCls}>Nome *</span>
           <input name="name" required defaultValue={editing?.name ?? ""} className={inputCls} />
         </label>
 
         <label className="space-y-1">
-          <span className="text-sm text-neutral-400">Marca</span>
+          <span className={labelCls}>Marca</span>
           <input name="brand" defaultValue={editing?.brand ?? ""} className={inputCls} />
         </label>
 
         <label className="space-y-1">
-          <span className="text-sm text-neutral-400">Imagem (URL)</span>
+          <span className={labelCls}>Imagem (URL)</span>
           <input
             name="image_url"
             type="url"
@@ -69,7 +70,7 @@ export default function ProductForm({
       </div>
 
       {fields.length > 0 && (
-        <div className="space-y-3 rounded border border-neutral-800 p-4">
+        <div className="space-y-3 rounded border border-neutral-200 p-4 dark:border-neutral-800">
           <p className="text-xs uppercase tracking-wide text-neutral-500">
             Atributos de {selected?.name}
           </p>
@@ -78,7 +79,7 @@ export default function ProductForm({
               const current = editing?.attributes?.[f.key];
               return (
                 <label key={f.key} className="space-y-1">
-                  <span className="text-sm text-neutral-400">{f.label}</span>
+                  <span className={labelCls}>{f.label}</span>
                   {f.type === "select" ? (
                     <select name={`attr_${f.key}`} defaultValue={current != null ? String(current) : ""} className={inputCls}>
                       <option value="">—</option>
@@ -107,14 +108,14 @@ export default function ProductForm({
       <div className="flex gap-2">
         <button
           type="submit"
-          className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-amber-500"
+          className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
         >
           {editing ? "Salvar" : "Adicionar"}
         </button>
         {editing && (
           <Link
             href="/admin/produtos"
-            className="rounded border border-neutral-700 px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800"
+            className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
           >
             Cancelar
           </Link>

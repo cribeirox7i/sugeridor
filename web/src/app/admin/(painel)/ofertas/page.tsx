@@ -32,7 +32,9 @@ export default async function OfertasPage() {
   const stores = (storesData ?? []) as { id: string; name: string }[];
   const offers = (offersData ?? []) as unknown as OfferRow[];
 
-  const inputCls = "w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2";
+  const inputCls =
+    "w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
+  const labelCls = "text-sm text-neutral-500 dark:text-neutral-400";
   const missingPrereq = products.length === 0 || stores.length === 0;
 
   return (
@@ -40,11 +42,14 @@ export default async function OfertasPage() {
       <h1 className="text-xl font-semibold">Ofertas</h1>
 
       {missingPrereq ? (
-        <p className="rounded border border-amber-900 bg-amber-950/40 px-4 py-3 text-sm text-amber-200">
+        <p className="rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
           Cadastre ao menos uma loja e um produto antes de criar ofertas.
         </p>
       ) : (
-        <form action={saveOffer} className="space-y-4 rounded-lg border border-neutral-800 bg-neutral-900 p-5">
+        <form
+          action={saveOffer}
+          className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900"
+        >
           <h2 className="font-medium">Nova oferta / atualizar preço</h2>
           <p className="text-xs text-neutral-500">
             Se já existir oferta desse produto nessa loja, o preço é atualizado e um novo ponto
@@ -53,7 +58,7 @@ export default async function OfertasPage() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1">
-              <span className="text-sm text-neutral-400">Produto *</span>
+              <span className={labelCls}>Produto *</span>
               <select name="product_id" required className={inputCls}>
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -64,7 +69,7 @@ export default async function OfertasPage() {
             </label>
 
             <label className="space-y-1">
-              <span className="text-sm text-neutral-400">Loja *</span>
+              <span className={labelCls}>Loja *</span>
               <select name="store_id" required className={inputCls}>
                 {stores.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -75,33 +80,33 @@ export default async function OfertasPage() {
             </label>
 
             <label className="space-y-1">
-              <span className="text-sm text-neutral-400">Preço *</span>
+              <span className={labelCls}>Preço *</span>
               <input name="price" required inputMode="decimal" placeholder="0,00" className={inputCls} />
             </label>
 
             <label className="space-y-1">
-              <span className="text-sm text-neutral-400">Moeda</span>
+              <span className={labelCls}>Moeda</span>
               <input name="currency" defaultValue="BRL" className={inputCls} />
             </label>
 
             <label className="space-y-1 sm:col-span-2">
-              <span className="text-sm text-neutral-400">URL da página de venda *</span>
+              <span className={labelCls}>URL da página de venda *</span>
               <input name="url" type="url" required placeholder="https://..." className={inputCls} />
             </label>
           </div>
 
           <button
             type="submit"
-            className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-amber-500"
+            className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
           >
             Salvar oferta
           </button>
         </form>
       )}
 
-      <div className="overflow-hidden rounded-lg border border-neutral-800">
+      <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="w-full text-sm">
-          <thead className="bg-neutral-900 text-left text-neutral-400">
+          <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
             <tr>
               <th className="px-4 py-2 font-medium">Produto</th>
               <th className="px-4 py-2 font-medium">Loja</th>
@@ -119,11 +124,11 @@ export default async function OfertasPage() {
               </tr>
             )}
             {offers.map((o) => (
-              <tr key={o.id} className="border-t border-neutral-800">
+              <tr key={o.id} className="border-t border-neutral-200 dark:border-neutral-800">
                 <td className="px-4 py-2">
                   {o.product?.brand ? `${o.product.brand} — ${o.product.name}` : o.product?.name ?? "—"}
                 </td>
-                <td className="px-4 py-2 text-neutral-400">{o.store?.name ?? "—"}</td>
+                <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{o.store?.name ?? "—"}</td>
                 <td className="px-4 py-2">{brl(o.price, o.currency)}</td>
                 <td className="px-4 py-2">
                   <form action={toggleOfferActive}>
@@ -133,8 +138,8 @@ export default async function OfertasPage() {
                       type="submit"
                       className={
                         o.active
-                          ? "rounded bg-green-900/50 px-2 py-1 text-xs text-green-300"
-                          : "rounded bg-neutral-800 px-2 py-1 text-xs text-neutral-400"
+                          ? "rounded bg-green-100 px-2 py-1 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                          : "rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
                       }
                     >
                       {o.active ? "Ativa" : "Inativa"}
@@ -146,7 +151,7 @@ export default async function OfertasPage() {
                     <input type="hidden" name="id" value={o.id} />
                     <button
                       type="submit"
-                      className="rounded border border-red-900 px-2 py-1 text-xs text-red-300 hover:bg-red-950"
+                      className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950"
                     >
                       Excluir
                     </button>

@@ -12,12 +12,13 @@ export default function PlatformFields({
 }) {
   const [platform, setPlatform] = useState(defaultPlatform);
   const selected = PLATFORMS.find((p) => p.key === platform);
-  const inputCls = "w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2";
+  const inputCls =
+    "w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
 
   return (
     <>
       <label className="space-y-1">
-        <span className="text-sm text-neutral-400">Coleta automática</span>
+        <span className="text-sm text-neutral-500 dark:text-neutral-400">Coleta automática</span>
         <select
           name="platform"
           value={platform}
@@ -31,7 +32,7 @@ export default function PlatformFields({
             </option>
           ))}
         </select>
-        <span className="text-xs text-neutral-600">
+        <span className="text-xs text-neutral-500 dark:text-neutral-600">
           As ofertas coletadas ficam marcadas com origem <code>scrape</code>; a origem de cada
           oferta é registrada automaticamente por oferta, não pela loja.
         </span>
@@ -39,7 +40,7 @@ export default function PlatformFields({
 
       {selected && (
         <label className="space-y-1 sm:col-span-2">
-          <span className="text-sm text-neutral-400">Config ({selected.label})</span>
+          <span className="text-sm text-neutral-500 dark:text-neutral-400">Config ({selected.label})</span>
           <textarea
             name="config"
             rows={6}
@@ -47,7 +48,7 @@ export default function PlatformFields({
             placeholder={selected.configExample}
             className={`${inputCls} font-mono text-xs`}
           />
-          <span className="text-xs text-neutral-600">{selected.hint}</span>
+          <span className="text-xs text-neutral-500 dark:text-neutral-600">{selected.hint}</span>
         </label>
       )}
     </>

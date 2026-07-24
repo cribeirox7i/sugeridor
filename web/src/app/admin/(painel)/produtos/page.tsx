@@ -32,7 +32,7 @@ export default async function ProdutosPage({
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-semibold">Produtos</h1>
-        <p className="rounded border border-amber-900 bg-amber-950/40 px-4 py-3 text-sm text-amber-200">
+        <p className="rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
           Nenhum tipo de produto cadastrado. Rode a migration 0002 (que faz o seed de
           &quot;Cerveja&quot;) no Supabase antes de cadastrar produtos.
         </p>
@@ -46,9 +46,9 @@ export default async function ProdutosPage({
 
       <ProductForm productTypes={productTypes} editing={editing} />
 
-      <div className="overflow-hidden rounded-lg border border-neutral-800">
+      <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="w-full text-sm">
-          <thead className="bg-neutral-900 text-left text-neutral-400">
+          <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
             <tr>
               <th className="px-4 py-2 font-medium">Nome</th>
               <th className="px-4 py-2 font-medium">Marca</th>
@@ -65,15 +65,17 @@ export default async function ProdutosPage({
               </tr>
             )}
             {products.map((p) => (
-              <tr key={p.id} className="border-t border-neutral-800">
+              <tr key={p.id} className="border-t border-neutral-200 dark:border-neutral-800">
                 <td className="px-4 py-2">{p.name}</td>
-                <td className="px-4 py-2 text-neutral-400">{p.brand ?? "—"}</td>
-                <td className="px-4 py-2 text-neutral-400">{p.product_type?.name ?? "—"}</td>
+                <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{p.brand ?? "—"}</td>
+                <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
+                  {p.product_type?.name ?? "—"}
+                </td>
                 <td className="px-4 py-2 text-right">
                   <div className="flex justify-end gap-2">
                     <Link
                       href={`/admin/produtos?edit=${p.id}`}
-                      className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+                      className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                     >
                       Editar
                     </Link>
@@ -81,7 +83,7 @@ export default async function ProdutosPage({
                       <input type="hidden" name="id" value={p.id} />
                       <button
                         type="submit"
-                        className="rounded border border-red-900 px-2 py-1 text-xs text-red-300 hover:bg-red-950"
+                        className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950"
                       >
                         Excluir
                       </button>

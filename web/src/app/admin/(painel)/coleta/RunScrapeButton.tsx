@@ -34,7 +34,7 @@ export default function RunScrapeButton() {
       <button
         onClick={run}
         disabled={state.kind === "loading"}
-        className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-amber-500 disabled:opacity-50"
+        className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 disabled:opacity-50 dark:text-neutral-950"
       >
         {state.kind === "loading" ? "Disparando..." : "Rodar coleta agora"}
       </button>
@@ -42,8 +42,8 @@ export default function RunScrapeButton() {
         <p
           className={
             state.kind === "error"
-              ? "text-sm text-red-400"
-              : "text-sm text-green-400"
+              ? "text-sm text-red-600 dark:text-red-400"
+              : "text-sm text-green-600 dark:text-green-400"
           }
         >
           {state.msg}

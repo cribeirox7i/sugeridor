@@ -16,10 +16,10 @@ type Job = {
 };
 
 const STATUS_STYLE: Record<Job["status"], string> = {
-  running: "bg-blue-900/50 text-blue-300",
-  success: "bg-green-900/50 text-green-300",
-  partial: "bg-amber-900/50 text-amber-300",
-  failed: "bg-red-900/50 text-red-300",
+  running: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+  success: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
+  partial: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+  failed: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
 };
 
 function fmt(dt: string | null): string {
@@ -46,7 +46,7 @@ export default async function ColetaPage() {
     <div className="space-y-8">
       <h1 className="text-xl font-semibold">Coleta</h1>
 
-      <section className="space-y-4 rounded-lg border border-neutral-800 bg-neutral-900 p-5">
+      <section className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900">
         <div>
           <h2 className="font-medium">Rodar coleta manual</h2>
           <p className="mt-1 text-sm text-neutral-500">
@@ -57,19 +57,19 @@ export default async function ColetaPage() {
 
         <RunScrapeButton />
 
-        <div className="border-t border-neutral-800 pt-3 text-sm">
-          <p className="text-neutral-400">
+        <div className="border-t border-neutral-200 pt-3 text-sm dark:border-neutral-800">
+          <p className="text-neutral-500 dark:text-neutral-400">
             Lojas incluídas na coleta ({scraperStores.length}):
           </p>
           {scraperStores.length === 0 ? (
-            <p className="mt-1 text-neutral-600">
+            <p className="mt-1 text-neutral-500 dark:text-neutral-600">
               Nenhuma. Defina a &quot;Coleta automática&quot; em alguma loja para incluí-la.
             </p>
           ) : (
-            <ul className="mt-1 list-inside list-disc text-neutral-300">
+            <ul className="mt-1 list-inside list-disc text-neutral-600 dark:text-neutral-300">
               {scraperStores.map((s) => (
                 <li key={s.id}>
-                  {s.name} <span className="text-neutral-600">({s.platform})</span>
+                  {s.name} <span className="text-neutral-500 dark:text-neutral-600">({s.platform})</span>
                 </li>
               ))}
             </ul>
@@ -79,9 +79,9 @@ export default async function ColetaPage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Últimas execuções</h2>
-        <div className="overflow-hidden rounded-lg border border-neutral-800">
+        <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-900 text-left text-neutral-400">
+            <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
               <tr>
                 <th className="px-4 py-2 font-medium">Loja</th>
                 <th className="px-4 py-2 font-medium">Status</th>
@@ -100,20 +100,22 @@ export default async function ColetaPage() {
                 </tr>
               )}
               {jobs.map((j) => (
-                <tr key={j.id} className="border-t border-neutral-800 align-top">
+                <tr key={j.id} className="border-t border-neutral-200 align-top dark:border-neutral-800">
                   <td className="px-4 py-2">{j.store?.name ?? "—"}</td>
                   <td className="px-4 py-2">
                     <span className={`rounded px-2 py-0.5 text-xs ${STATUS_STYLE[j.status]}`}>
                       {j.status}
                     </span>
                     {j.error_message && (
-                      <div className="mt-1 max-w-xs text-xs text-red-400">{j.error_message}</div>
+                      <div className="mt-1 max-w-xs text-xs text-red-600 dark:text-red-400">
+                        {j.error_message}
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-2">{j.items_found}</td>
                   <td className="px-4 py-2">{j.items_new}</td>
-                  <td className="px-4 py-2 text-neutral-400">{fmt(j.started_at)}</td>
-                  <td className="px-4 py-2 text-neutral-400">{fmt(j.finished_at)}</td>
+                  <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{fmt(j.started_at)}</td>
+                  <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{fmt(j.finished_at)}</td>
                 </tr>
               ))}
             </tbody>

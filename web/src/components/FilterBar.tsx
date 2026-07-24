@@ -16,7 +16,8 @@ type Props = {
 // Formulário GET puro: submeter recarrega a página com os filtros na query string.
 // Sem JS no cliente — funciona com cache/SSR e é simples de linkar/compartilhar.
 export default function FilterBar({ estilos, paises, stores, current }: Props) {
-  const inputCls = "rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm";
+  const inputCls =
+    "rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
   const hasFilters =
     current.estilo || current.pais || current.storeId || current.precoMin || current.precoMax;
 
@@ -82,7 +83,7 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
 
       <button
         type="submit"
-        className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-amber-500"
+        className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
       >
         Filtrar
       </button>
@@ -90,7 +91,7 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
       {hasFilters && (
         <Link
           href="/"
-          className="rounded border border-neutral-700 px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-900"
+          className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
         >
           Limpar
         </Link>

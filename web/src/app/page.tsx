@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { listOffers, distinctAttributeValues, listStoresLite } from "@/lib/queries";
 import OfferCard from "@/components/OfferCard";
 import FilterBar from "@/components/FilterBar";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -41,13 +42,16 @@ export default async function Home({
   ]);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100">
-      <header className="border-b border-neutral-800">
-        <div className="mx-auto max-w-6xl px-6 py-6">
-          <h1 className="text-2xl font-semibold">Sugeridor</h1>
-          <p className="text-sm text-neutral-400">
-            Ofertas de cervejas artesanais e especiais, reunidas de várias lojas.
-          </p>
+    <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
+      <header className="border-b border-neutral-200 dark:border-neutral-800">
+        <div className="mx-auto flex max-w-6xl items-start justify-between px-6 py-6">
+          <div>
+            <h1 className="text-2xl font-semibold">Sugeridor</h1>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">
+              Ofertas de cervejas artesanais e especiais, reunidas de várias lojas.
+            </p>
+          </div>
+          <ThemeToggle />
         </div>
       </header>
 
@@ -65,12 +69,12 @@ export default async function Home({
           }}
         />
 
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-neutral-500 dark:text-neutral-500">
           {offers.length} {offers.length === 1 ? "oferta" : "ofertas"}
         </p>
 
         {offers.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-neutral-800 p-12 text-center text-neutral-500">
+          <div className="rounded-lg border border-dashed border-neutral-300 p-12 text-center text-neutral-500 dark:border-neutral-800">
             Nenhuma oferta encontrada.
           </div>
         ) : (

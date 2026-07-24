@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import ThemeToggle from "@/components/ThemeToggle";
 import { signOut } from "./actions";
 
 const NAV = [
@@ -25,8 +26,8 @@ export default async function PainelLayout({
   if (!user) redirect("/admin/login");
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100">
-      <header className="border-b border-neutral-800">
+    <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
+      <header className="border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
           <nav className="flex items-center gap-1">
             <span className="mr-3 font-semibold">Sugeridor</span>
@@ -34,7 +35,7 @@ export default async function PainelLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900 hover:text-neutral-100"
+                className="rounded px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
               >
                 {item.label}
               </Link>
@@ -42,10 +43,11 @@ export default async function PainelLayout({
           </nav>
           <div className="flex items-center gap-3">
             <span className="hidden text-sm text-neutral-500 sm:inline">{user.email}</span>
+            <ThemeToggle />
             <form action={signOut}>
               <button
                 type="submit"
-                className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-900"
+                className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
               >
                 Sair
               </button>

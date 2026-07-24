@@ -25,29 +25,29 @@ export default async function LojasPage({
 
       <form
         action={saveStore}
-        className="space-y-4 rounded-lg border border-neutral-800 bg-neutral-900 p-5"
+        className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900"
       >
         <h2 className="font-medium">{editing ? "Editar loja" : "Nova loja"}</h2>
         {editing && <input type="hidden" name="id" value={editing.id} />}
 
         {error === "config-invalido" && (
-          <p className="rounded bg-red-950 px-3 py-2 text-sm text-red-300">
+          <p className="rounded bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
             O campo Config não é um JSON válido. Corrija e salve de novo.
           </p>
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1">
-            <span className="text-sm text-neutral-400">Nome *</span>
+            <span className="text-sm text-neutral-500 dark:text-neutral-400">Nome *</span>
             <input
               name="name"
               required
               defaultValue={editing?.name ?? ""}
-              className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2"
+              className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
             />
           </label>
           <label className="space-y-1">
-            <span className="text-sm text-neutral-400">
+            <span className="text-sm text-neutral-500 dark:text-neutral-400">
               URL de listagem (pra coleta)
             </span>
             <input
@@ -55,7 +55,7 @@ export default async function LojasPage({
               type="url"
               placeholder="https://loja.com/cervejas?pagina=1"
               defaultValue={editing?.site_url ?? ""}
-              className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2"
+              className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
             />
           </label>
 
@@ -72,14 +72,14 @@ export default async function LojasPage({
         <div className="flex gap-2">
           <button
             type="submit"
-            className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-neutral-950 hover:bg-amber-500"
+            className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
           >
             {editing ? "Salvar" : "Adicionar"}
           </button>
           {editing && (
             <Link
               href="/admin/lojas"
-              className="rounded border border-neutral-700 px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800"
+              className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
             >
               Cancelar
             </Link>
@@ -87,9 +87,9 @@ export default async function LojasPage({
         </div>
       </form>
 
-      <div className="overflow-hidden rounded-lg border border-neutral-800">
+      <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="w-full text-sm">
-          <thead className="bg-neutral-900 text-left text-neutral-400">
+          <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
             <tr>
               <th className="px-4 py-2 font-medium">Nome</th>
               <th className="px-4 py-2 font-medium">Site</th>
@@ -106,23 +106,28 @@ export default async function LojasPage({
               </tr>
             )}
             {stores.map((s) => (
-              <tr key={s.id} className="border-t border-neutral-800">
+              <tr key={s.id} className="border-t border-neutral-200 dark:border-neutral-800">
                 <td className="px-4 py-2">{s.name}</td>
-                <td className="px-4 py-2 text-neutral-400">
+                <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
                   {s.site_url ? (
-                    <a href={s.site_url} target="_blank" rel="noopener noreferrer" className="hover:text-neutral-100">
+                    <a
+                      href={s.site_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-neutral-900 dark:hover:text-neutral-100"
+                    >
                       {s.site_url}
                     </a>
                   ) : (
                     "—"
                   )}
                 </td>
-                <td className="px-4 py-2 text-neutral-400">{s.platform ?? "—"}</td>
+                <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{s.platform ?? "—"}</td>
                 <td className="px-4 py-2 text-right">
                   <div className="flex justify-end gap-2">
                     <Link
                       href={`/admin/lojas?edit=${s.id}`}
-                      className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+                      className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                     >
                       Editar
                     </Link>
@@ -130,7 +135,7 @@ export default async function LojasPage({
                       <input type="hidden" name="id" value={s.id} />
                       <button
                         type="submit"
-                        className="rounded border border-red-900 px-2 py-1 text-xs text-red-300 hover:bg-red-950"
+                        className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950"
                       >
                         Excluir
                       </button>

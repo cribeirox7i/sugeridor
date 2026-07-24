@@ -29,10 +29,10 @@ export default async function AdminHome() {
           <Link
             key={c.href}
             href={c.href}
-            className="rounded-lg border border-neutral-800 bg-neutral-900 p-5 hover:border-neutral-700"
+            className="rounded-lg border border-neutral-200 bg-neutral-50 p-5 hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-700"
           >
             <div className="text-3xl font-semibold">{c.value}</div>
-            <div className="mt-1 text-sm text-neutral-400">{c.label}</div>
+            <div className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{c.label}</div>
           </Link>
         ))}
       </div>
