@@ -16,6 +16,7 @@ config:
   }
 """
 import json
+import re
 
 from bs4 import BeautifulSoup
 
@@ -24,6 +25,42 @@ from ..http import fetch
 from ..models import Candidate, StoreRecord
 from ..normalize import clean_product_name, parse_volume_ml
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+
+# Nomes de atributo (como a plataforma FBits rotula) -> chave do nosso schema.
+_FBITS_ATTR_MAP = {"País": "pais", "Estilo": "estilo", "Teor Alcoólico": "abv"}
+
+
+def _extract_fbits_attributes(html_text: str) -> dict:
+    """Melhor esforço: a plataforma FBits (usada pelo Clube do Malte, entre
+    outras) embute um bloco JS `var _<id>=[[...]],productname` na página do
+    produto com atributos estruturados (país, estilo, teor alcoólico...) que
+    NÃO aparecem no JSON-LD. Não é uma API documentada — se a página não tiver
+    esse padrão (site de outra plataforma), retorna vazio sem quebrar o resto
+    do parse.
+    """
+    match = re.search(r'var _\d+=(\[\[.*?\]\])\s*,\s*productname', html_text, re.DOTALL)
+    if not match:
+        return {}
+
+    pairs = re.findall(
+        r'\{key:"name",value:"([^"]+)"\},\{key:"type",value:"[^"]*"\},\{key:"value",value:"([^"]+)"\}',
+        match.group(1),
+    )
+    attributes: dict = {}
+    for name, value in pairs:
+        key = _FBITS_ATTR_MAP.get(name)
+        if not key:
+            continue
+        if key == "abv":
+            num = re.search(r"[\d,.]+", value)
+            if num:
+                try:
+                    attributes[key] = float(num.group(0).replace(",", "."))
+                except ValueError:
+                    pass
+        else:
+            attributes[key] = value
+    return attributes
 
 
 def _page_url(listing_url: str, page: int, page_param: str) -> str:
@@ -93,6 +130,10 @@ def _parse_product(html_text: str, fallback_url: str) -> Candidate | None:
             vol = parse_volume_ml(name)
             if vol:
                 attributes["volume_ml"] = vol
+            # Complementa com país/estilo/abv quando a plataforma expõe
+            # (ver _extract_fbits_attributes) — não sobrescreve volume_ml.
+            for k, v in _extract_fbits_attributes(html_text).items():
+                attributes.setdefault(k, v)
 
             return Candidate(
                 product_name=name,
