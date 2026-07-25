@@ -114,7 +114,12 @@
       "logo": "Logomarca (URL)",
       "description": "Descrição",
       "searchPlaceholder": "Buscar loja...",
-      "logoColumn": "Logo"
+      "logoColumn": "Logo",
+      "detectButton": "Detectar plataforma",
+      "detecting": "Detectando...",
+      "detectFound": "Detectado: {platform}. Confira a config sugerida antes de salvar.",
+      "detectNotFound": "Não conseguimos detectar automaticamente — selecione manualmente.",
+      "detectError": "Erro ao tentar detectar a plataforma."
     },
     "products": {
       "title": "Produtos",

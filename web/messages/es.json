@@ -114,7 +114,12 @@
       "logo": "Logotipo (URL)",
       "description": "Descripción",
       "searchPlaceholder": "Buscar tienda...",
-      "logoColumn": "Logo"
+      "logoColumn": "Logo",
+      "detectButton": "Detectar plataforma",
+      "detecting": "Detectando...",
+      "detectFound": "Detectado: {platform}. Revisa la config sugerida antes de guardar.",
+      "detectNotFound": "No pudimos detectar automáticamente — selecciona manualmente.",
+      "detectError": "Error al intentar detectar la plataforma."
     },
     "products": {
       "title": "Productos",

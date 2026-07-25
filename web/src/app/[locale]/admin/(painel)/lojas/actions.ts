@@ -43,6 +43,18 @@ export async function saveStore(formData: FormData) {
   revalidateAllLocales("/admin/lojas");
 }
 
+// Usado pelo botão "Detectar" direto na grid (sem abrir o modal de edição) —
+// aplica o resultado da detecção imediatamente.
+export async function updateStorePlatform(
+  id: string,
+  platform: string | null,
+  config: Record<string, unknown>,
+) {
+  const supabase = await createClient();
+  await supabase.from("stores").update({ platform, config }).eq("id", id);
+  revalidateAllLocales("/admin/lojas");
+}
+
 export async function deleteStore(formData: FormData) {
   const id = formData.get("id") as string;
   if (!id) return;

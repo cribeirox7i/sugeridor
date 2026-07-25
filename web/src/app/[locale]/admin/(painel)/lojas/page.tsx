@@ -8,6 +8,7 @@ import ViewToggle from "@/components/admin/ViewToggle";
 import SearchBox from "@/components/admin/SearchBox";
 import { saveStore, deleteStore } from "./actions";
 import PlatformFields from "./PlatformFields";
+import DetectPlatformCardButton from "./DetectPlatformCardButton";
 
 export const dynamic = "force-dynamic";
 
@@ -47,16 +48,6 @@ export default async function LojasPage({
           />
         </label>
         <label className="space-y-1">
-          <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("listingUrl")}</span>
-          <input
-            name="site_url"
-            type="url"
-            placeholder="https://loja.com/cervejas?pagina=1"
-            defaultValue={editing?.site_url ?? ""}
-            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-          />
-        </label>
-        <label className="space-y-1">
           <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("logo")}</span>
           <input
             name="logo_url"
@@ -68,6 +59,7 @@ export default async function LojasPage({
         </label>
 
         <PlatformFields
+          defaultSiteUrl={editing?.site_url ?? ""}
           defaultPlatform={editing?.platform ?? ""}
           defaultConfig={
             editing?.config && Object.keys(editing.config).length > 0
@@ -170,6 +162,7 @@ export default async function LojasPage({
                   <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{s.platform ?? "—"}</td>
                   <td className="px-4 py-2 text-right">
                     <div className="flex justify-end gap-2">
+                      <DetectPlatformCardButton storeId={s.id} siteUrl={s.site_url} />
                       <Link
                         href={`/admin/lojas?edit=${s.id}`}
                         className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
@@ -226,7 +219,8 @@ export default async function LojasPage({
                   {s.site_url}
                 </a>
               )}
-              <div className="mt-auto flex gap-2 pt-2">
+              <div className="mt-auto flex flex-wrap gap-2 pt-2">
+                <DetectPlatformCardButton storeId={s.id} siteUrl={s.site_url} />
                 <Link
                   href={`/admin/lojas?edit=${s.id}`}
                   className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"

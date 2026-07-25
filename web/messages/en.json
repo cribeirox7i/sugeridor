@@ -114,7 +114,12 @@
       "logo": "Logo (URL)",
       "description": "Description",
       "searchPlaceholder": "Search store...",
-      "logoColumn": "Logo"
+      "logoColumn": "Logo",
+      "detectButton": "Detect platform",
+      "detecting": "Detecting...",
+      "detectFound": "Detected: {platform}. Review the suggested config before saving.",
+      "detectNotFound": "Couldn't auto-detect — select manually.",
+      "detectError": "Error trying to detect the platform."
     },
     "products": {
       "title": "Products",
