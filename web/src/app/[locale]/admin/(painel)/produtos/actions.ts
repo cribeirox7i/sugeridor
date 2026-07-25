@@ -33,11 +33,12 @@ export async function saveProduct(formData: FormData) {
     attributes[field.key] = field.type === "number" ? Number(raw) : raw;
   }
 
+  let error;
   if (id) {
-    await supabase
+    ({ error } = await supabase
       .from("products")
       .update({ product_type_id, name, brand, image_url, attributes, updated_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id));
   } else {
     // Slug único: se colidir, sufixa com um trecho aleatório.
     let canonical_slug = slugify(`${brand ?? ""} ${name}`);
@@ -48,13 +49,23 @@ export async function saveProduct(formData: FormData) {
       .maybeSingle();
     if (existing) canonical_slug = `${canonical_slug}-${Math.random().toString(36).slice(2, 6)}`;
 
-    await supabase
+    ({ error } = await supabase
       .from("products")
-      .insert({ product_type_id, name, brand, image_url, attributes, canonical_slug });
+      .insert({ product_type_id, name, brand, image_url, attributes, canonical_slug }));
+  }
+
+  const locale = await getLocale();
+
+  if (error) {
+    // Mesmo motivo do fix em lojas: sem checar isso, o modal reabria vazio
+    // parecendo "não fez nada" e o usuário clicava de novo, duplicando.
+    const qs = id ? `?edit=${id}&error=save-failed` : `?new=1&error=save-failed`;
+    redirect(`/${locale}/admin/produtos${qs}`);
   }
 
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
+  redirect(`/${locale}/admin/produtos`);
 }
 
 export async function deleteProduct(formData: FormData) {

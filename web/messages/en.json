@@ -105,6 +105,7 @@
       "configHint": "Collected offers are marked with source scrape; each offer's source is recorded automatically, not the store's.",
       "configInvalid": "The Config field is not valid JSON. Fix it and save again.",
       "deleteBlocked": "Couldn't delete: there are offers registered for this store. Delete its offers first (Offers screen).",
+      "saveFailed": "Couldn't save the store. Please try again.",
       "confirmDelete": "Delete store \"{name}\"? This cannot be undone.",
       "save": "Save",
       "add": "Add",
@@ -144,6 +145,7 @@
       "edit": "Edit",
       "delete": "Delete",
       "deleteBlocked": "Couldn't delete: there are offers registered for this product. Delete its offers first (Offers screen).",
+      "saveFailed": "Couldn't save the product. Please try again.",
       "confirmDelete": "Delete product \"{name}\"? This cannot be undone.",
       "searchPlaceholder": "Search product...",
       "noTypes": "No product type registered. Run migration 0002 (which seeds \"Beer\") on Supabase before registering products."
@@ -165,6 +167,7 @@
       "inactive": "Inactive",
       "delete": "Delete",
       "deleteBlocked": "Couldn't delete this offer.",
+      "saveFailed": "Couldn't save the offer. Please try again.",
       "confirmDelete": "Delete this offer? This cannot be undone.",
       "searchPlaceholder": "Search offer..."
     },

@@ -39,13 +39,20 @@ export async function saveOffer(formData: FormData) {
     .select("id")
     .single();
 
-  if (error || !offer) return;
+  const locale = await getLocale();
+
+  if (error || !offer) {
+    // Mesmo motivo do fix em lojas/produtos: sem checar isso, o modal
+    // reabria vazio parecendo "não fez nada" e o usuário clicava de novo.
+    redirect(`/${locale}/admin/ofertas?new=1&error=save-failed`);
+  }
 
   // Cada preço registrado vira um ponto no histórico.
   await supabase.from("price_history").insert({ offer_id: offer.id, price, captured_at: now });
 
   revalidateAllLocales("/admin/ofertas");
   revalidateAllLocales("/");
+  redirect(`/${locale}/admin/ofertas`);
 }
 
 export async function toggleOfferActive(formData: FormData) {

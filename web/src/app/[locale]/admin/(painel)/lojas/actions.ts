@@ -31,16 +31,28 @@ export async function saveStore(formData: FormData) {
   }
 
   const supabase = await createClient();
-  if (id) {
-    await supabase
-      .from("stores")
-      .update({ name, site_url, logo_url, description, platform, config })
-      .eq("id", id);
-  } else {
-    await supabase.from("stores").insert({ name, site_url, logo_url, description, platform, config });
+  const { error } = id
+    ? await supabase
+        .from("stores")
+        .update({ name, site_url, logo_url, description, platform, config })
+        .eq("id", id)
+    : await supabase.from("stores").insert({ name, site_url, logo_url, description, platform, config });
+
+  const locale = await getLocale();
+
+  if (error) {
+    // Erro de verdade no banco (ex: RLS, constraint) — antes disso era
+    // ignorado em silêncio e o modal só reabria vazio, parecendo "não fez
+    // nada" (foi exatamente isso que gerou lojas duplicadas: o usuário
+    // clicava de novo achando que não tinha salvo).
+    const qs = id ? `?edit=${id}&error=save-failed` : `?new=1&error=save-failed`;
+    redirect(`/${locale}/admin/lojas${qs}`);
   }
 
   revalidateAllLocales("/admin/lojas");
+  // Sucesso: fecha o modal (volta pra lista limpa) em vez de deixar o form
+  // reaberto vazio — é esse retorno visual que faltava.
+  redirect(`/${locale}/admin/lojas`);
 }
 
 // Usado pelo botão "Detectar" direto na grid (sem abrir o modal de edição) —

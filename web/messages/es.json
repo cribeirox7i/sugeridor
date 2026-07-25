@@ -105,6 +105,7 @@
       "configHint": "Las ofertas recolectadas se marcan con origen scrape; el origen de cada oferta se registra automáticamente, no el de la tienda.",
       "configInvalid": "El campo Config no es un JSON válido. Corrígelo y guarda de nuevo.",
       "deleteBlocked": "No se pudo eliminar: hay ofertas registradas para esta tienda. Elimina sus ofertas primero (pantalla Ofertas).",
+      "saveFailed": "No se pudo guardar la tienda. Inténtalo de nuevo.",
       "confirmDelete": "¿Eliminar la tienda \"{name}\"? Esta acción no se puede deshacer.",
       "save": "Guardar",
       "add": "Agregar",
@@ -144,6 +145,7 @@
       "edit": "Editar",
       "delete": "Eliminar",
       "deleteBlocked": "No se pudo eliminar: hay ofertas registradas para este producto. Elimina sus ofertas primero (pantalla Ofertas).",
+      "saveFailed": "No se pudo guardar el producto. Inténtalo de nuevo.",
       "confirmDelete": "¿Eliminar el producto \"{name}\"? Esta acción no se puede deshacer.",
       "searchPlaceholder": "Buscar producto...",
       "noTypes": "Ningún tipo de producto registrado. Ejecuta la migration 0002 (que crea \"Cerveza\") en Supabase antes de registrar productos."
@@ -165,6 +167,7 @@
       "inactive": "Inactiva",
       "delete": "Eliminar",
       "deleteBlocked": "No se pudo eliminar esta oferta.",
+      "saveFailed": "No se pudo guardar la oferta. Inténtalo de nuevo.",
       "confirmDelete": "¿Eliminar esta oferta? Esta acción no se puede deshacer.",
       "searchPlaceholder": "Buscar oferta..."
     },

@@ -105,6 +105,7 @@
       "configHint": "As ofertas coletadas ficam marcadas com origem scrape; a origem de cada oferta é registrada automaticamente por oferta, não pela loja.",
       "configInvalid": "O campo Config não é um JSON válido. Corrija e salve de novo.",
       "deleteBlocked": "Não foi possível excluir: existem ofertas cadastradas para esta loja. Exclua as ofertas dela primeiro (tela Ofertas).",
+      "saveFailed": "Não foi possível salvar a loja. Tente novamente.",
       "confirmDelete": "Excluir a loja \"{name}\"? Essa ação não pode ser desfeita.",
       "save": "Salvar",
       "add": "Adicionar",
@@ -144,6 +145,7 @@
       "edit": "Editar",
       "delete": "Excluir",
       "deleteBlocked": "Não foi possível excluir: existem ofertas cadastradas para este produto. Exclua as ofertas dele primeiro (tela Ofertas).",
+      "saveFailed": "Não foi possível salvar o produto. Tente novamente.",
       "confirmDelete": "Excluir o produto \"{name}\"? Essa ação não pode ser desfeita.",
       "searchPlaceholder": "Buscar produto...",
       "noTypes": "Nenhum tipo de produto cadastrado. Rode a migration 0002 (que faz o seed de \"Cerveja\") no Supabase antes de cadastrar produtos."
@@ -165,6 +167,7 @@
       "inactive": "Inativa",
       "delete": "Excluir",
       "deleteBlocked": "Não foi possível excluir esta oferta.",
+      "saveFailed": "Não foi possível salvar a oferta. Tente novamente.",
       "confirmDelete": "Excluir esta oferta? Essa ação não pode ser desfeita.",
       "searchPlaceholder": "Buscar oferta..."
     },

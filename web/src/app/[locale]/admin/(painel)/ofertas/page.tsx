@@ -157,6 +157,11 @@ export default async function OfertasPage({
           {t("deleteBlocked")}
         </p>
       )}
+      {error === "save-failed" && (
+        <p className="rounded bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+          {t("saveFailed")}
+        </p>
+      )}
 
       {showForm && <Modal closeHref="/admin/ofertas">{form}</Modal>}
 
