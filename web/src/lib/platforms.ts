@@ -20,7 +20,7 @@ export const PLATFORMS: {
   {
     key: "shopify",
     label: "Shopify",
-    hint: "site_url = qualquer URL da loja (o coletor normaliza para /products.json). Config é opcional.",
+    hint: "site_url = URL de uma coleção (/collections/<handle>) pra trazer só aqueles produtos, ou qualquer outra URL da loja pra trazer o catálogo inteiro. Config é opcional.",
     configExample: `{"max_pages": 50}`,
   },
   {

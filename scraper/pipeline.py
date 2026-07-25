@@ -1,12 +1,15 @@
 """Consome candidatos e grava no banco: acha/cria produto, faz upsert da oferta
 e registra o ponto de histórico de preço. Ver docs/04-conectores-ingestao.md."""
+import threading
 from datetime import datetime, timezone
 
 from . import db
+from .categorize import classify_category
 from .models import Candidate
-from .normalize import slugify
+from .normalize import normalize_dashes, slugify
 
 _type_cache: dict[str, str] = {}
+_type_cache_lock = threading.Lock()
 
 
 def _now() -> str:
@@ -14,22 +17,37 @@ def _now() -> str:
 
 
 def product_type_id(slug: str) -> str:
-    if slug not in _type_cache:
-        rows = db.select("product_types", {"slug": f"eq.{slug}", "select": "id"})
-        if not rows:
-            raise SystemExit(f"product_type '{slug}' não existe — rode a migration de seed.")
-        _type_cache[slug] = rows[0]["id"]
-    return _type_cache[slug]
+    # run.py processa lojas em paralelo — protege o cache pra não disparar o
+    # mesmo select duas vezes na corrida do primeiro acesso.
+    with _type_cache_lock:
+        if slug not in _type_cache:
+            rows = db.select("product_types", {"slug": f"eq.{slug}", "select": "id"})
+            if not rows:
+                raise SystemExit(f"product_type '{slug}' não existe — rode a migration de seed.")
+            _type_cache[slug] = rows[0]["id"]
+        return _type_cache[slug]
 
 
-def _candidate_slug(cand: Candidate) -> str:
+def _candidate_slug(cand: Candidate, brand: str | None) -> str:
     # Mesma fórmula de slug do admin (web): slugify(`${brand} ${name}`).
-    return slugify(f"{cand.brand or ''} {cand.product_name}")
+    return slugify(f"{brand or ''} {cand.product_name}")
 
 
 def process_candidate(cand: Candidate, store_id: str) -> bool:
-    """Grava um candidato. Retorna True se criou um produto novo."""
-    slug = _candidate_slug(cand)
+    """Grava um candidato. Retorna True se criou um produto novo.
+
+    Preço <= 0 normalmente significa item sem preço de verdade (fora de
+    estoque, erro de parsing, placeholder do site) — não vale nem produto
+    nem oferta nem ponto de histórico, então descarta o candidato inteiro
+    antes de tocar no banco."""
+    if cand.price <= 0:
+        return False
+
+    # product_name já sai normalizado de clean_product_name (todo coletor
+    # passa por lá); brand vem cru da fonte (vendor/marca do JSON/HTML).
+    brand = normalize_dashes(cand.brand) if cand.brand else cand.brand
+
+    slug = _candidate_slug(cand, brand)
     existing = db.select(
         "products", {"canonical_slug": f"eq.{slug}", "select": "id,image_url,attributes"}
     )
@@ -60,11 +78,14 @@ def process_candidate(cand: Candidate, store_id: str) -> bool:
             "products",
             {
                 "product_type_id": product_type_id(cand.product_type_slug),
-                "name": cand.product_name,
-                "brand": cand.brand,
+                # Caixa alta só no título — pedido explícito; marca fica como
+                # a fonte grava (costuma já vir em formato "de marca mesmo").
+                "name": cand.product_name.upper(),
+                "brand": brand,
                 "attributes": cand.attributes,
                 "image_url": cand.image_url,
                 "canonical_slug": slug,
+                "category": classify_category(cand.product_name),
             },
         )
         product_id = created["id"]

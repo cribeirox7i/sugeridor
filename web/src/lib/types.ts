@@ -36,6 +36,10 @@ export type Store = {
   created_at: string;
 };
 
+// Categorização de alto nível, independente do product_type — texto livre
+// (ver migration 0007), 'cervejas' é a única usada publicamente por ora.
+export type ProductCategory = "cervejas" | "souvenirs" | "eventos" | "kit" | "copo" | "taca";
+
 export type Product = {
   id: string;
   product_type_id: string;
@@ -44,6 +48,7 @@ export type Product = {
   attributes: Record<string, string | number>;
   image_url: string | null;
   canonical_slug: string;
+  category: ProductCategory;
   created_at: string;
   updated_at: string;
 };
@@ -85,6 +90,7 @@ export type SiteSettings = {
   id: number;
   logo_black_url: string | null;
   logo_white_url: string | null;
+  offer_expiration_days: number;
   updated_at: string;
 };
 

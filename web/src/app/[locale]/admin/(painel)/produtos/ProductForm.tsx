@@ -67,6 +67,18 @@ export default function ProductForm({
             className={inputCls}
           />
         </label>
+
+        <label className="space-y-1">
+          <span className={labelCls}>{t("category")}</span>
+          <select name="category" defaultValue={editing?.category ?? "cervejas"} className={inputCls}>
+            <option value="cervejas">{t("categoryCervejas")}</option>
+            <option value="kit">{t("categoryKit")}</option>
+            <option value="copo">{t("categoryCopo")}</option>
+            <option value="taca">{t("categoryTaca")}</option>
+            <option value="souvenirs">{t("categorySouvenirs")}</option>
+            <option value="eventos">{t("categoryEventos")}</option>
+          </select>
+        </label>
       </div>
 
       {fields.length > 0 && (

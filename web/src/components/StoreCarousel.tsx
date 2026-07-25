@@ -27,7 +27,7 @@ export default function StoreCarousel({ stores }: { stores: StoreLite[] }) {
       <div className="relative">
         <div
           ref={scrollerRef}
-          className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 sm:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {stores.map((store) => (
             <Link

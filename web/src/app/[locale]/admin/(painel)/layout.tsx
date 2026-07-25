@@ -25,7 +25,7 @@ export default async function PainelLayout({
     { href: "/admin/lojas", label: t("stores") },
     { href: "/admin/produtos", label: t("products") },
     { href: "/admin/ofertas", label: t("offers") },
-    { href: "/admin/alertas", label: t("alerts") },
+    { href: "/admin/config", label: t("config") },
     { href: "/admin/coleta", label: t("collection") },
     { href: "/admin/logomarca", label: t("branding") },
   ];
@@ -33,7 +33,7 @@ export default async function PainelLayout({
   return (
     <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       <header className="border-b border-neutral-200 dark:border-neutral-800">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
+        <div className="mx-auto flex max-w-[1140px] items-center justify-between px-6 py-3">
           <nav className="flex items-center gap-1">
             <span className="mr-3 font-semibold">Sugeridor</span>
             {NAV.map((item) => (
@@ -61,7 +61,7 @@ export default async function PainelLayout({
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-[1140px] px-6 py-8">{children}</main>
     </div>
   );
 }

@@ -9,7 +9,10 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Margem de segurança — o scraper agora coleta lojas em paralelo (ver
+    # scraper/run.py), então isso não deve ser normalmente atingido; é só
+    # rede de proteção caso uma loja específica fique presa.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 

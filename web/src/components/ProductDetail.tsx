@@ -5,9 +5,9 @@ import {
   getProductBySlug,
   getActiveOffersForProduct,
   getPriceHistoryForProduct,
-  getPriceHistoryForOffers,
   computeFeaturedDeals,
 } from "@/lib/queries";
+import type { PriceHistoryPoint } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
 
@@ -31,11 +31,16 @@ export default async function ProductDetail({ slug }: { slug: string }) {
   const currency = offers[0]?.currency ?? "BRL";
   const attrEntries = Object.entries(product.attributes ?? {});
 
-  // Mesmo cálculo de selo "-X%" da home, aplicado às ofertas ativas deste produto.
-  const historyByOffer = await getPriceHistoryForOffers(
-    supabase,
-    offers.map((o) => o.id),
-  );
+  // Mesmo cálculo de selo "-X%" da home, aplicado às ofertas ativas deste
+  // produto. `history` já traz o price_history de TODAS as ofertas do
+  // produto (não só as ativas) — reagrupar em memória em vez de refazer a
+  // mesma consulta (era uma query a mais, redundante, no caminho do popup).
+  const historyByOffer = new Map<string, PriceHistoryPoint[]>();
+  for (const point of history) {
+    const list = historyByOffer.get(point.offer_id);
+    if (list) list.push(point);
+    else historyByOffer.set(point.offer_id, [point]);
+  }
   const dropByOffer = new Map(
     computeFeaturedDeals(offers, historyByOffer, offers.length).map((d) => [d.id, d.dropPercent]),
   );

@@ -1,9 +1,10 @@
-# Sugeridor — Hub de Ofertas (planejamento)
+# Sugeridor — Hub de Ofertas
 
 Hub de ofertas de cervejas artesanais e especiais, construído como engine genérica reutilizável
 pra outros tipos de produto (vinho, livros, etc.) no futuro.
 
-Este repositório por enquanto contém apenas o **planejamento** — código ainda não foi iniciado.
+Em produção: [sugeridor.vercel.app](https://sugeridor.vercel.app) (repo `cribeirox7i/sugeridor`,
+branch `main`).
 
 ## Documentos
 
@@ -16,35 +17,27 @@ Este repositório por enquanto contém apenas o **planejamento** — código ain
 
 ## Stack (resumo)
 
-Next.js + Vercel (site, admin, API) · Supabase (Postgres + Auth + Storage) · GitHub Actions
-(scraping/email, disparado manualmente por um botão no admin) · Claude API (normalização de dados
-não estruturados: HTML de e-mail, print de WhatsApp).
+Next.js 16 (App Router) + Vercel (site, admin, API) · Supabase (Postgres + Auth + Storage) ·
+GitHub Actions (scraping, disparado manualmente por um botão no admin) · Claude API (reservado
+pra normalização de dados não estruturados — e-mail/WhatsApp OCR — ainda não ativado, ver roadmap).
 
-## Estado atual — Fase 0 concluída
+## Estado atual
 
-O que já está pronto neste repositório:
-- App Next.js em `web/` (TypeScript, Tailwind, App Router), rodando localmente com `npm run dev`.
-- Cliente Supabase (browser/server/proxy) em `web/src/lib/supabase/`, seguindo `@supabase/ssr`.
-- Login de admin (`/admin/login`) + rota protegida (`/admin`) via Supabase Auth.
-- Migration inicial do schema em `supabase/migrations/0001_init.sql` (todas as tabelas de
-  [docs/03-modelo-dados.md](docs/03-modelo-dados.md), com RLS habilitado e leitura pública do
-  catálogo).
-- `web/.env.local.example` documentando as variáveis necessárias.
-- Repositório git inicializado localmente (ainda sem nenhum commit).
+Fases 0 a 3 do roadmap concluídas e em produção, além de uma reforma de UX (tema claro/escuro,
+i18n pt/en/es, carrossel de destaques, sparkline de preço) e um lote de melhorias mobile — ver
+[docs/05-roadmap.md](docs/05-roadmap.md) para o detalhe de cada fase.
 
-### O que só você pode fazer (precisa da sua conta)
+- Catálogo público com filtros (estilo, país, preço, loja), página de produto com histórico de
+  preço, popup de produto, tema claro/escuro, pt/en/es.
+- Admin (grid de cards + modais) com CRUD de lojas/produtos/ofertas, detecção automática de
+  plataforma de e-commerce + branding da loja, checklist de inclusão na coleta.
+- Scraper Python config-driven por plataforma (vtex/shopify/tray/jsonld/html/txt), disparado
+  manualmente via GitHub Actions.
+- Alertas de queda de preço (trigger no Postgres), visíveis em `/admin/alertas` — sem envio de
+  e-mail de verdade ainda.
+- Migrations aplicadas: `0001` a `0006` (schema inicial → branding/site_settings → alertas →
+  `include_in_collection`).
 
-1. **Criar o projeto Supabase**: pelo [dashboard](https://supabase.com/dashboard) ou via
-   `npx supabase login` + `npx supabase projects create`. Depois, copie a URL e as chaves em
-   Project Settings > API pro `web/.env.local` (baseado no `.env.local.example`).
-2. **Aplicar a migration**: `npx supabase link --project-ref <ref>` e depois
-   `npx supabase db push` (ou cole o SQL de `supabase/migrations/0001_init.sql` direto no SQL
-   Editor do dashboard).
-3. **Criar seu usuário admin**: no dashboard do Supabase, em Authentication > Users, criar um
-   usuário com e-mail/senha (é com ele que você loga em `/admin/login`).
-4. **Criar o repositório no GitHub** e dar push neste código (necessário pro GitHub Actions do
-   scraping e pro deploy via Vercel).
-5. **Conectar no Vercel**: importar o repositório, definir "Root Directory" = `web`, e colar as
-   mesmas variáveis de ambiente do `.env.local` nas configurações do projeto.
-
-Depois desses passos, a Fase 1 (catálogo público + CRUD manual no admin) pode começar.
+**Pausado por decisão do usuário** (evitar dependência de API paga do Claude por ora): Fase 4
+(e-mail como fonte), Fase 5 (WhatsApp via print+OCR), e envio de e-mail de verdade para os
+alertas de preço. Retomar só quando/se o usuário pedir explicitamente.

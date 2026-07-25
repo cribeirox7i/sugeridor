@@ -24,7 +24,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Roda em toda página (pra detecção de locale), exceto API, assets internos
-  // do Next e arquivos estáticos (com extensão).
-  matcher: ["/((?!api|_next|_vercel|.*\\..*).*)"],
+  // Roda em toda página (pra detecção de locale), exceto API, /go (rota
+  // técnica de redirecionamento — fica FORA de [locale] de propósito, ver
+  // docs/02-arquitetura.md; sem essa exclusão o next-intl redirecionava
+  // /go/<id> pra /pt/go/<id>, que não existe, e dava 404 em vez de sair pra
+  // loja de origem), assets internos do Next e arquivos estáticos (com
+  // extensão).
+  matcher: ["/((?!api|go|_next|_vercel|.*\\..*).*)"],
 };

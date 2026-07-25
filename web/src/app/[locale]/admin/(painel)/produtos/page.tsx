@@ -8,8 +8,22 @@ import ViewToggle from "@/components/admin/ViewToggle";
 import SearchBox from "@/components/admin/SearchBox";
 import ProductForm from "./ProductForm";
 import { deleteProduct } from "./actions";
+import type { ProductCategory } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+const CATEGORY_KEY: Record<ProductCategory, string> = {
+  cervejas: "categoryCervejas",
+  kit: "categoryKit",
+  copo: "categoryCopo",
+  taca: "categoryTaca",
+  souvenirs: "categorySouvenirs",
+  eventos: "categoryEventos",
+};
+
+function categoryLabel(t: (key: string) => string, category: ProductCategory): string {
+  return t(CATEGORY_KEY[category] ?? category);
+}
 
 export default async function ProdutosPage({
   searchParams,
@@ -91,12 +105,13 @@ export default async function ProdutosPage({
         </p>
       ) : isList ? (
         <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
-          <table className="w-full text-sm">
+          <table className="w-full text-[13px]">
             <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
               <tr>
                 <th className="px-4 py-2 font-medium">{t("nameColumn")}</th>
                 <th className="px-4 py-2 font-medium">{t("brandColumn")}</th>
                 <th className="px-4 py-2 font-medium">{t("typeColumn")}</th>
+                <th className="px-4 py-2 font-medium">{t("categoryColumn")}</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -107,6 +122,9 @@ export default async function ProdutosPage({
                   <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{p.brand ?? "—"}</td>
                   <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
                     {p.product_type?.name ?? "—"}
+                  </td>
+                  <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
+                    {categoryLabel(t, p.category)}
                   </td>
                   <td className="px-4 py-2 text-right">
                     <div className="flex justify-end gap-2">

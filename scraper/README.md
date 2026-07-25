@@ -29,15 +29,31 @@ admin (`web/src/lib/platforms.ts` — manter as duas em sincronia).
 
 ## Como funciona
 
-1. `run.py` lê do Supabase as lojas que têm `platform` definido.
+1. `run.py` lê do Supabase as lojas que têm `platform` definido, e coleta
+   todas **em paralelo** (threads, uma por loja — são hosts diferentes, então
+   rodar em série significa que o tempo total é a soma de cada loja, inviável
+   com 100+ lojas cadastradas).
 2. Para cada loja, chama o coletor da plataforma, passando `site_url` e `config`.
 3. Cada coletor devolve uma lista de `Candidate` (nome, marca, preço, etc.).
-4. `pipeline.py` faz o matching por slug (cria produto novo ou reusa existente),
-   upsert da oferta (uma por produto+loja) e grava um ponto em `price_history`.
+   Candidatos com preço `<= 0` são descartados no `pipeline.py` (não geram
+   produto, oferta nem histórico).
+4. `pipeline.py` faz o matching por slug (cria produto novo ou reusa existente,
+   classificando `category` — cervejas/souvenirs/eventos — por palavra-chave no
+   nome só na criação, ver `categorize.py`), upsert da oferta (uma por
+   produto+loja) e grava um ponto em `price_history`.
 5. Cada execução é registrada em `ingestion_jobs` (visível no admin).
 
 O scraper escreve usando a **service_role key** do Supabase (ignora RLS). Essa
 chave nunca vai pro frontend — só existe como secret do GitHub Actions.
+
+## Rate limit é por host, não global
+
+`http.py` guarda o timestamp do último request **por domínio**. Isso é o que
+permite paralelizar lojas com segurança: duas lojas em domínios diferentes não
+esperam uma a outra, mas requests pro mesmo domínio continuam espaçados por
+`SCRAPER_REQUEST_DELAY` segundos (rate limit educado, ver
+[docs/06-riscos-e-legal.md](../docs/06-riscos-e-legal.md)) mesmo vindos de
+threads diferentes.
 
 ## Rodar localmente
 
@@ -49,7 +65,8 @@ python -m scraper.run
 ```
 
 Variáveis opcionais: `SCRAPER_MAX_PAGES` (padrão 20), `SCRAPER_REQUEST_DELAY`
-(segundos entre requests, padrão 1.0), `SCRAPER_USER_AGENT`.
+(segundos entre requests ao mesmo host, padrão 1.0), `SCRAPER_USER_AGENT`,
+`SCRAPER_MAX_WORKERS` (lojas em paralelo, padrão 8).
 
 ## Adicionar uma loja de plataforma já suportada
 

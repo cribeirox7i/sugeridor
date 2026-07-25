@@ -23,7 +23,7 @@ export default function FeaturedDeals({ deals }: { deals: FeaturedDeal[] }) {
       <div className="relative">
         <div
           ref={scrollerRef}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2 sm:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {deals.map((deal) => (
             <Link

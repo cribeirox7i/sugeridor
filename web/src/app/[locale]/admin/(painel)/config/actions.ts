@@ -28,7 +28,21 @@ export async function saveAlert(formData: FormData) {
       .insert({ scope, scope_id, threshold_percent, notify_channel: "email", active });
   }
 
-  revalidateAllLocales("/admin/alertas");
+  revalidateAllLocales("/admin/config");
+}
+
+export async function saveOfferExpirationDays(formData: FormData) {
+  const days = Number((formData.get("offer_expiration_days") as string)?.replace(",", "."));
+  if (!Number.isFinite(days) || days <= 0) return;
+
+  const supabase = await createClient();
+  // site_settings é singleton (id=1, ver migration 0004/0008) — sempre existe.
+  await supabase
+    .from("site_settings")
+    .update({ offer_expiration_days: Math.round(days) })
+    .eq("id", 1);
+
+  revalidateAllLocales("/admin/config");
 }
 
 export async function toggleAlertActive(formData: FormData) {
@@ -37,7 +51,7 @@ export async function toggleAlertActive(formData: FormData) {
   if (!id) return;
   const supabase = await createClient();
   await supabase.from("price_alerts").update({ active: !active }).eq("id", id);
-  revalidateAllLocales("/admin/alertas");
+  revalidateAllLocales("/admin/config");
 }
 
 export async function deleteAlert(formData: FormData) {
@@ -51,8 +65,8 @@ export async function deleteAlert(formData: FormData) {
 
   if (error) {
     const locale = await getLocale();
-    redirect(`/${locale}/admin/alertas?error=delete-blocked`);
+    redirect(`/${locale}/admin/config?error=delete-blocked`);
   }
 
-  revalidateAllLocales("/admin/alertas");
+  revalidateAllLocales("/admin/config");
 }

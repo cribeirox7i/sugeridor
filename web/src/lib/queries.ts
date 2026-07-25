@@ -9,7 +9,14 @@ export type OfferFilters = {
   storeId?: string;
   precoMin?: number;
   precoMax?: number;
+  q?: string;
 };
+
+// Categorias expostas no catálogo público (ver migration 0007/0008 e
+// docs/05-roadmap.md) — 'souvenirs'/'eventos'/'copo'/'taca' existem no banco
+// (produtos que vieram junto de lojas de plataforma) mas ficam de fora daqui
+// até termos UI pra outras categorias.
+const PUBLIC_CATEGORIES = ["cervejas", "kit"];
 
 const OFFER_SELECT = `
   id, product_id, store_id, price, currency, url, source_type, source_ref,
@@ -18,45 +25,65 @@ const OFFER_SELECT = `
   store:stores!inner ( id, name, logo_url )
 `;
 
-// Lista ofertas ativas com o produto e a loja, aplicando filtros. Filtros por
-// atributo (estilo/país) batem no JSONB de products.
-export async function listOffers(
-  supabase: SupabaseClient,
-  filters: OfferFilters = {},
-): Promise<OfferListItem[]> {
-  let query = supabase
+// Busca TODAS as ofertas ativas (categorias públicas), sem filtro — base
+// única reaproveitada pra grid, facetas de filtro (estilo/país/loja) e
+// destaques, em vez de uma query por consumidor (era o que deixava a home,
+// e por tabela o popup de produto que reusa a mesma página, lenta: até 7
+// idas ao banco pra montar uma única tela). Filtros de usuário (estilo,
+// país, loja, faixa de preço) são aplicados depois, em memória, com
+// `filterOffers` — o catálogo público é pequeno o bastante (uma categoria,
+// algumas lojas) pra isso ser mais barato que reconsultar o banco a cada
+// combinação de filtro.
+export async function listOffers(supabase: SupabaseClient): Promise<OfferListItem[]> {
+  const { data, error } = await supabase
     .from("offers")
     .select(OFFER_SELECT)
     .eq("active", true)
+    .in("product.category", PUBLIC_CATEGORIES)
     .order("price", { ascending: true });
-
-  if (filters.storeId) query = query.eq("store_id", filters.storeId);
-  if (filters.precoMin != null) query = query.gte("price", filters.precoMin);
-  if (filters.precoMax != null) query = query.lte("price", filters.precoMax);
-  if (filters.estilo) query = query.eq("product.attributes->>estilo", filters.estilo);
-  if (filters.pais) query = query.eq("product.attributes->>pais", filters.pais);
-
-  const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as unknown as OfferListItem[];
 }
 
-// Valores distintos de um atributo (ex: todos os estilos existentes) pra montar
-// as opções dos filtros. Sem RPC dedicada, buscamos os attributes e reduzimos
-// no app — ok pro volume inicial.
-export async function distinctAttributeValues(
-  supabase: SupabaseClient,
-  key: string,
-): Promise<string[]> {
-  const { data, error } = await supabase.from("products").select("attributes");
-  if (error) throw error;
+// Aplica os filtros de usuário em memória sobre o resultado de listOffers.
+// A ordem por preço do listOffers é preservada (filter não reordena).
+export function filterOffers(offers: OfferListItem[], filters: OfferFilters): OfferListItem[] {
+  const q = filters.q?.trim().toLowerCase();
+  return offers.filter((o) => {
+    if (filters.storeId && o.store_id !== filters.storeId) return false;
+    if (filters.precoMin != null && o.price < filters.precoMin) return false;
+    if (filters.precoMax != null && o.price > filters.precoMax) return false;
+    if (filters.estilo && o.product.attributes?.estilo !== filters.estilo) return false;
+    if (filters.pais && o.product.attributes?.pais !== filters.pais) return false;
+    if (q) {
+      const haystack = `${o.product.brand ?? ""} ${o.product.name}`.toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+// Valores distintos de um atributo (ex: todos os estilos existentes) pra
+// montar as opções dos filtros — derivado do array de ofertas ATIVAS já
+// buscado (não do currently-filtrado), pra nunca oferecer um valor que
+// depois "esvazia" o resultado, e sempre a partir do catálogo completo (não
+// só do que o filtro atual já reduziu).
+export function distinctAttributeValues(offers: OfferListItem[], key: string): string[] {
   const set = new Set<string>();
-  for (const row of data ?? []) {
-    const v = (row.attributes as Record<string, unknown>)?.[key];
+  for (const o of offers) {
+    const v = o.product.attributes?.[key];
     if (typeof v === "string" && v.trim()) set.add(v);
     else if (typeof v === "number") set.add(String(v));
   }
   return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+// Lojas com pelo menos uma oferta ativa, derivado do mesmo array — usado
+// tanto no dropdown de filtro quanto no carrossel de lojas da home.
+export function storesWithActiveOffers(
+  offers: OfferListItem[],
+): Pick<Store, "id" | "name" | "logo_url">[] {
+  return [...new Map(offers.map((o) => [o.store.id, o.store])).values()];
 }
 
 // Linha singleton com a logomarca do site. Se a migration 0004 ainda não
@@ -65,17 +92,6 @@ export async function getSiteSettings(supabase: SupabaseClient): Promise<SiteSet
   const { data, error } = await supabase.from("site_settings").select("*").eq("id", 1).maybeSingle();
   if (error) return null;
   return data as SiteSettings | null;
-}
-
-export async function listStoresLite(
-  supabase: SupabaseClient,
-): Promise<Pick<Store, "id" | "name">[]> {
-  const { data, error } = await supabase
-    .from("stores")
-    .select("id, name")
-    .order("name");
-  if (error) throw error;
-  return data ?? [];
 }
 
 // Registro completo da loja (logo/descrição) pro cabeçalho da "página da
@@ -142,8 +158,21 @@ export async function getPriceHistoryForProduct(
   return (data ?? []) as PriceHistoryPoint[];
 }
 
+// Máximo de ids por lote na cláusula `.in()`. Uma única query com centenas de
+// ids gera uma URL enorme; o fetch do Node estoura (`HEADERS_OVERFLOW`) bem
+// antes de chegar no limite do Postgres, derrubando a página inteira. Testado
+// que ~150 ids (URL ~5.6KB) passa com folga; 100 dá margem extra de segurança.
+const OFFER_ID_BATCH_SIZE = 100;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
+}
+
 // Histórico de várias ofertas de uma vez (evita N+1 numa listagem), agrupado
-// por offer_id.
+// por offer_id. Busca em lotes pra não estourar o limite de tamanho de URL
+// quando há muitas ofertas ativas.
 export async function getPriceHistoryForOffers(
   supabase: SupabaseClient,
   offerIds: string[],
@@ -151,14 +180,19 @@ export async function getPriceHistoryForOffers(
   const map = new Map<string, PriceHistoryPoint[]>();
   if (offerIds.length === 0) return map;
 
-  const { data, error } = await supabase
-    .from("price_history")
-    .select("*")
-    .in("offer_id", offerIds)
-    .order("captured_at", { ascending: true });
-  if (error) throw error;
+  const batches = await Promise.all(
+    chunk(offerIds, OFFER_ID_BATCH_SIZE).map(async (batch) => {
+      const { data, error } = await supabase
+        .from("price_history")
+        .select("*")
+        .in("offer_id", batch)
+        .order("captured_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as PriceHistoryPoint[];
+    }),
+  );
 
-  for (const point of (data ?? []) as PriceHistoryPoint[]) {
+  for (const point of batches.flat()) {
     const list = map.get(point.offer_id);
     if (list) list.push(point);
     else map.set(point.offer_id, [point]);
@@ -201,21 +235,4 @@ export function computeFeaturedDeals<T extends { id: string; price: number }>(
   }
 
   return deals.sort((a, b) => b.dropPercent - a.dropPercent).slice(0, limit);
-}
-
-// Base do carrossel de destaques da home — busca ofertas + histórico e aplica
-// computeFeaturedDeals.
-export async function getFeaturedDeals(
-  supabase: SupabaseClient,
-  limit = 5,
-): Promise<FeaturedDeal[]> {
-  const offers = await listOffers(supabase);
-  if (offers.length === 0) return [];
-
-  const historyByOffer = await getPriceHistoryForOffers(
-    supabase,
-    offers.map((o) => o.id),
-  );
-
-  return computeFeaturedDeals(offers, historyByOffer, limit);
 }

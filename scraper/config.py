@@ -18,6 +18,11 @@ REQUEST_DELAY = float(os.environ.get("SCRAPER_REQUEST_DELAY", "1.0"))
 # Teto de páginas de listagem por loja, salvaguarda contra loop.
 MAX_PAGES = int(os.environ.get("SCRAPER_MAX_PAGES", "20"))
 
+# Quantas lojas coletar em paralelo (threads) — são hosts diferentes, então o
+# rate limit por host (ver http.py) continua respeitado dentro de cada uma;
+# isso só evita que uma loja lenta bloqueie a fila inteira das outras 100+.
+MAX_WORKERS = int(os.environ.get("SCRAPER_MAX_WORKERS", "8"))
+
 
 def require_config() -> None:
     missing = [

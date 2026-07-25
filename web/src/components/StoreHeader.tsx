@@ -18,7 +18,7 @@ export default async function StoreHeader({
     <div className="space-y-3 border-b border-neutral-200 pb-6 dark:border-neutral-800">
       <Link
         href="/"
-        className="text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
+        className="mb-2 inline-block text-sm text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100"
       >
         {t("backToCatalog")}
       </Link>

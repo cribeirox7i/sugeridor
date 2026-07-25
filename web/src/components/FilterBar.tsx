@@ -11,6 +11,7 @@ type Props = {
     storeId?: string;
     precoMin?: string;
     precoMax?: string;
+    q?: string;
   };
 };
 
@@ -21,10 +22,26 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
   const inputCls =
     "rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
   const hasFilters =
-    current.estilo || current.pais || current.storeId || current.precoMin || current.precoMax;
+    current.estilo ||
+    current.pais ||
+    current.storeId ||
+    current.precoMin ||
+    current.precoMax ||
+    current.q;
 
   return (
     <form method="get" className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+      <label className="flex w-full flex-col gap-1 sm:w-48">
+        <span className="text-xs text-neutral-500">{t("search")}</span>
+        <input
+          type="search"
+          name="q"
+          defaultValue={current.q ?? ""}
+          placeholder={t("searchPlaceholder")}
+          className={inputCls}
+        />
+      </label>
+
       <label className="flex w-full flex-col gap-1 sm:w-auto">
         <span className="text-xs text-neutral-500">{t("style")}</span>
         <select name="estilo" defaultValue={current.estilo ?? ""} className={inputCls}>

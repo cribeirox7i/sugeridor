@@ -5,14 +5,17 @@ import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 import { revalidateAllLocales } from "@/lib/revalidate";
+import { normalizeDashes } from "@/lib/text";
 import type { AttributeSchema, ProductType } from "@/lib/types";
 
 export async function saveProduct(formData: FormData) {
   const id = (formData.get("id") as string) || null;
   const product_type_id = formData.get("product_type_id") as string;
-  const name = (formData.get("name") as string)?.trim();
-  const brand = ((formData.get("brand") as string) || "").trim() || null;
+  const name = normalizeDashes((formData.get("name") as string)?.trim() ?? "");
+  const brandRaw = ((formData.get("brand") as string) || "").trim();
+  const brand = brandRaw ? normalizeDashes(brandRaw) : null;
   const image_url = ((formData.get("image_url") as string) || "").trim() || null;
+  const category = ((formData.get("category") as string) || "cervejas").trim();
 
   if (!name || !product_type_id) return;
 
@@ -37,7 +40,7 @@ export async function saveProduct(formData: FormData) {
   if (id) {
     ({ error } = await supabase
       .from("products")
-      .update({ product_type_id, name, brand, image_url, attributes, updated_at: new Date().toISOString() })
+      .update({ product_type_id, name, brand, image_url, category, attributes, updated_at: new Date().toISOString() })
       .eq("id", id));
   } else {
     // Slug único: se colidir, sufixa com um trecho aleatório.
@@ -51,7 +54,7 @@ export async function saveProduct(formData: FormData) {
 
     ({ error } = await supabase
       .from("products")
-      .insert({ product_type_id, name, brand, image_url, attributes, canonical_slug }));
+      .insert({ product_type_id, name, brand, image_url, category, attributes, canonical_slug }));
   }
 
   const locale = await getLocale();

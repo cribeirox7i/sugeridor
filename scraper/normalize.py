@@ -15,10 +15,18 @@ def slugify(text: str) -> str:
     return text
 
 
+# Padroniza travessão (—) e meia-risca (–) pra hífen simples — texto raspado
+# de sites variados traz os três conforme o editor de cada loja, e o pedido é
+# manter só '-' no que é gravado no banco (ver migration 0008 pro backfill do
+# que já existia).
+def normalize_dashes(text: str) -> str:
+    return text.replace("—", "-").replace("–", "-").replace("‑", "-")
+
+
 # Remove prefixo "Cerveja " que o site costuma colocar no nome, pra o slug ficar
 # mais próximo do que um humano digitaria no admin.
 def clean_product_name(name: str) -> str:
-    return re.sub(r"^\s*cerveja\s+", "", name, flags=re.IGNORECASE).strip()
+    return normalize_dashes(re.sub(r"^\s*cerveja\s+", "", name, flags=re.IGNORECASE).strip())
 
 
 def parse_volume_ml(name: str) -> int | None:

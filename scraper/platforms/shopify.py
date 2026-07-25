@@ -1,11 +1,18 @@
 """Coletor Shopify — todo Shopify expõe um endpoint JSON público e não-oficial
 `/products.json`, paginável por `?page=N`. Portado do protótipo em Colab.
 
-`store.site_url` pode ser a home da loja, uma URL de coleção, ou já a URL do
-endpoint — o coletor normaliza pra `<domínio>/products.json`.
+`store.site_url` pode ser a home da loja, uma URL de coleção
+(`/collections/<handle>`), ou já a URL do endpoint. Se apontar pra uma
+coleção, o coletor usa o endpoint JSON *daquela coleção*
+(`/collections/<handle>/products.json`) — Shopify também pagina esse
+endpoint por `?page=N`, igual ao catálogo inteiro. Sem isso, uma loja
+genérica (não 100% cerveja) traria todo o catálogo — foi o que aconteceu
+com a Casa Flora (vinho, mercearia etc. junto com cerveja).
 
 config (opcional): { "max_pages": 50 }
 """
+import re
+
 from ..extract import absolute_url
 from ..http import fetch_json
 from ..models import Candidate, StoreRecord
@@ -13,8 +20,18 @@ from ..normalize import clean_product_name, parse_volume_ml
 from ..price import parse_price
 
 
+def _domain_of(site_url: str) -> str:
+    m = re.match(r"https?://[^/]+", site_url)
+    return m.group(0) if m else site_url.rstrip("/")
+
+
 def _products_json_url(site_url: str) -> str:
-    base = site_url.split("/collections/")[0].split("/products.json")[0].rstrip("/")
+    base = site_url.split("?")[0].rstrip("/")
+    collection = re.search(r"/collections/([^/]+)", base)
+    if collection:
+        domain = base.split("/collections/")[0].rstrip("/")
+        return f"{domain}/collections/{collection.group(1)}/products.json"
+    base = base.split("/products.json")[0].rstrip("/")
     return f"{base}/products.json"
 
 
@@ -22,7 +39,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
     cfg = store.config or {}
     max_pages = int(cfg.get("max_pages", 50))
     endpoint = _products_json_url(store.site_url)
-    domain = endpoint.replace("/products.json", "")
+    domain = _domain_of(store.site_url)
 
     candidates: list[Candidate] = []
 

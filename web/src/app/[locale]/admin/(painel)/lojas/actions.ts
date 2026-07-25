@@ -4,13 +4,15 @@ import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateAllLocales } from "@/lib/revalidate";
+import { normalizeDashes } from "@/lib/text";
 
 export async function saveStore(formData: FormData) {
   const id = (formData.get("id") as string) || null;
-  const name = (formData.get("name") as string)?.trim();
+  const name = normalizeDashes((formData.get("name") as string)?.trim() ?? "");
   const site_url = ((formData.get("site_url") as string) || "").trim() || null;
   const logo_url = ((formData.get("logo_url") as string) || "").trim() || null;
-  const description = ((formData.get("description") as string) || "").trim() || null;
+  const descriptionRaw = ((formData.get("description") as string) || "").trim();
+  const description = descriptionRaw ? normalizeDashes(descriptionRaw) : null;
   const platform = ((formData.get("platform") as string) || "").trim() || null;
   const configRaw = ((formData.get("config") as string) || "").trim();
 

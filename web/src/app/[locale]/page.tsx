@@ -2,9 +2,9 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   listOffers,
+  filterOffers,
   distinctAttributeValues,
-  listStoresLite,
-  getFeaturedDeals,
+  storesWithActiveOffers,
   getPriceHistoryForOffers,
   getSiteSettings,
   getStoreById,
@@ -40,6 +40,7 @@ export default async function Home({
     loja?: string;
     min?: string;
     max?: string;
+    q?: string;
     produto?: string;
   }>;
 }) {
@@ -53,6 +54,7 @@ export default async function Home({
     storeId: sp.loja || undefined,
     precoMin: toNumber(sp.min),
     precoMax: toNumber(sp.max),
+    q: sp.q || undefined,
   };
 
   // Fechar o popup do produto volta pros mesmos filtros ativos, sem o ?produto=.
@@ -62,25 +64,36 @@ export default async function Home({
   if (sp.loja) closeParams.set("loja", sp.loja);
   if (sp.min) closeParams.set("min", sp.min);
   if (sp.max) closeParams.set("max", sp.max);
+  if (sp.q) closeParams.set("q", sp.q);
   const closeHref = closeParams.toString() ? `/?${closeParams.toString()}` : "/";
   const storeMode = Boolean(filters.storeId);
 
-  const [offers, estilos, paises, stores, featuredDeals, siteSettings, storeDetail] =
-    await Promise.all([
-      listOffers(supabase, filters),
-      distinctAttributeValues(supabase, "estilo"),
-      distinctAttributeValues(supabase, "pais"),
-      listStoresLite(supabase),
-      storeMode ? Promise.resolve([]) : getFeaturedDeals(supabase),
-      getSiteSettings(supabase),
-      storeMode ? getStoreById(supabase, filters.storeId!) : Promise.resolve(null),
-    ]);
+  // Uma única busca de TODAS as ofertas ativas (categorias públicas) reaproveitada
+  // pra grid, facetas de filtro e destaques — em vez de uma query por consumidor
+  // (era o que deixava a home, e por tabela o popup de produto que renderiza a
+  // mesma página por trás, lenta: até 7 idas ao banco pra montar uma única tela).
+  const [allOffers, siteSettings, storeDetail] = await Promise.all([
+    listOffers(supabase),
+    getSiteSettings(supabase),
+    storeMode ? getStoreById(supabase, filters.storeId!) : Promise.resolve(null),
+  ]);
 
-  // Histórico de todas as ofertas visíveis, numa query só (evita N+1 por card).
+  const offers = filterOffers(allOffers, filters);
+
+  // Histórico de TODAS as ofertas ativas, numa query só — cobre tanto o
+  // selo "-X%" da grid filtrada quanto os destaques (que olham o catálogo
+  // inteiro, independente do filtro atual).
   const historyByOffer = await getPriceHistoryForOffers(
     supabase,
-    offers.map((o) => o.id),
+    allOffers.map((o) => o.id),
   );
+
+  // Facetas de filtro e destaques só fazem sentido fora da "página da loja"
+  // (que esconde FilterBar/FeaturedDeals/StoreCarousel) — evita computação à toa.
+  const estilos = storeMode ? [] : distinctAttributeValues(allOffers, "estilo");
+  const paises = storeMode ? [] : distinctAttributeValues(allOffers, "pais");
+  const stores = storeMode ? [] : storesWithActiveOffers(allOffers);
+  const featuredDeals = storeMode ? [] : computeFeaturedDeals(allOffers, historyByOffer, 5);
 
   // Selo "-X%" por card: mesma lógica de queda do carrossel de destaques,
   // sem limite, pra cobrir qualquer oferta com queda real (não só o top 5).
@@ -88,16 +101,13 @@ export default async function Home({
     computeFeaturedDeals(offers, historyByOffer, offers.length).map((d) => [d.id, d.dropPercent]),
   );
 
-  // Lojas do carrossel: as que têm oferta ativa na listagem geral (sem
-  // filtro de loja) — deriva do próprio array de ofertas, sem query nova.
-  const storesWithOffers = storeMode
-    ? []
-    : [...new Map(offers.map((o) => [o.store.id, o.store])).values()];
+  // Carrossel de lojas usa o mesmo conjunto (com oferta ativa) do filtro.
+  const storesWithOffers = stores;
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       <header className="border-b border-neutral-200 dark:border-neutral-800">
-        <div className="mx-auto flex max-w-6xl items-start justify-between px-6 py-6">
+        <div className="mx-auto flex max-w-[920px] items-start justify-between px-6 py-6">
           <div>
             <Logo settings={siteSettings} fallbackText={t("title")} className="h-8" />
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("subtitle")}</p>
@@ -109,7 +119,7 @@ export default async function Home({
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-6 py-6">
+      <div className="mx-auto w-full max-w-[920px] flex-1 space-y-6 px-6 py-6">
         {storeMode ? (
           <StoreHeader store={storeDetail} />
         ) : (
@@ -131,6 +141,7 @@ export default async function Home({
                   storeId: sp.loja,
                   precoMin: sp.min,
                   precoMax: sp.max,
+                  q: sp.q,
                 }}
               />
             </FiltersAccordion>

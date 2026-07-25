@@ -6,7 +6,7 @@ import Modal from "@/components/admin/Modal";
 import DeleteButton from "@/components/admin/DeleteButton";
 import { formatPrice } from "@/lib/format";
 import ScopeFields from "./ScopeFields";
-import { saveAlert, toggleAlertActive, deleteAlert } from "./actions";
+import { saveAlert, toggleAlertActive, deleteAlert, saveOfferExpirationDays } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,7 @@ type TriggerRow = {
   } | null;
 };
 
-export default async function AlertasPage({
+export default async function ConfigPage({
   searchParams,
 }: {
   searchParams: Promise<{ edit?: string; new?: string; error?: string }>;
@@ -33,28 +33,35 @@ export default async function AlertasPage({
   const { edit, new: isNew, error } = await searchParams;
   const supabase = await createClient();
   const [t, tCommon] = await Promise.all([
-    getTranslations("admin.alerts"),
+    getTranslations("admin.config"),
     getTranslations("admin.common"),
   ]);
 
-  const [{ data: alertsData }, { data: productsData }, { data: typesData }, { data: triggersData }] =
-    await Promise.all([
-      supabase.from("price_alerts").select("*").order("created_at", { ascending: false }),
-      supabase.from("products").select("id, name, brand").order("name"),
-      supabase.from("product_types").select("id, name").order("name"),
-      supabase
-        .from("alert_triggers")
-        .select(
-          "id, price_at_trigger, reference_price, drop_percent, triggered_at, offer:offers ( product:products ( name, brand ), store:stores ( name ) )",
-        )
-        .order("triggered_at", { ascending: false })
-        .limit(20),
-    ]);
+  const [
+    { data: alertsData },
+    { data: productsData },
+    { data: typesData },
+    { data: triggersData },
+    { data: siteSettingsData },
+  ] = await Promise.all([
+    supabase.from("price_alerts").select("*").order("created_at", { ascending: false }),
+    supabase.from("products").select("id, name, brand").order("name"),
+    supabase.from("product_types").select("id, name").order("name"),
+    supabase
+      .from("alert_triggers")
+      .select(
+        "id, price_at_trigger, reference_price, drop_percent, triggered_at, offer:offers ( product:products ( name, brand ), store:stores ( name ) )",
+      )
+      .order("triggered_at", { ascending: false })
+      .limit(20),
+    supabase.from("site_settings").select("offer_expiration_days").eq("id", 1).maybeSingle(),
+  ]);
 
   const alerts = (alertsData ?? []) as PriceAlert[];
   const products = (productsData ?? []) as ProductLite[];
   const productTypes = (typesData ?? []) as ProductTypeLite[];
   const triggers = (triggersData ?? []) as unknown as TriggerRow[];
+  const offerExpirationDays = siteSettingsData?.offer_expiration_days ?? 45;
 
   const productById = new Map(products.map((p) => [p.id, p]));
   const typeById = new Map(productTypes.map((pt) => [pt.id, pt]));
@@ -121,7 +128,7 @@ export default async function AlertasPage({
           {editing ? t("save") : t("add")}
         </button>
         <Link
-          href="/admin/alertas"
+          href="/admin/config"
           className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           {t("cancel")}
@@ -131,11 +138,38 @@ export default async function AlertasPage({
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
+      <h1 className="text-xl font-semibold">{t("pageTitle")}</h1>
+
+      <section className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900">
+        <div>
+          <h2 className="font-medium">{t("expirationTitle")}</h2>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("expirationHint")}</p>
+        </div>
+        <form action={saveOfferExpirationDays} className="flex flex-wrap items-end gap-3">
+          <label className="space-y-1">
+            <span className={labelCls}>{t("expirationDays")}</span>
+            <input
+              name="offer_expiration_days"
+              required
+              inputMode="numeric"
+              defaultValue={offerExpirationDays}
+              className={`${inputCls} w-28`}
+            />
+          </label>
+          <button
+            type="submit"
+            className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
+          >
+            {t("save")}
+          </button>
+        </form>
+      </section>
+
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{t("title")}</h1>
+        <h2 className="text-lg font-medium">{t("title")}</h2>
         <Link
-          href="/admin/alertas?new=1"
+          href="/admin/config?new=1"
           className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
         >
           + {tCommon("include")}
@@ -148,7 +182,7 @@ export default async function AlertasPage({
         </p>
       )}
 
-      {showForm && <Modal closeHref="/admin/alertas">{form}</Modal>}
+      {showForm && <Modal closeHref="/admin/config">{form}</Modal>}
 
       {alerts.length === 0 ? (
         <p className="rounded-lg border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-800">
@@ -182,7 +216,7 @@ export default async function AlertasPage({
                 </form>
                 <div className="flex gap-2">
                   <Link
-                    href={`/admin/alertas?edit=${a.id}`}
+                    href={`/admin/config?edit=${a.id}`}
                     className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                   >
                     {t("edit")}
@@ -209,7 +243,7 @@ export default async function AlertasPage({
           </p>
         ) : (
           <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
-            <table className="w-full text-sm">
+            <table className="w-full text-[13px]">
               <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
                 <tr>
                   <th className="px-4 py-2 font-medium">{t("colProduct")}</th>

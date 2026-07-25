@@ -80,3 +80,22 @@ export async function deleteOffer(formData: FormData) {
   revalidateAllLocales("/admin/ofertas");
   revalidateAllLocales("/");
 }
+
+// Exclusão em lote (checkboxes da grid) — chamada direto pelo client
+// (OffersTable), não por <form action>, porque precisa devolver
+// sucesso/erro pro componente sem navegar. Um único DELETE ... WHERE id IN
+// (...) é uma transação só: se alguma oferta selecionada tiver
+// alert_triggers vinculado (sem cascade, ver migration 0001), a exclusão
+// inteira falha — o client mostra o erro e nada é apagado, em vez de
+// apagar parte da seleção sem avisar.
+export async function deleteOffers(ids: string[]): Promise<{ error: string | null }> {
+  if (ids.length === 0) return { error: null };
+  const supabase = await createClient();
+  const { error } = await supabase.from("offers").delete().in("id", ids);
+
+  if (error) return { error: error.message };
+
+  revalidateAllLocales("/admin/ofertas");
+  revalidateAllLocales("/");
+  return { error: null };
+}

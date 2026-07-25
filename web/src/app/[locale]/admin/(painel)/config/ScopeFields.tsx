@@ -17,7 +17,7 @@ export default function ScopeFields({
   products: { id: string; name: string; brand: string | null }[];
   productTypes: { id: string; name: string }[];
 }) {
-  const t = useTranslations("admin.alerts");
+  const t = useTranslations("admin.config");
   const [scope, setScope] = useState(defaultScope || "global");
   const inputCls =
     "w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
