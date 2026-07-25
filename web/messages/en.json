@@ -14,9 +14,12 @@
     "subtitle": "Craft and specialty beer deals, gathered from multiple stores.",
     "offerCount": "{count, plural, =1 {1 offer} other {# offers}}",
     "noOffers": "No offers found.",
-    "featuredTitle": "🔥 Featured deals"
+    "featuredTitle": "🔥 Featured deals",
+    "storesTitle": "Stores",
+    "backToCatalog": "← Back to catalog"
   },
   "filters": {
+    "toggle": "Filters{count, plural, =0 {} other { ({count})}}",
     "style": "Style",
     "country": "Country",
     "store": "Store",
@@ -214,6 +217,8 @@
       "networkError": "Network error calling the API.",
       "storesIncluded": "Stores included in the collection ({count}):",
       "storesEmpty": "None. Set \"Automatic collection\" on a store to include it.",
+      "selectAll": "Select all",
+      "selectNone": "Deselect all",
       "lastRuns": "Latest runs",
       "empty": "No collection run yet.",
       "storeColumn": "Store",

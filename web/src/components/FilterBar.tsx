@@ -24,8 +24,8 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
     current.estilo || current.pais || current.storeId || current.precoMin || current.precoMax;
 
   return (
-    <form method="get" className="flex flex-wrap items-end gap-3">
-      <label className="flex flex-col gap-1">
+    <form method="get" className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+      <label className="flex w-full flex-col gap-1 sm:w-auto">
         <span className="text-xs text-neutral-500">{t("style")}</span>
         <select name="estilo" defaultValue={current.estilo ?? ""} className={inputCls}>
           <option value="">{t("all")}</option>
@@ -37,7 +37,7 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
         </select>
       </label>
 
-      <label className="flex flex-col gap-1">
+      <label className="flex w-full flex-col gap-1 sm:w-auto">
         <span className="text-xs text-neutral-500">{t("country")}</span>
         <select name="pais" defaultValue={current.pais ?? ""} className={inputCls}>
           <option value="">{t("all")}</option>
@@ -49,7 +49,7 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
         </select>
       </label>
 
-      <label className="flex flex-col gap-1">
+      <label className="flex w-full flex-col gap-1 sm:w-auto">
         <span className="text-xs text-neutral-500">{t("store")}</span>
         <select name="loja" defaultValue={current.storeId ?? ""} className={inputCls}>
           <option value="">{t("allFem")}</option>
@@ -61,43 +61,47 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
         </select>
       </label>
 
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-neutral-500">{t("minPrice")}</span>
-        <input
-          name="min"
-          inputMode="decimal"
-          defaultValue={current.precoMin ?? ""}
-          placeholder="0"
-          className={`${inputCls} w-24`}
-        />
-      </label>
+      <div className="flex w-full gap-3 sm:w-auto">
+        <label className="flex flex-1 flex-col gap-1 sm:w-24 sm:flex-none">
+          <span className="text-xs text-neutral-500">{t("minPrice")}</span>
+          <input
+            name="min"
+            inputMode="decimal"
+            defaultValue={current.precoMin ?? ""}
+            placeholder="0"
+            className={inputCls}
+          />
+        </label>
 
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-neutral-500">{t("maxPrice")}</span>
-        <input
-          name="max"
-          inputMode="decimal"
-          defaultValue={current.precoMax ?? ""}
-          placeholder="∞"
-          className={`${inputCls} w-24`}
-        />
-      </label>
+        <label className="flex flex-1 flex-col gap-1 sm:w-24 sm:flex-none">
+          <span className="text-xs text-neutral-500">{t("maxPrice")}</span>
+          <input
+            name="max"
+            inputMode="decimal"
+            defaultValue={current.precoMax ?? ""}
+            placeholder="∞"
+            className={inputCls}
+          />
+        </label>
+      </div>
 
-      <button
-        type="submit"
-        className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
-      >
-        {t("filter")}
-      </button>
-
-      {hasFilters && (
-        <Link
-          href="/"
-          className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
+      <div className="flex w-full gap-2 sm:w-auto">
+        <button
+          type="submit"
+          className="flex-1 rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 sm:flex-none dark:text-neutral-950"
         >
-          {t("clear")}
-        </Link>
-      )}
+          {t("filter")}
+        </button>
+
+        {hasFilters && (
+          <Link
+            href="/"
+            className="flex-1 rounded border border-neutral-300 px-4 py-2 text-center text-sm text-neutral-600 hover:bg-neutral-100 sm:flex-none dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
+          >
+            {t("clear")}
+          </Link>
+        )}
+      </div>
     </form>
   );
 }

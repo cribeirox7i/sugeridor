@@ -55,6 +55,32 @@ export async function updateStorePlatform(
   revalidateAllLocales("/admin/lojas");
 }
 
+// Usado pelo botão "Detectar" direto na grid: preenche logo/descrição só se
+// a loja ainda não tiver (nunca sobrescreve o que o admin já cadastrou à
+// mão) — mesmo princípio de backfill do pipeline.py do scraper.
+export async function backfillStoreBranding(
+  id: string,
+  logoUrl: string | null,
+  description: string | null,
+) {
+  if (!logoUrl && !description) return;
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("stores")
+    .select("logo_url, description")
+    .eq("id", id)
+    .maybeSingle();
+  if (!existing) return;
+
+  const patch: Record<string, string> = {};
+  if (!existing.logo_url && logoUrl) patch.logo_url = logoUrl;
+  if (!existing.description && description) patch.description = description;
+  if (Object.keys(patch).length === 0) return;
+
+  await supabase.from("stores").update(patch).eq("id", id);
+  revalidateAllLocales("/admin/lojas");
+}
+
 export async function deleteStore(formData: FormData) {
   const id = formData.get("id") as string;
   if (!id) return;

@@ -63,7 +63,7 @@ export default async function OfertasPage({
   const labelCls = "text-sm text-neutral-500 dark:text-neutral-400";
   const missingPrereq = products.length === 0 || stores.length === 0;
   const showForm = isNew === "1" && !missingPrereq;
-  const isList = view === "list";
+  const isList = view !== "grid";
 
   const form = (
     <form action={saveOffer} className="space-y-4">
@@ -143,7 +143,7 @@ export default async function OfertasPage({
       {!missingPrereq && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <SearchBox placeholder={t("searchPlaceholder")} defaultValue={q} view={view} />
-          <ViewToggle />
+          <ViewToggle defaultView="list" />
         </div>
       )}
 

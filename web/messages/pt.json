@@ -14,9 +14,12 @@
     "subtitle": "Ofertas de cervejas artesanais e especiais, reunidas de várias lojas.",
     "offerCount": "{count, plural, =1 {1 oferta} other {# ofertas}}",
     "noOffers": "Nenhuma oferta encontrada.",
-    "featuredTitle": "🔥 Ofertas em destaque"
+    "featuredTitle": "🔥 Ofertas em destaque",
+    "storesTitle": "Lojas",
+    "backToCatalog": "← Voltar ao catálogo"
   },
   "filters": {
+    "toggle": "Filtros{count, plural, =0 {} other { ({count})}}",
     "style": "Estilo",
     "country": "País",
     "store": "Loja",
@@ -214,6 +217,8 @@
       "networkError": "Erro de rede ao chamar a API.",
       "storesIncluded": "Lojas incluídas na coleta ({count}):",
       "storesEmpty": "Nenhuma. Defina a \"Coleta automática\" em alguma loja para incluí-la.",
+      "selectAll": "Selecionar todos",
+      "selectNone": "Desmarcar todos",
       "lastRuns": "Últimas execuções",
       "empty": "Nenhuma coleta executada ainda.",
       "storeColumn": "Loja",

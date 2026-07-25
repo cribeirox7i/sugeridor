@@ -32,6 +32,7 @@ export type Store = {
   logo_url: string | null;
   description: string | null;
   affiliate_program_id: string | null;
+  include_in_collection: boolean;
   created_at: string;
 };
 
@@ -75,7 +76,7 @@ export type OfferListItem = Offer & {
     Product,
     "id" | "name" | "brand" | "attributes" | "image_url" | "canonical_slug"
   >;
-  store: Pick<Store, "id" | "name">;
+  store: Pick<Store, "id" | "name" | "logo_url">;
 };
 
 // Linha única (singleton) com a logomarca do site em duas variantes — preta

@@ -26,7 +26,7 @@ export default async function LojasPage({
     : allStores;
   const editing = edit ? allStores.find((s) => s.id === edit) : undefined;
   const showForm = Boolean(editing) || isNew === "1";
-  const isList = view === "list";
+  const isList = view !== "grid";
   const [t, tCommon] = await Promise.all([
     getTranslations("admin.stores"),
     getTranslations("admin.common"),
@@ -47,17 +47,6 @@ export default async function LojasPage({
             className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
           />
         </label>
-        <label className="space-y-1">
-          <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("logo")}</span>
-          <input
-            name="logo_url"
-            type="url"
-            placeholder="https://..."
-            defaultValue={editing?.logo_url ?? ""}
-            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-          />
-        </label>
-
         <PlatformFields
           defaultSiteUrl={editing?.site_url ?? ""}
           defaultPlatform={editing?.platform ?? ""}
@@ -66,17 +55,9 @@ export default async function LojasPage({
               ? JSON.stringify(editing.config, null, 2)
               : ""
           }
+          defaultLogoUrl={editing?.logo_url ?? ""}
+          defaultDescription={editing?.description ?? ""}
         />
-
-        <label className="space-y-1 sm:col-span-2">
-          <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("description")}</span>
-          <textarea
-            name="description"
-            rows={3}
-            defaultValue={editing?.description ?? ""}
-            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-          />
-        </label>
       </div>
 
       <div className="flex gap-2">
@@ -110,7 +91,7 @@ export default async function LojasPage({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SearchBox placeholder={t("searchPlaceholder")} defaultValue={q} view={view} />
-        <ViewToggle />
+        <ViewToggle defaultView="list" />
       </div>
 
       {error === "config-invalido" && (

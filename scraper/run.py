@@ -19,7 +19,11 @@ def run() -> int:
 
     rows = db.select(
         "stores",
-        {"platform": "not.is.null", "select": "id,name,site_url,platform,config"},
+        {
+            "platform": "not.is.null",
+            "include_in_collection": "eq.true",
+            "select": "id,name,site_url,platform,config",
+        },
     )
     if not rows:
         print("Nenhuma loja com platform definido. Nada a fazer.")

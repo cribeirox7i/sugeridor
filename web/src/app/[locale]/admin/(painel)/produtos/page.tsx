@@ -38,7 +38,7 @@ export default async function ProdutosPage({
     : allProducts;
   const editing = edit ? allProducts.find((p) => p.id === edit) : undefined;
   const showForm = Boolean(editing) || isNew === "1";
-  const isList = view === "list";
+  const isList = view !== "grid";
 
   if (productTypes.length === 0) {
     return (
@@ -65,7 +65,7 @@ export default async function ProdutosPage({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SearchBox placeholder={t("searchPlaceholder")} defaultValue={q} view={view} />
-        <ViewToggle />
+        <ViewToggle defaultView="list" />
       </div>
 
       {error === "delete-blocked" && (

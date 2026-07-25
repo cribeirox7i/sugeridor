@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import RunScrapeButton from "./RunScrapeButton";
+import CollectionChecklist from "./CollectionChecklist";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,10 @@ export default async function ColetaPage() {
   const t = await getTranslations("admin.collection");
 
   const [{ data: storesData }, { data: jobsData }] = await Promise.all([
-    supabase.from("stores").select("id, name, platform").not("platform", "is", null),
+    supabase
+      .from("stores")
+      .select("id, name, platform, include_in_collection")
+      .not("platform", "is", null),
     supabase
       .from("ingestion_jobs")
       .select("*, store:stores ( name )")
@@ -41,7 +45,12 @@ export default async function ColetaPage() {
       .limit(20),
   ]);
 
-  const scraperStores = (storesData ?? []) as { id: string; name: string; platform: string }[];
+  const scraperStores = (storesData ?? []) as {
+    id: string;
+    name: string;
+    platform: string;
+    include_in_collection: boolean;
+  }[];
   const jobs = (jobsData ?? []) as unknown as Job[];
 
   return (
@@ -63,13 +72,9 @@ export default async function ColetaPage() {
           {scraperStores.length === 0 ? (
             <p className="mt-1 text-neutral-500 dark:text-neutral-600">{t("storesEmpty")}</p>
           ) : (
-            <ul className="mt-1 list-inside list-disc text-neutral-600 dark:text-neutral-300">
-              {scraperStores.map((s) => (
-                <li key={s.id}>
-                  {s.name} <span className="text-neutral-500 dark:text-neutral-600">({s.platform})</span>
-                </li>
-              ))}
-            </ul>
+            <div className="mt-2">
+              <CollectionChecklist stores={scraperStores} />
+            </div>
           )}
         </div>
       </section>

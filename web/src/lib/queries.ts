@@ -15,7 +15,7 @@ const OFFER_SELECT = `
   id, product_id, store_id, price, currency, url, source_type, source_ref,
   active, last_seen_at, created_at, updated_at,
   product:products!inner ( id, name, brand, attributes, image_url, canonical_slug ),
-  store:stores!inner ( id, name )
+  store:stores!inner ( id, name, logo_url )
 `;
 
 // Lista ofertas ativas com o produto e a loja, aplicando filtros. Filtros por
@@ -76,6 +76,21 @@ export async function listStoresLite(
     .order("name");
   if (error) throw error;
   return data ?? [];
+}
+
+// Registro completo da loja (logo/descrição) pro cabeçalho da "página da
+// loja" — listStoresLite só traz id/name, o suficiente pro dropdown de filtro.
+export async function getStoreById(
+  supabase: SupabaseClient,
+  id: string,
+): Promise<Pick<Store, "id" | "name" | "logo_url" | "description"> | null> {
+  const { data, error } = await supabase
+    .from("stores")
+    .select("id, name, logo_url, description")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
 }
 
 export async function getProductBySlug(

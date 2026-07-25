@@ -5,6 +5,8 @@ export type DetectResult = {
   config: Record<string, unknown>;
   confidence: "high" | "low";
   note?: string;
+  logo_url?: string;
+  description?: string;
 };
 
 const UA = "SugeridorBot/1.0 (+https://sugeridor.vercel.app; detector de plataforma)";
@@ -98,6 +100,59 @@ function guessListingPattern(
   };
 }
 
+function absolutize(url: string, base: string): string {
+  try {
+    return new URL(url, base).toString();
+  } catch {
+    return url;
+  }
+}
+
+// Logo: tenta JSON-LD Organization (mais confiável, quando existe), depois
+// og:image, depois favicon/apple-touch-icon. Descrição: meta description.
+// Roda sobre a home da loja (não a listagem), onde esses metadados de site
+// geralmente vivem — usado só uma vez, no momento de detectar a plataforma,
+// não a cada coleta periódica de produtos.
+function extractBranding(html: string, baseUrl: string): { logo_url?: string; description?: string } {
+  const $ = cheerio.load(html);
+  const result: { logo_url?: string; description?: string } = {};
+
+  $('script[type="application/ld+json"]').each((_, el) => {
+    if (result.logo_url) return;
+    try {
+      const data = JSON.parse($(el).contents().text());
+      const items = Array.isArray(data) ? data : [data];
+      for (const item of items) {
+        const type = item?.["@type"];
+        const isOrg = type === "Organization" || (Array.isArray(type) && type.includes("Organization"));
+        if (!isOrg) continue;
+        if (typeof item.logo === "string") {
+          result.logo_url = absolutize(item.logo, baseUrl);
+        } else if (item.logo && typeof item.logo.url === "string") {
+          result.logo_url = absolutize(item.logo.url, baseUrl);
+        }
+        if (result.logo_url) break;
+      }
+    } catch {
+      // bloco JSON-LD inválido — ignora e tenta o próximo
+    }
+  });
+
+  if (!result.logo_url) {
+    const og = $('meta[property="og:image"]').attr("content");
+    if (og) result.logo_url = absolutize(og, baseUrl);
+  }
+  if (!result.logo_url) {
+    const icon = $('link[rel="apple-touch-icon"]').attr("href") || $('link[rel="icon"]').attr("href");
+    if (icon) result.logo_url = absolutize(icon, baseUrl);
+  }
+
+  const desc = $('meta[name="description"]').attr("content");
+  if (desc && desc.trim()) result.description = desc.trim();
+
+  return result;
+}
+
 function guessPageParam(url: string): string {
   const params = new URL(url).searchParams;
   for (const candidate of ["pagina", "page", "pg"]) {
@@ -114,12 +169,17 @@ export async function detectPlatform(inputUrl: string): Promise<DetectResult> {
     return { platform: null, config: {}, confidence: "low", note: "URL inválida." };
   }
 
+  // Logo/descrição vêm da home da loja (metadados de site, não da listagem),
+  // buscada uma vez aqui independente de qual plataforma for detectada.
+  const homeHtml = await fetchText(origin);
+  const branding = homeHtml ? extractBranding(homeHtml, origin) : {};
+
   // 1. Shopify: endpoint público /products.json
   const shopifyData = (await fetchJson(`${origin}/products.json?limit=1`)) as
     | { products?: unknown[] }
     | null;
   if (Array.isArray(shopifyData?.products)) {
-    return { platform: "shopify", config: {}, confidence: "high" };
+    return { platform: "shopify", config: {}, confidence: "high", ...branding };
   }
 
   // 2. Tray Commerce: endpoint /web_api/products
@@ -127,7 +187,7 @@ export async function detectPlatform(inputUrl: string): Promise<DetectResult> {
     | { Products?: unknown[] }
     | null;
   if (Array.isArray(trayData?.Products)) {
-    return { platform: "tray", config: {}, confidence: "high" };
+    return { platform: "tray", config: {}, confidence: "high", ...branding };
   }
 
   // 3. Busca a própria URL informada pra seguir investigando (VTEX, jsonld)
@@ -138,6 +198,7 @@ export async function detectPlatform(inputUrl: string): Promise<DetectResult> {
       config: {},
       confidence: "low",
       note: "Não consegui acessar essa URL pra analisar.",
+      ...branding,
     };
   }
 
@@ -151,6 +212,7 @@ export async function detectPlatform(inputUrl: string): Promise<DetectResult> {
       note: suggestedUrl
         ? `Parece ser VTEX. Troque a URL de listagem por algo como: ${suggestedUrl} (ajuste a categoria se necessário).`
         : "Parece ser VTEX, mas não consegui sugerir a URL da API de busca — informe manualmente a URL de .../api/catalog_system/pub/products/search/<categoria>.",
+      ...branding,
     };
   }
 
@@ -167,6 +229,7 @@ export async function detectPlatform(inputUrl: string): Promise<DetectResult> {
           max_pages: 20,
         },
         confidence: guess.linkSelector === "a" ? "low" : "high",
+        ...branding,
       };
     }
   }
@@ -176,5 +239,6 @@ export async function detectPlatform(inputUrl: string): Promise<DetectResult> {
     config: {},
     confidence: "low",
     note: "Não conseguimos detectar automaticamente essa plataforma — configure manualmente.",
+    ...branding,
   };
 }

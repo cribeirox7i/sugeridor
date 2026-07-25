@@ -4,21 +4,28 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { PLATFORMS } from "@/lib/platforms";
 
-// Dono do estado de site_url/platform/config — precisam ficar juntos porque o
-// botão "Detectar" lê a URL atual e escreve nos outros dois campos.
+// Dono do estado de site_url/platform/config/logo_url/description — precisam
+// ficar juntos porque o botão "Detectar" lê a URL atual e escreve nos outros
+// campos (inclusive logo/descrição, extraídos da home da loja).
 export default function PlatformFields({
   defaultSiteUrl,
   defaultPlatform,
   defaultConfig,
+  defaultLogoUrl,
+  defaultDescription,
 }: {
   defaultSiteUrl: string;
   defaultPlatform: string;
   defaultConfig: string;
+  defaultLogoUrl: string;
+  defaultDescription: string;
 }) {
   const t = useTranslations("admin.stores");
   const [siteUrl, setSiteUrl] = useState(defaultSiteUrl);
   const [platform, setPlatform] = useState(defaultPlatform);
   const [config, setConfig] = useState(defaultConfig);
+  const [logoUrl, setLogoUrl] = useState(defaultLogoUrl);
+  const [description, setDescription] = useState(defaultDescription);
   const [detecting, setDetecting] = useState(false);
   const [detectMsg, setDetectMsg] = useState<string | null>(null);
 
@@ -45,6 +52,10 @@ export default function PlatformFields({
         setPlatform("");
         setDetectMsg(data.note ?? t("detectNotFound"));
       }
+      // Logo/descrição: só preenche o que ainda estiver vazio — nunca
+      // sobrescreve o que o admin já preencheu à mão.
+      if (data.logo_url) setLogoUrl((cur) => cur || data.logo_url);
+      if (data.description) setDescription((cur) => cur || data.description);
     } catch {
       setDetectMsg(t("detectError"));
     } finally {
@@ -75,6 +86,18 @@ export default function PlatformFields({
           </button>
         </div>
         {detectMsg && <span className="block text-xs text-amber-600 dark:text-amber-400">{detectMsg}</span>}
+      </label>
+
+      <label className="space-y-1">
+        <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("logo")}</span>
+        <input
+          name="logo_url"
+          type="url"
+          placeholder="https://..."
+          value={logoUrl}
+          onChange={(e) => setLogoUrl(e.target.value)}
+          className={inputCls}
+        />
       </label>
 
       <label className="space-y-1">
@@ -111,6 +134,17 @@ export default function PlatformFields({
           <span className="text-xs text-neutral-500 dark:text-neutral-600">{selected.hint}</span>
         </label>
       )}
+
+      <label className="space-y-1 sm:col-span-2">
+        <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("description")}</span>
+        <textarea
+          name="description"
+          rows={3}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className={inputCls}
+        />
+      </label>
     </>
   );
 }

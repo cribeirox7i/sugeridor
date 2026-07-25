@@ -7,15 +7,21 @@ import {
   getFeaturedDeals,
   getPriceHistoryForOffers,
   getSiteSettings,
+  getStoreById,
   computeFeaturedDeals,
 } from "@/lib/queries";
 import OfferCard from "@/components/OfferCard";
 import FilterBar from "@/components/FilterBar";
+import FiltersAccordion from "@/components/FiltersAccordion";
 import FeaturedDeals from "@/components/FeaturedDeals";
+import StoreCarousel from "@/components/StoreCarousel";
+import StoreHeader from "@/components/StoreHeader";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
+import Modal from "@/components/admin/Modal";
+import ProductDetail from "@/components/ProductDetail";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +40,7 @@ export default async function Home({
     loja?: string;
     min?: string;
     max?: string;
+    produto?: string;
   }>;
 }) {
   const sp = await searchParams;
@@ -48,14 +55,26 @@ export default async function Home({
     precoMax: toNumber(sp.max),
   };
 
-  const [offers, estilos, paises, stores, featuredDeals, siteSettings] = await Promise.all([
-    listOffers(supabase, filters),
-    distinctAttributeValues(supabase, "estilo"),
-    distinctAttributeValues(supabase, "pais"),
-    listStoresLite(supabase),
-    getFeaturedDeals(supabase),
-    getSiteSettings(supabase),
-  ]);
+  // Fechar o popup do produto volta pros mesmos filtros ativos, sem o ?produto=.
+  const closeParams = new URLSearchParams();
+  if (sp.estilo) closeParams.set("estilo", sp.estilo);
+  if (sp.pais) closeParams.set("pais", sp.pais);
+  if (sp.loja) closeParams.set("loja", sp.loja);
+  if (sp.min) closeParams.set("min", sp.min);
+  if (sp.max) closeParams.set("max", sp.max);
+  const closeHref = closeParams.toString() ? `/?${closeParams.toString()}` : "/";
+  const storeMode = Boolean(filters.storeId);
+
+  const [offers, estilos, paises, stores, featuredDeals, siteSettings, storeDetail] =
+    await Promise.all([
+      listOffers(supabase, filters),
+      distinctAttributeValues(supabase, "estilo"),
+      distinctAttributeValues(supabase, "pais"),
+      listStoresLite(supabase),
+      storeMode ? Promise.resolve([]) : getFeaturedDeals(supabase),
+      getSiteSettings(supabase),
+      storeMode ? getStoreById(supabase, filters.storeId!) : Promise.resolve(null),
+    ]);
 
   // Histórico de todas as ofertas visíveis, numa query só (evita N+1 por card).
   const historyByOffer = await getPriceHistoryForOffers(
@@ -68,6 +87,12 @@ export default async function Home({
   const dropByOffer = new Map(
     computeFeaturedDeals(offers, historyByOffer, offers.length).map((d) => [d.id, d.dropPercent]),
   );
+
+  // Lojas do carrossel: as que têm oferta ativa na listagem geral (sem
+  // filtro de loja) — deriva do próprio array de ofertas, sem query nova.
+  const storesWithOffers = storeMode
+    ? []
+    : [...new Map(offers.map((o) => [o.store.id, o.store])).values()];
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
@@ -85,20 +110,32 @@ export default async function Home({
       </header>
 
       <div className="mx-auto w-full max-w-6xl flex-1 space-y-6 px-6 py-6">
-        <FeaturedDeals deals={featuredDeals} />
+        {storeMode ? (
+          <StoreHeader store={storeDetail} />
+        ) : (
+          <>
+            <FeaturedDeals deals={featuredDeals} />
 
-        <FilterBar
-          estilos={estilos}
-          paises={paises}
-          stores={stores}
-          current={{
-            estilo: sp.estilo,
-            pais: sp.pais,
-            storeId: sp.loja,
-            precoMin: sp.min,
-            precoMax: sp.max,
-          }}
-        />
+            <StoreCarousel stores={storesWithOffers} />
+
+            <FiltersAccordion
+              activeCount={Object.values(filters).filter((v) => v !== undefined).length}
+            >
+              <FilterBar
+                estilos={estilos}
+                paises={paises}
+                stores={stores}
+                current={{
+                  estilo: sp.estilo,
+                  pais: sp.pais,
+                  storeId: sp.loja,
+                  precoMin: sp.min,
+                  precoMax: sp.max,
+                }}
+              />
+            </FiltersAccordion>
+          </>
+        )}
 
         <p className="text-sm text-neutral-500 dark:text-neutral-500">
           {t("offerCount", { count: offers.length })}
@@ -111,16 +148,17 @@ export default async function Home({
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {offers.map((offer) => (
-              <OfferCard
-                key={offer.id}
-                offer={offer}
-                history={historyByOffer.get(offer.id)}
-                dropPercent={dropByOffer.get(offer.id)}
-              />
+              <OfferCard key={offer.id} offer={offer} dropPercent={dropByOffer.get(offer.id)} />
             ))}
           </div>
         )}
       </div>
+
+      {sp.produto && (
+        <Modal closeHref={closeHref}>
+          <ProductDetail slug={sp.produto} />
+        </Modal>
+      )}
 
       <Footer />
     </div>

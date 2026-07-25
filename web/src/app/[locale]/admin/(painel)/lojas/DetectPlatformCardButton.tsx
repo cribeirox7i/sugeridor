@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { updateStorePlatform } from "./actions";
+import { updateStorePlatform, backfillStoreBranding } from "./actions";
 
 // Versão compacta do "Detectar" pra rodar direto no card da grid/lista, sem
 // abrir o modal de edição — aplica o resultado na hora.
@@ -33,10 +33,13 @@ export default function DetectPlatformCardButton({
       if (data.platform) {
         await updateStorePlatform(storeId, data.platform, data.config ?? {});
         setMsg(t("detectFound", { platform: data.platform }));
-        router.refresh();
       } else {
         setMsg(data.note ?? t("detectNotFound"));
       }
+      if (data.logo_url || data.description) {
+        await backfillStoreBranding(storeId, data.logo_url ?? null, data.description ?? null);
+      }
+      router.refresh();
     } catch {
       setMsg(t("detectError"));
     } finally {
