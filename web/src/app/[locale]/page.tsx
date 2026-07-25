@@ -7,6 +7,7 @@ import {
   getFeaturedDeals,
   getPriceHistoryForOffers,
   getSiteSettings,
+  computeFeaturedDeals,
 } from "@/lib/queries";
 import OfferCard from "@/components/OfferCard";
 import FilterBar from "@/components/FilterBar";
@@ -62,6 +63,12 @@ export default async function Home({
     offers.map((o) => o.id),
   );
 
+  // Selo "-X%" por card: mesma lógica de queda do carrossel de destaques,
+  // sem limite, pra cobrir qualquer oferta com queda real (não só o top 5).
+  const dropByOffer = new Map(
+    computeFeaturedDeals(offers, historyByOffer, offers.length).map((d) => [d.id, d.dropPercent]),
+  );
+
   return (
     <div className="flex min-h-screen flex-col bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       <header className="border-b border-neutral-200 dark:border-neutral-800">
@@ -104,7 +111,12 @@ export default async function Home({
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {offers.map((offer) => (
-              <OfferCard key={offer.id} offer={offer} history={historyByOffer.get(offer.id)} />
+              <OfferCard
+                key={offer.id}
+                offer={offer}
+                history={historyByOffer.get(offer.id)}
+                dropPercent={dropByOffer.get(offer.id)}
+              />
             ))}
           </div>
         )}

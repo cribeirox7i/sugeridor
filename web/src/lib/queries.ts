@@ -161,12 +161,15 @@ export type FeaturedDeal = OfferListItem & {
 // oferta frente ao "preço de referência" (média do histórico anterior ao
 // ponto mais recente — mesma lógica descrita em docs/03-modelo-dados.md) e
 // devolve as `limit` maiores quedas reais (> 0.5%, pra ignorar ruído).
-export function computeFeaturedDeals(
-  offers: OfferListItem[],
+// Genérica em T (não só OfferListItem) pra dar pra reusar tanto na home
+// (lista com produto+loja) quanto na página de produto (lista só com loja) —
+// mesma lógica de selo "-X%" nos dois lugares, sem duplicar.
+export function computeFeaturedDeals<T extends { id: string; price: number }>(
+  offers: T[],
   historyByOffer: Map<string, PriceHistoryPoint[]>,
   limit = 5,
-): FeaturedDeal[] {
-  const deals: FeaturedDeal[] = [];
+): (T & { dropPercent: number; referencePrice: number })[] {
+  const deals: (T & { dropPercent: number; referencePrice: number })[] = [];
   for (const offer of offers) {
     const history = historyByOffer.get(offer.id) ?? [];
     if (history.length < 2) continue; // sem histórico suficiente pra comparar

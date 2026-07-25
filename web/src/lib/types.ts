@@ -86,3 +86,25 @@ export type SiteSettings = {
   logo_white_url: string | null;
   updated_at: string;
 };
+
+export type AlertScope = "product" | "product_type" | "global";
+
+export type PriceAlert = {
+  id: string;
+  scope: AlertScope;
+  scope_id: string | null;
+  threshold_percent: number;
+  notify_channel: string;
+  active: boolean;
+  created_at: string;
+};
+
+export type AlertTrigger = {
+  id: string;
+  alert_id: string;
+  offer_id: string;
+  price_at_trigger: number;
+  reference_price: number;
+  drop_percent: number;
+  triggered_at: string;
+};

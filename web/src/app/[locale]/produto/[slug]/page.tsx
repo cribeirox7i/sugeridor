@@ -6,6 +6,8 @@ import {
   getProductBySlug,
   getActiveOffersForProduct,
   getPriceHistoryForProduct,
+  getPriceHistoryForOffers,
+  computeFeaturedDeals,
 } from "@/lib/queries";
 import { formatPrice } from "@/lib/format";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
@@ -34,6 +36,15 @@ export default async function ProdutoPage({
 
   const currency = offers[0]?.currency ?? "BRL";
   const attrEntries = Object.entries(product.attributes ?? {});
+
+  // Mesmo cálculo de selo "-X%" da home, aplicado às ofertas ativas deste produto.
+  const historyByOffer = await getPriceHistoryForOffers(
+    supabase,
+    offers.map((o) => o.id),
+  );
+  const dropByOffer = new Map(
+    computeFeaturedDeals(offers, historyByOffer, offers.length).map((d) => [d.id, d.dropPercent]),
+  );
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
@@ -98,8 +109,15 @@ export default async function ProdutoPage({
                   {offers.map((o) => (
                     <tr key={o.id} className="border-t border-neutral-200 dark:border-neutral-800">
                       <td className="px-4 py-2">{o.store.name}</td>
-                      <td className="px-4 py-2 font-semibold text-amber-600 dark:text-amber-400">
-                        {formatPrice(o.price, o.currency)}
+                      <td className="px-4 py-2">
+                        <span className="font-semibold text-amber-600 dark:text-amber-400">
+                          {formatPrice(o.price, o.currency)}
+                        </span>
+                        {dropByOffer.has(o.id) && (
+                          <span className="ml-2 rounded bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                            -{Math.round(dropByOffer.get(o.id)!)}%
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-2 text-right">
                         <a

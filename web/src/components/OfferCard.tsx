@@ -8,9 +8,11 @@ import StoreOffersPopover from "@/components/StoreOffersPopover";
 export default function OfferCard({
   offer,
   history = [],
+  dropPercent,
 }: {
   offer: OfferListItem;
   history?: PriceHistoryPoint[];
+  dropPercent?: number;
 }) {
   const t = useTranslations("offerCard");
   const { product, store } = offer;
@@ -63,8 +65,15 @@ export default function OfferCard({
 
         <div className="flex items-end justify-between">
           <div>
-            <div className="text-lg font-semibold text-amber-600 dark:text-amber-400">
-              {formatPrice(offer.price, offer.currency)}
+            <div className="flex items-center gap-1.5">
+              <span className="text-lg font-semibold text-amber-600 dark:text-amber-400">
+                {formatPrice(offer.price, offer.currency)}
+              </span>
+              {dropPercent != null && dropPercent > 0 && (
+                <span className="rounded bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                  -{Math.round(dropPercent)}%
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-neutral-500">{store.name}</span>
