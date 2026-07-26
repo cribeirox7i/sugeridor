@@ -74,7 +74,6 @@ export default function ProductForm({
             <option value="cervejas">{t("categoryCervejas")}</option>
             <option value="kit">{t("categoryKit")}</option>
             <option value="copo">{t("categoryCopo")}</option>
-            <option value="taca">{t("categoryTaca")}</option>
             <option value="souvenirs">{t("categorySouvenirs")}</option>
             <option value="eventos">{t("categoryEventos")}</option>
           </select>

@@ -16,7 +16,6 @@ const CATEGORY_KEY: Record<ProductCategory, string> = {
   cervejas: "categoryCervejas",
   kit: "categoryKit",
   copo: "categoryCopo",
-  taca: "categoryTaca",
   souvenirs: "categorySouvenirs",
   eventos: "categoryEventos",
 };

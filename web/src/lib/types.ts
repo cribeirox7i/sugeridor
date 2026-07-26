@@ -23,6 +23,11 @@ export type ProductType = {
 
 export type ScraperPlatform = "vtex" | "shopify" | "tray" | "jsonld" | "html" | "txt";
 
+// 'marketplace' revende várias marcas; 'propria' é a loja da própria
+// cervejaria — só nesse caso os produtos sem marca/país herdam da loja
+// (ver migration 0009 e scraper/enrich.py).
+export type StoreType = "marketplace" | "propria";
+
 export type Store = {
   id: string;
   name: string;
@@ -33,12 +38,15 @@ export type Store = {
   description: string | null;
   affiliate_program_id: string | null;
   include_in_collection: boolean;
+  store_type: StoreType;
+  country: string;
   created_at: string;
 };
 
 // Categorização de alto nível, independente do product_type — texto livre
-// (ver migration 0007), 'cervejas' é a única usada publicamente por ora.
-export type ProductCategory = "cervejas" | "souvenirs" | "eventos" | "kit" | "copo" | "taca";
+// (ver migration 0007/0009), 'cervejas' e 'kit' são as únicas usadas
+// publicamente por ora.
+export type ProductCategory = "cervejas" | "souvenirs" | "eventos" | "kit" | "copo";
 
 export type Product = {
   id: string;

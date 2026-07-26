@@ -87,6 +87,12 @@ def run() -> int:
         expired = enrich.expire_stale_offers(expiration_days)
         print(f"Expiração: {expired} oferta(s) desativada(s) (>{expiration_days} dias sem ver).")
 
+        own_brand, own_country = enrich.apply_own_store_defaults()
+        print(
+            f"Lojas próprias: {own_brand} produto(s) com marca herdada da loja, "
+            f"{own_country} com país herdado da loja."
+        )
+
         unified = enrich.unify_brand_country()
         print(f"Enriquecimento: {unified} produto(s) com país preenchido a partir da marca.")
     except Exception as e:  # noqa: BLE001 — enriquecimento não deve derrubar o exit code da coleta

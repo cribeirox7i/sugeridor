@@ -9,19 +9,21 @@ junto com cerveja de verdade — ver docs/05-roadmap.md. 'cervejas' e 'kit'
 aparecem no site público (PUBLIC_CATEGORIES em web/src/lib/queries.ts); as
 demais ficam só armazenadas.
 
-Mantém sincronia com o backfill SQL da migration 0008 (mesma lista de
+Mantém sincronia com o backfill SQL da migration 0009 (mesma lista de
 termos e mesma ordem de prioridade) — se ajustar uma lista, ajustar a
 outra também.
 """
 import re
 
 _EVENTOS = re.compile(r"\b(ingresso|convite|evento|workshop|confraria)\b", re.IGNORECASE)
-# Kit checado antes de copo/taça: "Kit Copo + Cerveja" é 'kit', não 'copo'.
+# Kit checado antes de copo: "Kit Copo + Cerveja" é 'kit', não 'copo'.
 _KIT = re.compile(r"\bkit\b", re.IGNORECASE)
-_COPO = re.compile(r"\bcopo\b", re.IGNORECASE)
-_TACA = re.compile(r"\bta[cç]a\b", re.IGNORECASE)
+# Copo/taça/caldereta viram uma categoria só ('copo').
+_COPO = re.compile(r"\b(copo|ta[cç]a|caldereta)\b", re.IGNORECASE)
 _SOUVENIRS = re.compile(
-    r"\b(camiseta|camisa|bon[eé]|caneca|chaveiro|adesivo|squeeze|moletom|growler|abridor)\b",
+    r"\b(camiseta|camisa|bon[eé]|chap[eé]u|broche|sapato|chinelo|caneca|chaveiro|adesivo|squeeze|"
+    r"moletom|growler|abridor|meia|sacola|bag|ecobag|canga|toalha|bandeira|balde|sombrinha)\b"
+    r"|guarda[\s-]?sol",
     re.IGNORECASE,
 )
 
@@ -33,8 +35,6 @@ def classify_category(product_name: str) -> str:
         return "kit"
     if _COPO.search(product_name):
         return "copo"
-    if _TACA.search(product_name):
-        return "taca"
     if _SOUVENIRS.search(product_name):
         return "souvenirs"
     return "cervejas"

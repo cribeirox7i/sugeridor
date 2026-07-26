@@ -13,7 +13,7 @@ export type OfferFilters = {
 };
 
 // Categorias expostas no catálogo público (ver migration 0007/0008 e
-// docs/05-roadmap.md) — 'souvenirs'/'eventos'/'copo'/'taca' existem no banco
+// docs/05-roadmap.md) — 'souvenirs'/'eventos'/'copo' existem no banco
 // (produtos que vieram junto de lojas de plataforma) mas ficam de fora daqui
 // até termos UI pra outras categorias.
 const PUBLIC_CATEGORIES = ["cervejas", "kit"];

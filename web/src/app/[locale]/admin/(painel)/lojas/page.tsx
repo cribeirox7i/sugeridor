@@ -47,6 +47,29 @@ export default async function LojasPage({
             className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
           />
         </label>
+
+        <label className="space-y-1">
+          <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("storeType")}</span>
+          <select
+            name="store_type"
+            defaultValue={editing?.store_type ?? "marketplace"}
+            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+          >
+            <option value="marketplace">{t("storeTypeMarketplace")}</option>
+            <option value="propria">{t("storeTypePropria")}</option>
+          </select>
+          <span className="text-xs text-neutral-500 dark:text-neutral-600">{t("storeTypeHint")}</span>
+        </label>
+
+        <label className="space-y-1">
+          <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("country")}</span>
+          <input
+            name="country"
+            defaultValue={editing?.country ?? "Brasil"}
+            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
+          />
+        </label>
+
         <PlatformFields
           defaultSiteUrl={editing?.site_url ?? ""}
           defaultPlatform={editing?.platform ?? ""}

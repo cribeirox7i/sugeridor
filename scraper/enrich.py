@@ -44,6 +44,48 @@ def expire_stale_offers(expiration_days: int) -> int:
     return len(ids)
 
 
+def apply_own_store_defaults() -> tuple[int, int]:
+    """Pra lojas 'propria' (a própria cervejaria vendendo o produto dela,
+    não um marketplace revendendo terceiros), produtos vendidos por ela sem
+    marca ou sem país herdam o nome e o país da loja — só completa o que
+    falta, nunca sobrescreve (mesmo princípio de backfill do resto do
+    pipeline). Roda antes de `unify_brand_country()`: o país da própria
+    loja é um sinal mais confiável do que a moda entre marcas."""
+    stores = db.select("stores", {"store_type": "eq.propria", "select": "id,name,country"})
+    if not stores:
+        return (0, 0)
+
+    brand_updated = 0
+    country_updated = 0
+    for store in stores:
+        offers = db.select("offers", {"store_id": f"eq.{store['id']}", "select": "product_id"})
+        product_ids = {o["product_id"] for o in offers}
+
+        for pid in product_ids:
+            rows = db.select("products", {"id": f"eq.{pid}", "select": "id,brand,attributes"})
+            if not rows:
+                continue
+            product = rows[0]
+            patch: dict = {}
+
+            if not product.get("brand"):
+                patch["brand"] = store["name"]
+
+            attrs = dict(product.get("attributes") or {})
+            if not attrs.get("pais") and store.get("country"):
+                attrs["pais"] = store["country"]
+                patch["attributes"] = attrs
+
+            if patch:
+                db.update("products", {"id": f"eq.{pid}"}, patch)
+                if "brand" in patch:
+                    brand_updated += 1
+                if "attributes" in patch:
+                    country_updated += 1
+
+    return brand_updated, country_updated
+
+
 def unify_brand_country() -> int:
     """Preenche `attributes.pais` ausente usando o valor mais comum entre
     produtos da MESMA marca — mesmo princípio de backfill do resto do

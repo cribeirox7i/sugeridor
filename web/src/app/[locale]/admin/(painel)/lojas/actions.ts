@@ -15,6 +15,9 @@ export async function saveStore(formData: FormData) {
   const description = descriptionRaw ? normalizeDashes(descriptionRaw) : null;
   const platform = ((formData.get("platform") as string) || "").trim() || null;
   const configRaw = ((formData.get("config") as string) || "").trim();
+  const store_type = ((formData.get("store_type") as string) || "marketplace").trim();
+  const countryRaw = ((formData.get("country") as string) || "").trim();
+  const country = countryRaw ? normalizeDashes(countryRaw) : "Brasil";
 
   if (!name) return;
 
@@ -36,9 +39,11 @@ export async function saveStore(formData: FormData) {
   const { error } = id
     ? await supabase
         .from("stores")
-        .update({ name, site_url, logo_url, description, platform, config })
+        .update({ name, site_url, logo_url, description, platform, config, store_type, country })
         .eq("id", id)
-    : await supabase.from("stores").insert({ name, site_url, logo_url, description, platform, config });
+    : await supabase
+        .from("stores")
+        .insert({ name, site_url, logo_url, description, platform, config, store_type, country });
 
   const locale = await getLocale();
 
