@@ -13,7 +13,11 @@ export async function saveOffer(formData: FormData) {
   const url = (formData.get("url") as string)?.trim();
   const currency = ((formData.get("currency") as string) || "BRL").trim();
 
-  if (!product_id || !store_id || !url || !Number.isFinite(price)) return;
+  // Preço <= 0 nunca é uma oferta válida (mesmo critério do scraper em
+  // scraper/pipeline.py) — nem chega a tentar salvar; o banco também
+  // rejeitaria via constraint (migration 0010), mas validar aqui dá um erro
+  // mais claro que só "não foi possível salvar".
+  if (!product_id || !store_id || !url || !Number.isFinite(price) || price <= 0) return;
 
   const supabase = await createClient();
   const now = new Date().toISOString();
