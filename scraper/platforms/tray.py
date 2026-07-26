@@ -112,16 +112,27 @@ def _fallback_html_scan(listing_url: str) -> list[Candidate]:
     return out
 
 
+def _try_tier(fn, *args) -> list[Candidate]:
+    # Uma falha (erro de rede, 403/503, etc.) numa etapa da cascata não pode
+    # impedir a próxima de ser tentada — antes, uma exceção aqui matava
+    # `collect()` inteiro antes mesmo de chegar no fallback de HTML.
+    try:
+        return fn(*args)
+    except Exception as e:  # noqa: BLE001
+        print(f"  ! {fn.__name__} falhou: {e}")
+        return []
+
+
 def collect(store: StoreRecord) -> list[Candidate]:
     base_url = _base_url(store.site_url)
     if not base_url:
         return []
 
-    candidates = _from_web_api(base_url)
+    candidates = _try_tier(_from_web_api, base_url)
     if not candidates:
-        candidates = _from_embedded_json(base_url, store.site_url)
+        candidates = _try_tier(_from_embedded_json, base_url, store.site_url)
     if not candidates:
-        candidates = _fallback_html_scan(store.site_url)
+        candidates = _try_tier(_fallback_html_scan, store.site_url)
 
     # dedup por nome, preservando ordem
     seen_names: set[str] = set()

@@ -44,7 +44,11 @@ def collect(store: StoreRecord) -> list[Candidate]:
     candidates: list[Candidate] = []
 
     for page in range(1, max_pages + 1):
-        data = fetch_json(f"{endpoint}?page={page}")
+        try:
+            data = fetch_json(f"{endpoint}?page={page}")
+        except Exception as e:  # noqa: BLE001 — erro numa página não deve jogar fora as anteriores
+            print(f"  ! {store.name}: falha na página {page} ({e}) — parando aqui, mantendo o já coletado.")
+            break
         if not data:
             break
 

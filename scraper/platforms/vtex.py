@@ -36,7 +36,11 @@ def collect(store: StoreRecord) -> list[Candidate]:
         sep = "&" if "?" in base else "?"
         url = f"{base}{sep}_from={start}&_to={end}"
 
-        data = fetch_json(url)
+        try:
+            data = fetch_json(url)
+        except Exception as e:  # noqa: BLE001 — erro num bloco não deve jogar fora os anteriores
+            print(f"  ! {store.name}: falha no bloco {block} ({e}) — parando aqui, mantendo o já coletado.")
+            break
         if not data or not isinstance(data, list):
             break
 

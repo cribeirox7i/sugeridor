@@ -159,7 +159,11 @@ def collect(store: StoreRecord) -> list[Candidate]:
     candidates: list[Candidate] = []
 
     for page in range(1, max_pages + 1):
-        listing_html = fetch(_page_url(store.site_url, page, page_param))
+        try:
+            listing_html = fetch(_page_url(store.site_url, page, page_param))
+        except Exception as e:  # noqa: BLE001 — erro numa página não deve jogar fora as anteriores
+            print(f"  ! {store.name}: falha na página {page} ({e}) — parando aqui, mantendo o já coletado.")
+            break
         links = [
             l
             for l in _product_links(listing_html, store.site_url, link_selector, url_contains)

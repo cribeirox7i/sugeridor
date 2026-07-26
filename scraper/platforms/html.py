@@ -59,7 +59,12 @@ def collect(store: StoreRecord) -> list[Candidate]:
 
     for page in range(1, max_pages + 1):
         url = _page_url(store.site_url, page, page_param) if page_param else store.site_url
-        soup = BeautifulSoup(fetch(url), "html.parser")
+        try:
+            html_text = fetch(url)
+        except Exception as e:  # noqa: BLE001 — erro numa página não deve jogar fora as anteriores
+            print(f"  ! {store.name}: falha na página {page} ({e}) — parando aqui, mantendo o já coletado.")
+            break
+        soup = BeautifulSoup(html_text, "html.parser")
         items = soup.select(item_sel)
         if not items:
             break
