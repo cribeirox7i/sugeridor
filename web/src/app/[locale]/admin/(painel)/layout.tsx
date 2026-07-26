@@ -26,6 +26,7 @@ export default async function PainelLayout({
     { href: "/admin/produtos", label: t("products") },
     { href: "/admin/ofertas", label: t("offers") },
     { href: "/admin/config", label: t("config") },
+    { href: "/admin/classificacao", label: t("classification") },
     { href: "/admin/coleta", label: t("collection") },
     { href: "/admin/logomarca", label: t("branding") },
   ];

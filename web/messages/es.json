@@ -5,6 +5,7 @@
     "products": "Productos",
     "offers": "Ofertas",
     "config": "Config",
+    "classification": "Clasificación",
     "collection": "Recolección",
     "branding": "Logotipo",
     "signOut": "Salir"
@@ -25,6 +26,7 @@
     "style": "Estilo",
     "country": "País",
     "store": "Tienda",
+    "brand": "Marca",
     "all": "Todos",
     "allFem": "Todas",
     "minPrice": "Precio mín.",
@@ -166,6 +168,8 @@
       "delete": "Eliminar",
       "deleteBlocked": "No se pudo eliminar: hay ofertas registradas para este producto. Elimina sus ofertas primero (pantalla Ofertas).",
       "saveFailed": "No se pudo guardar el producto. Inténtalo de nuevo.",
+      "normalizeNames": "Normalizar nombres existentes",
+      "normalizeResult": "{count, plural, =0 {Ningún nombre necesitó ajuste — ya estaban en Title Case.} =1 {1 nombre ajustado a Title Case.} other {# nombres ajustados a Title Case.}}",
       "confirmDelete": "¿Eliminar el producto \"{name}\"? Esta acción no se puede deshacer.",
       "searchPlaceholder": "Buscar producto...",
       "noTypes": "Ningún tipo de producto registrado. Ejecuta la migration 0002 (que crea \"Cerveza\") en Supabase antes de registrar productos."
@@ -233,6 +237,14 @@
       "colDrop": "Caída",
       "colPrice": "Precio",
       "colDate": "Cuándo"
+    },
+    "classification": {
+      "pageTitle": "Clasificación de productos",
+      "hint": "Las palabras encontradas en el nombre del producto lo clasifican automáticamente durante la recolección — se usa la primera categoría (en el orden de abajo) cuya palabra coincida con el nombre. Solo afecta productos nuevos, nunca reclasifica uno ya existente.",
+      "empty": "Ninguna palabra clave registrada.",
+      "addPlaceholder": "Nueva palabra clave...",
+      "add": "Agregar",
+      "confirmDelete": "¿Quitar \"{keyword}\" de esta categoría?"
     },
     "branding": {
       "title": "Logotipo del sitio",

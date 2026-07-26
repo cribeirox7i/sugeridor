@@ -7,7 +7,7 @@ import DeleteButton from "@/components/admin/DeleteButton";
 import ViewToggle from "@/components/admin/ViewToggle";
 import SearchBox from "@/components/admin/SearchBox";
 import ProductForm from "./ProductForm";
-import { deleteProduct } from "./actions";
+import { deleteProduct, normalizeExistingProductNames } from "./actions";
 import type { ProductCategory } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +27,16 @@ function categoryLabel(t: (key: string) => string, category: ProductCategory): s
 export default async function ProdutosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string; new?: string; error?: string; q?: string; view?: string }>;
+  searchParams: Promise<{
+    edit?: string;
+    new?: string;
+    error?: string;
+    q?: string;
+    view?: string;
+    normalized?: string;
+  }>;
 }) {
-  const { edit, new: isNew, error, q, view } = await searchParams;
+  const { edit, new: isNew, error, q, view, normalized } = await searchParams;
   const supabase = await createClient();
   const t = await getTranslations("admin.products");
   const tCommon = await getTranslations("admin.common");
@@ -78,7 +85,17 @@ export default async function ProdutosPage({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SearchBox placeholder={t("searchPlaceholder")} defaultValue={q} view={view} />
-        <ViewToggle defaultView="list" />
+        <div className="flex items-center gap-3">
+          <ViewToggle defaultView="list" />
+          <form action={normalizeExistingProductNames}>
+            <button
+              type="submit"
+              className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+            >
+              {t("normalizeNames")}
+            </button>
+          </form>
+        </div>
       </div>
 
       {error === "delete-blocked" && (
@@ -89,6 +106,11 @@ export default async function ProdutosPage({
       {error === "save-failed" && (
         <p className="rounded bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
           {t("saveFailed")}
+        </p>
+      )}
+      {normalized !== undefined && (
+        <p className="rounded bg-green-100 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+          {t("normalizeResult", { count: Number(normalized) })}
         </p>
       )}
 

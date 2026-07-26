@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "@/i18n/navigation";
+import { MODAL_FROM_GRID_KEY } from "@/lib/modalNav";
 
 // Modal controlado por URL: o pai (Server Component) decide se renderiza isto
 // ou não, baseado no searchParams (?new=1 ou ?edit=<id>). Fechar = navegar de
@@ -9,12 +10,26 @@ import { useRouter } from "@/i18n/navigation";
 export default function Modal({
   children,
   closeHref,
+  instantClose,
 }: {
   children: React.ReactNode;
   closeHref: string;
+  // Só o popup de produto na home passa isso (ver ProductCardLink.tsx) —
+  // permite fechar com router.back() quando foi aberto por clique no grid,
+  // reaproveitando o cache client-side do router em vez de forçar um novo
+  // carregamento da home via push. Modais do admin não passam essa prop e
+  // continuam fechando com push, como sempre.
+  instantClose?: boolean;
 }) {
   const router = useRouter();
-  const close = () => router.push(closeHref);
+  const close = () => {
+    if (instantClose && sessionStorage.getItem(MODAL_FROM_GRID_KEY)) {
+      sessionStorage.removeItem(MODAL_FROM_GRID_KEY);
+      router.back();
+      return;
+    }
+    router.push(closeHref);
+  };
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {

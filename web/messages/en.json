@@ -5,6 +5,7 @@
     "products": "Products",
     "offers": "Offers",
     "config": "Config",
+    "classification": "Classification",
     "collection": "Collection",
     "branding": "Logo",
     "signOut": "Sign out"
@@ -25,6 +26,7 @@
     "style": "Style",
     "country": "Country",
     "store": "Store",
+    "brand": "Brand",
     "all": "All",
     "allFem": "All",
     "minPrice": "Min. price",
@@ -166,6 +168,8 @@
       "delete": "Delete",
       "deleteBlocked": "Couldn't delete: there are offers registered for this product. Delete its offers first (Offers screen).",
       "saveFailed": "Couldn't save the product. Please try again.",
+      "normalizeNames": "Normalize existing names",
+      "normalizeResult": "{count, plural, =0 {No name needed adjusting — they were already Title Case.} =1 {1 name adjusted to Title Case.} other {# names adjusted to Title Case.}}",
       "confirmDelete": "Delete product \"{name}\"? This cannot be undone.",
       "searchPlaceholder": "Search product...",
       "noTypes": "No product type registered. Run migration 0002 (which seeds \"Beer\") on Supabase before registering products."
@@ -233,6 +237,14 @@
       "colDrop": "Drop",
       "colPrice": "Price",
       "colDate": "When"
+    },
+    "classification": {
+      "pageTitle": "Product classification",
+      "hint": "Words found in the product name classify it automatically during collection — the first category (in the order below) whose word matches the name is used. Only affects new products, it never reclassifies an existing one.",
+      "empty": "No keywords yet.",
+      "addPlaceholder": "New keyword...",
+      "add": "Add",
+      "confirmDelete": "Remove \"{keyword}\" from this category?"
     },
     "branding": {
       "title": "Site logo",

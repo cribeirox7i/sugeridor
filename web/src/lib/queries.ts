@@ -7,6 +7,7 @@ export type OfferFilters = {
   estilo?: string;
   pais?: string;
   storeId?: string;
+  brand?: string;
   precoMin?: number;
   precoMax?: number;
   q?: string;
@@ -55,6 +56,7 @@ export function filterOffers(offers: OfferListItem[], filters: OfferFilters): Of
     if (filters.precoMax != null && o.price > filters.precoMax) return false;
     if (filters.estilo && o.product.attributes?.estilo !== filters.estilo) return false;
     if (filters.pais && o.product.attributes?.pais !== filters.pais) return false;
+    if (filters.brand && o.product.brand !== filters.brand) return false;
     if (q) {
       const haystack = `${o.product.brand ?? ""} ${o.product.name}`.toLowerCase();
       if (!haystack.includes(q)) return false;
@@ -93,6 +95,17 @@ export function distinctAttributeValues(offers: OfferListItem[], key: string): s
     const v = o.product.attributes?.[key];
     if (typeof v === "string" && v.trim()) set.add(v);
     else if (typeof v === "number") set.add(String(v));
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+// Marcas distintas, derivado do mesmo array de ofertas ativas — mesmo
+// espírito de distinctAttributeValues, mas `brand` é coluna própria de
+// `products` (não vive dentro de `attributes`), daí a função separada.
+export function distinctBrandValues(offers: OfferListItem[]): string[] {
+  const set = new Set<string>();
+  for (const o of offers) {
+    if (o.product.brand?.trim()) set.add(o.product.brand);
   }
   return [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
 }

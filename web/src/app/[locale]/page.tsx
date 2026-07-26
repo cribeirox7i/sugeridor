@@ -5,6 +5,7 @@ import {
   filterOffers,
   sortOffers,
   distinctAttributeValues,
+  distinctBrandValues,
   storesWithActiveOffers,
   getPriceHistoryForOffers,
   getSiteSettings,
@@ -23,6 +24,8 @@ import Logo from "@/components/Logo";
 import Footer from "@/components/Footer";
 import Modal from "@/components/admin/Modal";
 import ProductDetail from "@/components/ProductDetail";
+import ProductDetailView from "@/components/ProductDetailView";
+import type { OfferListItem, PriceHistoryPoint } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +35,40 @@ function toNumber(v: string | undefined): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+// Deriva produto/ofertas/histórico do catálogo que a Home já buscou
+// (allOffers/historyByOffer), em vez de disparar as 3 queries próprias que
+// ProductDetail faria — é o motivo do popup ser lento: cada abertura/
+// fechamento reexecuta a Home inteira, e o produto clicado quase sempre já
+// está no mesmo array que a Home acabou de buscar um instante antes. Só cai
+// pro ProductDetail com query (fallback) quando o slug não está no catálogo
+// ativo — ex.: link antigo/compartilhado apontando pra um produto sem oferta
+// ativa hoje.
+function ProductPopup({
+  slug,
+  allOffers,
+  historyByOffer,
+}: {
+  slug: string;
+  allOffers: OfferListItem[];
+  historyByOffer: Map<string, PriceHistoryPoint[]>;
+}) {
+  const matches = allOffers.filter((o) => o.product.canonical_slug === slug);
+  if (matches.length === 0) return <ProductDetail slug={slug} />;
+
+  const product = matches[0].product;
+  const offers = matches.map((o) => ({
+    id: o.id,
+    price: o.price,
+    currency: o.currency,
+    store: { name: o.store.name },
+  }));
+  const history = matches
+    .flatMap((o) => historyByOffer.get(o.id) ?? [])
+    .sort((a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime());
+
+  return <ProductDetailView product={product} offers={offers} history={history} />;
+}
+
 export default async function Home({
   searchParams,
 }: {
@@ -39,6 +76,7 @@ export default async function Home({
     estilo?: string;
     pais?: string;
     loja?: string;
+    marca?: string;
     min?: string;
     max?: string;
     q?: string;
@@ -54,6 +92,7 @@ export default async function Home({
     estilo: sp.estilo || undefined,
     pais: sp.pais || undefined,
     storeId: sp.loja || undefined,
+    brand: sp.marca || undefined,
     precoMin: toNumber(sp.min),
     precoMax: toNumber(sp.max),
     q: sp.q || undefined,
@@ -65,6 +104,7 @@ export default async function Home({
   if (sp.estilo) closeParams.set("estilo", sp.estilo);
   if (sp.pais) closeParams.set("pais", sp.pais);
   if (sp.loja) closeParams.set("loja", sp.loja);
+  if (sp.marca) closeParams.set("marca", sp.marca);
   if (sp.min) closeParams.set("min", sp.min);
   if (sp.max) closeParams.set("max", sp.max);
   if (sp.q) closeParams.set("q", sp.q);
@@ -99,6 +139,7 @@ export default async function Home({
   const facetOffers = storeMode ? allOffers.filter((o) => o.store_id === filters.storeId) : allOffers;
   const estilos = distinctAttributeValues(facetOffers, "estilo");
   const paises = distinctAttributeValues(facetOffers, "pais");
+  const marcas = distinctBrandValues(facetOffers);
   const stores = storeMode ? [] : storesWithActiveOffers(allOffers);
   const featuredDeals = storeMode ? [] : computeFeaturedDeals(allOffers, historyByOffer, 5);
 
@@ -142,12 +183,14 @@ export default async function Home({
             <FilterBar
               estilos={estilos}
               paises={paises}
+              marcas={marcas}
               stores={stores}
               hideStore={storeMode}
               current={{
                 estilo: sp.estilo,
                 pais: sp.pais,
                 storeId: sp.loja,
+                brand: sp.marca,
                 precoMin: sp.min,
                 precoMax: sp.max,
                 q: sp.q,
@@ -191,8 +234,8 @@ export default async function Home({
       </div>
 
       {sp.produto && (
-        <Modal closeHref={closeHref}>
-          <ProductDetail slug={sp.produto} />
+        <Modal closeHref={closeHref} instantClose>
+          <ProductPopup slug={sp.produto} allOffers={allOffers} historyByOffer={historyByOffer} />
         </Modal>
       )}
     </div>

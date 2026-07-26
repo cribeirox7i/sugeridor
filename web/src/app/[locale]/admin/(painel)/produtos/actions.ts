@@ -5,13 +5,13 @@ import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 import { revalidateAllLocales } from "@/lib/revalidate";
-import { normalizeDashes } from "@/lib/text";
+import { normalizeDashes, titleCaseProductName } from "@/lib/text";
 import type { AttributeSchema, ProductType } from "@/lib/types";
 
 export async function saveProduct(formData: FormData) {
   const id = (formData.get("id") as string) || null;
   const product_type_id = formData.get("product_type_id") as string;
-  const name = normalizeDashes((formData.get("name") as string)?.trim() ?? "");
+  const name = titleCaseProductName(normalizeDashes((formData.get("name") as string)?.trim() ?? ""));
   const brandRaw = ((formData.get("brand") as string) || "").trim();
   const brand = brandRaw ? normalizeDashes(brandRaw) : null;
   const image_url = ((formData.get("image_url") as string) || "").trim() || null;
@@ -86,6 +86,35 @@ export async function deleteProduct(formData: FormData) {
 
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
+}
+
+// Lote de upsert pro backfill abaixo — mesma cautela de tamanho de request
+// já usada em web/src/lib/queries.ts (batches de ids).
+const BACKFILL_BATCH_SIZE = 200;
+
+// Botão único em /admin/produtos: aplica titleCaseProductName aos produtos
+// já cadastrados (a maioria em CAIXA ALTA, de antes desse pedido). Idempotente
+// — rodar de novo não muda nada em quem já está em Title Case, então não
+// precisa de controle de "já rodei antes".
+export async function normalizeExistingProductNames(_formData: FormData) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("products").select("id, name");
+  const products = (data ?? []) as { id: string; name: string }[];
+
+  const changed = products
+    .map((p) => ({ id: p.id, name: titleCaseProductName(normalizeDashes(p.name)) }))
+    .filter((p, i) => p.name !== products[i].name);
+
+  for (let i = 0; i < changed.length; i += BACKFILL_BATCH_SIZE) {
+    await supabase.from("products").upsert(changed.slice(i, i + BACKFILL_BATCH_SIZE), {
+      onConflict: "id",
+    });
+  }
+
+  revalidateAllLocales("/admin/produtos");
+  revalidateAllLocales("/");
+  const locale = await getLocale();
+  redirect(`/${locale}/admin/produtos?normalized=${changed.length}`);
 }
 
 // Usado pelo form pra listar os tipos disponíveis.

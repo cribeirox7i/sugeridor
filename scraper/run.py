@@ -16,7 +16,7 @@ import concurrent.futures
 import sys
 import traceback
 
-from . import db, enrich, pipeline
+from . import categorize, db, enrich, pipeline
 from .config import MAX_WORKERS, require_config
 from .models import StoreRecord
 from .platforms import get_collector
@@ -71,6 +71,10 @@ def run() -> int:
     if not rows:
         print("Nenhuma loja com platform definido. Nada a fazer.")
         return 0
+
+    # Carrega as palavras-chave de categoria (category_keywords) 1x, antes
+    # dos workers paralelos — evita 1 query por produto classificado.
+    categorize.load_keywords()
 
     total_failures = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:

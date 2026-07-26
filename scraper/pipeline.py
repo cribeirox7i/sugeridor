@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from . import db
 from .categorize import classify_category
 from .models import Candidate
-from .normalize import normalize_dashes, slugify
+from .normalize import normalize_dashes, slugify, title_case_pt
 
 _type_cache: dict[str, str] = {}
 _type_cache_lock = threading.Lock()
@@ -78,9 +78,10 @@ def process_candidate(cand: Candidate, store_id: str) -> bool:
             "products",
             {
                 "product_type_id": product_type_id(cand.product_type_slug),
-                # Caixa alta só no título — pedido explícito; marca fica como
-                # a fonte grava (costuma já vir em formato "de marca mesmo").
-                "name": cand.product_name.upper(),
+                # Title Case só no título (pedido explícito — CAIXA ALTA
+                # "ficou feio"); marca fica como a fonte grava (costuma já
+                # vir em formato "de marca mesmo").
+                "name": title_case_pt(cand.product_name),
                 "brand": brand,
                 "attributes": cand.attributes,
                 "image_url": cand.image_url,

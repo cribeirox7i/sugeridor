@@ -29,6 +29,38 @@ def clean_product_name(name: str) -> str:
     return normalize_dashes(re.sub(r"^\s*cerveja\s+", "", name, flags=re.IGNORECASE).strip())
 
 
+# Artigos/preposições/conjunções comuns em pt/es que ficam minúsculos no
+# Title Case, exceto quando são a primeira palavra do nome — mesma lista
+# espelhada em web/src/lib/text.ts::titleCaseProductName.
+_LOWERCASE_WORDS = {
+    "a", "o", "os", "as", "um", "uma", "uns", "umas",
+    "de", "da", "do", "das", "dos", "em", "no", "na", "nos", "nas",
+    "por", "para", "com", "e",
+    "el", "la", "los", "las", "del", "al", "en", "un", "una", "y",
+}
+
+# Siglas de estilo de cerveja que ficam sempre maiúsculas — sem essa lista,
+# Title Case ingênuo transformaria "IPA" em "Ipa".
+_UPPERCASE_ACRONYMS = {"ipa", "apa", "neipa", "dipa", "tipa", "ipl", "esb", "ris", "abv", "ba"}
+
+
+def title_case_pt(name: str) -> str:
+    """Nome em Title Case, com artigos/preposições minúsculos e siglas de
+    estilo sempre maiúsculas. Substitui o `.upper()` usado antes só no título
+    (nunca em `brand`, que continua exatamente como a fonte grava)."""
+    words = name.split()
+    result = []
+    for i, word in enumerate(words):
+        lower = word.lower()
+        if lower in _UPPERCASE_ACRONYMS:
+            result.append(lower.upper())
+        elif i > 0 and lower in _LOWERCASE_WORDS:
+            result.append(lower)
+        else:
+            result.append(lower[:1].upper() + lower[1:])
+    return " ".join(result)
+
+
 def parse_volume_ml(name: str) -> int | None:
     """Extrai volume em ml do nome. Trata '330ml', '355 ml', '500ML', '1L', '1,5L'."""
     # litros
