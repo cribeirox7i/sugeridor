@@ -48,7 +48,7 @@ chave nunca vai pro frontend — só existe como secret do GitHub Actions.
 
 ## Teto de produtos por loja (guard-rail genérico)
 
-Todo coletor para em `DEFAULT_MAX_ITEMS_PER_STORE` (padrão 150, ver
+Todo coletor para em `DEFAULT_MAX_ITEMS_PER_STORE` (padrão 200, ver
 `scraper/config.py`) produtos coletados, não importa quantas páginas/blocos
 faltariam — proteção contra paginação que não termina (config errada, CDN
 devolvendo página repetida em vez de vazia, catálogo real gigante). Lojas

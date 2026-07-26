@@ -9,7 +9,7 @@ endpoint por `?page=N`, igual ao catálogo inteiro. Sem isso, uma loja
 genérica (não 100% cerveja) traria todo o catálogo — foi o que aconteceu
 com a Casa Flora (vinho, mercearia etc. junto com cerveja).
 
-config (opcional): { "max_pages": 50, "max_items": 150 }
+config (opcional): { "max_pages": 50, "max_items": 200 }
 """
 import re
 

@@ -17,7 +17,7 @@ config:
       {"tag": "...", "ini": "...", "fim": "...", "tipo": "IMG"},
       {"tag": "...", "ini": "...", "fim": "...", "tipo": "URL"}
     ],
-    "max_items": 150
+    "max_items": 200
   }
 tipo: NOM (nome), PRC (preço), IMG (imagem), URL (link do produto).
 """

@@ -25,7 +25,7 @@ MAX_PAGES = int(os.environ.get("SCRAPER_MAX_PAGES", "20"))
 # independente de quantas páginas/blocos faltariam. Lojas com catálogo
 # real maior que isso podem sobrescrever via `config.max_items` (JSONB da
 # loja no admin) — ver scraper/README.md.
-DEFAULT_MAX_ITEMS_PER_STORE = int(os.environ.get("SCRAPER_MAX_ITEMS_PER_STORE", "150"))
+DEFAULT_MAX_ITEMS_PER_STORE = int(os.environ.get("SCRAPER_MAX_ITEMS_PER_STORE", "200"))
 
 # Quantas lojas coletar em paralelo (threads) — são hosts diferentes, então o
 # rate limit por host (ver http.py) continua respeitado dentro de cada uma;

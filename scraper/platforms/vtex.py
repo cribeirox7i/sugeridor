@@ -8,7 +8,7 @@ abrindo a aba Rede do navegador na página de categoria). Paginação via
 `_from`/`_to` é feita por este coletor; não inclua esses parâmetros na URL.
 
 config (opcional):
-  { "step": 24, "max_blocks": 200, "max_items": 150 }
+  { "step": 24, "max_blocks": 200, "max_items": 200 }
 """
 import re
 

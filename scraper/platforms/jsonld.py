@@ -13,7 +13,7 @@ config:
     "url_contains": "/produto/",            # opcional: filtro extra do href
     "page_param": "pagina",                 # nome do parâmetro de página na URL
     "max_pages": 20,
-    "max_items": 150
+    "max_items": 200
   }
 """
 import json

@@ -14,7 +14,7 @@ config:
     "link_selector": "a",
     "page_param": "page",               # opcional, se a listagem pagina por query string
     "max_pages": 1,
-    "max_items": 150
+    "max_items": 200
   }
 """
 from bs4 import BeautifulSoup
