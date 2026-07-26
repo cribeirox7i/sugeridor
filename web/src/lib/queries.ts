@@ -63,6 +63,25 @@ export function filterOffers(offers: OfferListItem[], filters: OfferFilters): Of
   });
 }
 
+export type OfferSort = "preco" | "nome" | "pais";
+
+// Reordena o resultado já filtrado. 'preco' não precisa reordenar — listOffers
+// já busca ordenado por preço e filterOffers preserva a ordem.
+export function sortOffers(offers: OfferListItem[], sort: OfferSort | undefined): OfferListItem[] {
+  if (!sort || sort === "preco") return offers;
+  const sorted = [...offers];
+  if (sort === "nome") {
+    sorted.sort((a, b) => a.product.name.localeCompare(b.product.name, "pt-BR"));
+  } else if (sort === "pais") {
+    sorted.sort((a, b) => {
+      const pa = String(a.product.attributes?.pais ?? "");
+      const pb = String(b.product.attributes?.pais ?? "");
+      return pa.localeCompare(pb, "pt-BR");
+    });
+  }
+  return sorted;
+}
+
 // Valores distintos de um atributo (ex: todos os estilos existentes) pra
 // montar as opções dos filtros — derivado do array de ofertas ATIVAS já
 // buscado (não do currently-filtrado), pra nunca oferecer um valor que

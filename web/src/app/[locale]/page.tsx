@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   listOffers,
   filterOffers,
+  sortOffers,
   distinctAttributeValues,
   storesWithActiveOffers,
   getPriceHistoryForOffers,
@@ -41,6 +42,7 @@ export default async function Home({
     min?: string;
     max?: string;
     q?: string;
+    ordenar?: string;
     produto?: string;
   }>;
 }) {
@@ -56,6 +58,7 @@ export default async function Home({
     precoMax: toNumber(sp.max),
     q: sp.q || undefined,
   };
+  const sort = (sp.ordenar as "preco" | "nome" | "pais" | undefined) || undefined;
 
   // Fechar o popup do produto volta pros mesmos filtros ativos, sem o ?produto=.
   const closeParams = new URLSearchParams();
@@ -65,6 +68,7 @@ export default async function Home({
   if (sp.min) closeParams.set("min", sp.min);
   if (sp.max) closeParams.set("max", sp.max);
   if (sp.q) closeParams.set("q", sp.q);
+  if (sp.ordenar) closeParams.set("ordenar", sp.ordenar);
   const closeHref = closeParams.toString() ? `/?${closeParams.toString()}` : "/";
   const storeMode = Boolean(filters.storeId);
 
@@ -78,7 +82,7 @@ export default async function Home({
     storeMode ? getStoreById(supabase, filters.storeId!) : Promise.resolve(null),
   ]);
 
-  const offers = filterOffers(allOffers, filters);
+  const offers = sortOffers(filterOffers(allOffers, filters), sort);
 
   // Histórico de TODAS as ofertas ativas, numa query só — cobre tanto o
   // selo "-X%" da grid filtrada quanto os destaques (que olham o catálogo
@@ -88,10 +92,13 @@ export default async function Home({
     allOffers.map((o) => o.id),
   );
 
-  // Facetas de filtro e destaques só fazem sentido fora da "página da loja"
-  // (que esconde FilterBar/FeaturedDeals/StoreCarousel) — evita computação à toa.
-  const estilos = storeMode ? [] : distinctAttributeValues(allOffers, "estilo");
-  const paises = storeMode ? [] : distinctAttributeValues(allOffers, "pais");
+  // A barra de filtros aparece nos dois modos (na "página da loja" só sem o
+  // select de loja) — mas estilo/país lá devem refletir só o catálogo
+  // DAQUELA loja, não o site inteiro. `stores` (opções do select de loja) e
+  // destaques só fazem sentido fora da página da loja.
+  const facetOffers = storeMode ? allOffers.filter((o) => o.store_id === filters.storeId) : allOffers;
+  const estilos = distinctAttributeValues(facetOffers, "estilo");
+  const paises = distinctAttributeValues(facetOffers, "pais");
   const stores = storeMode ? [] : storesWithActiveOffers(allOffers);
   const featuredDeals = storeMode ? [] : computeFeaturedDeals(allOffers, historyByOffer, 5);
 
@@ -104,10 +111,18 @@ export default async function Home({
   // Carrossel de lojas usa o mesmo conjunto (com oferta ativa) do filtro.
   const storesWithOffers = stores;
 
+  // storeId sempre vem preenchido em storeMode (é o que define o modo) — não
+  // conta como "filtro ativo" pro badge do acordeon nesse caso, senão o
+  // contador nunca zera na página da loja.
+  const activeFilterCount = Object.entries(filters).filter(
+    ([key, value]) => value !== undefined && !(key === "storeId" && storeMode),
+  ).length;
+
   return (
-    <div className="flex min-h-screen flex-col bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
-      <header className="border-b border-neutral-200 dark:border-neutral-800">
-        <div className="mx-auto flex max-w-[920px] items-start justify-between px-6 py-6">
+    <div className="flex h-dvh flex-col overflow-hidden bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
+      {/* Navbar fixo — fora da área rolável, nunca sai de vista. */}
+      <header className="shrink-0 border-b border-neutral-200 dark:border-neutral-800">
+        <div className="mx-auto flex max-w-[860px] items-start justify-between px-6 py-6">
           <div>
             <Logo settings={siteSettings} fallbackText={t("title")} className="h-8" />
             <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("subtitle")}</p>
@@ -119,50 +134,60 @@ export default async function Home({
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[920px] flex-1 space-y-6 px-6 py-6">
-        {storeMode ? (
-          <StoreHeader store={storeDetail} />
-        ) : (
-          <>
-            <FeaturedDeals deals={featuredDeals} />
+      {/* Barra de filtros também fixa, logo abaixo do navbar — aparece nos
+          dois modos (na página da loja, sem o select de loja). */}
+      <div className="shrink-0 border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
+        <div className="mx-auto w-full max-w-[860px]">
+          <FiltersAccordion activeCount={activeFilterCount}>
+            <FilterBar
+              estilos={estilos}
+              paises={paises}
+              stores={stores}
+              hideStore={storeMode}
+              current={{
+                estilo: sp.estilo,
+                pais: sp.pais,
+                storeId: sp.loja,
+                precoMin: sp.min,
+                precoMax: sp.max,
+                q: sp.q,
+                ordenar: sp.ordenar,
+              }}
+            />
+          </FiltersAccordion>
+        </div>
+      </div>
 
-            <StoreCarousel stores={storesWithOffers} />
+      {/* Só esta área rola — o "conteúdo orgânico" da página. */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-[860px] space-y-6 px-6 py-6">
+          {storeMode ? (
+            <StoreHeader store={storeDetail} />
+          ) : (
+            <>
+              <FeaturedDeals deals={featuredDeals} />
+              <StoreCarousel stores={storesWithOffers} />
+            </>
+          )}
 
-            <FiltersAccordion
-              activeCount={Object.values(filters).filter((v) => v !== undefined).length}
-            >
-              <FilterBar
-                estilos={estilos}
-                paises={paises}
-                stores={stores}
-                current={{
-                  estilo: sp.estilo,
-                  pais: sp.pais,
-                  storeId: sp.loja,
-                  precoMin: sp.min,
-                  precoMax: sp.max,
-                  q: sp.q,
-                }}
-              />
-            </FiltersAccordion>
-          </>
-        )}
+          <p className="text-sm text-neutral-500 dark:text-neutral-500">
+            {t("offerCount", { count: offers.length })}
+          </p>
 
-        <p className="text-sm text-neutral-500 dark:text-neutral-500">
-          {t("offerCount", { count: offers.length })}
-        </p>
+          {offers.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-neutral-300 p-12 text-center text-neutral-500 dark:border-neutral-800">
+              {t("noOffers")}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {offers.map((offer) => (
+                <OfferCard key={offer.id} offer={offer} dropPercent={dropByOffer.get(offer.id)} />
+              ))}
+            </div>
+          )}
+        </div>
 
-        {offers.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-neutral-300 p-12 text-center text-neutral-500 dark:border-neutral-800">
-            {t("noOffers")}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {offers.map((offer) => (
-              <OfferCard key={offer.id} offer={offer} dropPercent={dropByOffer.get(offer.id)} />
-            ))}
-          </div>
-        )}
+        <Footer />
       </div>
 
       {sp.produto && (
@@ -170,8 +195,6 @@ export default async function Home({
           <ProductDetail slug={sp.produto} />
         </Modal>
       )}
-
-      <Footer />
     </div>
   );
 }

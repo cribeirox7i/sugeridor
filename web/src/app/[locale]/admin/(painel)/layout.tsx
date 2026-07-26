@@ -31,8 +31,9 @@ export default async function PainelLayout({
   ];
 
   return (
-    <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
-      <header className="border-b border-neutral-200 dark:border-neutral-800">
+    <div className="flex h-dvh flex-col overflow-hidden bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
+      {/* shrink-0 + só o <main> rola abaixo — navbar nunca sai de vista. */}
+      <header className="shrink-0 border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto flex max-w-[1140px] items-center justify-between px-6 py-3">
           <nav className="flex items-center gap-1">
             <span className="mr-3 font-semibold">Sugeridor</span>
@@ -61,7 +62,9 @@ export default async function PainelLayout({
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-[1140px] px-6 py-8">{children}</main>
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-[1140px] px-6 py-8">{children}</div>
+      </main>
     </div>
   );
 }

@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 
@@ -5,6 +8,7 @@ type Props = {
   estilos: string[];
   paises: string[];
   stores: { id: string; name: string }[];
+  hideStore?: boolean;
   current: {
     estilo?: string;
     pais?: string;
@@ -12,26 +16,34 @@ type Props = {
     precoMin?: string;
     precoMax?: string;
     q?: string;
+    ordenar?: string;
   };
 };
 
 // Formulário GET puro: submeter recarrega a página com os filtros na query string.
-// Sem JS no cliente — funciona com cache/SSR e é simples de linkar/compartilhar.
-export default function FilterBar({ estilos, paises, stores, current }: Props) {
+// Campos primários (busca/estilo/país/ordenar) cabem numa linha só no desktop;
+// loja e faixa de preço ficam atrás de "Mais filtros" — sem isso a barra
+// quebrava em 2+ linhas (mais ainda depois da largura da página reduzida).
+export default function FilterBar({ estilos, paises, stores, hideStore, current }: Props) {
   const t = useTranslations("filters");
+  const [showMore, setShowMore] = useState(false);
   const inputCls =
-    "rounded border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
+    "rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
   const hasFilters =
     current.estilo ||
     current.pais ||
     current.storeId ||
     current.precoMin ||
     current.precoMax ||
-    current.q;
+    current.q ||
+    current.ordenar;
+  const moreFiltersCount = [!hideStore && current.storeId, current.precoMin, current.precoMax].filter(
+    Boolean,
+  ).length;
 
   return (
     <form method="get" className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-      <label className="flex w-full flex-col gap-1 sm:w-48">
+      <label className="flex w-full flex-col gap-1 sm:w-36">
         <span className="text-xs text-neutral-500">{t("search")}</span>
         <input
           type="search"
@@ -42,7 +54,7 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
         />
       </label>
 
-      <label className="flex w-full flex-col gap-1 sm:w-auto">
+      <label className="flex w-full flex-col gap-1 sm:w-32">
         <span className="text-xs text-neutral-500">{t("style")}</span>
         <select name="estilo" defaultValue={current.estilo ?? ""} className={inputCls}>
           <option value="">{t("all")}</option>
@@ -54,7 +66,7 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
         </select>
       </label>
 
-      <label className="flex w-full flex-col gap-1 sm:w-auto">
+      <label className="flex w-full flex-col gap-1 sm:w-28">
         <span className="text-xs text-neutral-500">{t("country")}</span>
         <select name="pais" defaultValue={current.pais ?? ""} className={inputCls}>
           <option value="">{t("all")}</option>
@@ -66,40 +78,61 @@ export default function FilterBar({ estilos, paises, stores, current }: Props) {
         </select>
       </label>
 
-      <label className="flex w-full flex-col gap-1 sm:w-auto">
-        <span className="text-xs text-neutral-500">{t("store")}</span>
-        <select name="loja" defaultValue={current.storeId ?? ""} className={inputCls}>
-          <option value="">{t("allFem")}</option>
-          {stores.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
+      <label className="flex w-full flex-col gap-1 sm:w-32">
+        <span className="text-xs text-neutral-500">{t("sortBy")}</span>
+        <select name="ordenar" defaultValue={current.ordenar ?? "preco"} className={inputCls}>
+          <option value="preco">{t("sortPrice")}</option>
+          <option value="nome">{t("sortName")}</option>
+          <option value="pais">{t("sortCountry")}</option>
         </select>
       </label>
 
-      <div className="flex w-full gap-3 sm:w-auto">
-        <label className="flex flex-1 flex-col gap-1 sm:w-24 sm:flex-none">
-          <span className="text-xs text-neutral-500">{t("minPrice")}</span>
-          <input
-            name="min"
-            inputMode="decimal"
-            defaultValue={current.precoMin ?? ""}
-            placeholder="0"
-            className={inputCls}
-          />
-        </label>
+      <button
+        type="button"
+        onClick={() => setShowMore((v) => !v)}
+        className="text-left text-xs text-amber-600 underline decoration-dotted hover:text-amber-700 sm:pb-2 dark:text-amber-400"
+      >
+        {showMore ? t("lessFilters") : t("moreFilters", { count: moreFiltersCount })}
+      </button>
 
-        <label className="flex flex-1 flex-col gap-1 sm:w-24 sm:flex-none">
-          <span className="text-xs text-neutral-500">{t("maxPrice")}</span>
-          <input
-            name="max"
-            inputMode="decimal"
-            defaultValue={current.precoMax ?? ""}
-            placeholder="∞"
-            className={inputCls}
-          />
-        </label>
+      <div className={showMore ? "flex w-full flex-col gap-3 sm:contents" : "hidden"}>
+        {!hideStore && (
+          <label className="flex w-full flex-col gap-1 sm:w-32">
+            <span className="text-xs text-neutral-500">{t("store")}</span>
+            <select name="loja" defaultValue={current.storeId ?? ""} className={inputCls}>
+              <option value="">{t("allFem")}</option>
+              {stores.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        <div className="flex w-full gap-3 sm:w-auto">
+          <label className="flex flex-1 flex-col gap-1 sm:w-20 sm:flex-none">
+            <span className="text-xs text-neutral-500">{t("minPrice")}</span>
+            <input
+              name="min"
+              inputMode="decimal"
+              defaultValue={current.precoMin ?? ""}
+              placeholder="0"
+              className={inputCls}
+            />
+          </label>
+
+          <label className="flex flex-1 flex-col gap-1 sm:w-20 sm:flex-none">
+            <span className="text-xs text-neutral-500">{t("maxPrice")}</span>
+            <input
+              name="max"
+              inputMode="decimal"
+              defaultValue={current.precoMax ?? ""}
+              placeholder="∞"
+              className={inputCls}
+            />
+          </label>
+        </div>
       </div>
 
       <div className="flex w-full gap-2 sm:w-auto">

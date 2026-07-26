@@ -29,6 +29,12 @@
     "allFem": "Todas",
     "minPrice": "Preço mín.",
     "maxPrice": "Preço máx.",
+    "sortBy": "Ordenar por",
+    "sortPrice": "Preço",
+    "sortName": "Nome",
+    "sortCountry": "País",
+    "moreFilters": "Mais filtros{count, plural, =0 {} other { ({count})}}",
+    "lessFilters": "Menos filtros",
     "filter": "Filtrar",
     "clear": "Limpar"
   },

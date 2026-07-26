@@ -8,7 +8,7 @@ export default async function Footer() {
 
   return (
     <footer className="mt-auto bg-neutral-950 text-neutral-400">
-      <div className="mx-auto max-w-[920px] px-6 py-10">
+      <div className="mx-auto max-w-[860px] px-6 py-10">
         <div className="grid gap-8 sm:grid-cols-2">
           <div>
             <p className="text-lg font-semibold text-neutral-100">Sugeridor</p>

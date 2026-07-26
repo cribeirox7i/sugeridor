@@ -29,6 +29,12 @@
     "allFem": "All",
     "minPrice": "Min. price",
     "maxPrice": "Max. price",
+    "sortBy": "Sort by",
+    "sortPrice": "Price",
+    "sortName": "Name",
+    "sortCountry": "Country",
+    "moreFilters": "More filters{count, plural, =0 {} other { ({count})}}",
+    "lessFilters": "Fewer filters",
     "filter": "Filter",
     "clear": "Clear"
   },
