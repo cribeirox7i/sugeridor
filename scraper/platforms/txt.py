@@ -17,12 +17,13 @@ config:
       {"tag": "...", "ini": "...", "fim": "...", "tipo": "IMG"},
       {"tag": "...", "ini": "...", "fim": "...", "tipo": "URL"}
     ],
-    "max_items": 2000
+    "max_items": 150
   }
 tipo: NOM (nome), PRC (preço), IMG (imagem), URL (link do produto).
 """
 import html as htmllib
 
+from ..config import DEFAULT_MAX_ITEMS_PER_STORE
 from ..extract import absolute_url
 from ..http import fetch
 from ..models import Candidate, StoreRecord
@@ -35,7 +36,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
     fields = cfg.get("fields") or []
     if not fields:
         raise ValueError("config.fields é obrigatório para platform 'txt'")
-    max_items = int(cfg.get("max_items", 2000))
+    max_items = int(cfg.get("max_items", DEFAULT_MAX_ITEMS_PER_STORE))
 
     text = htmllib.unescape(fetch(store.site_url))
 

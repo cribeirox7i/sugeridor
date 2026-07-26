@@ -12,7 +12,8 @@ config:
     "link_selector": ".spot_container a",   # CSS selector dos links na listagem
     "url_contains": "/produto/",            # opcional: filtro extra do href
     "page_param": "pagina",                 # nome do parâmetro de página na URL
-    "max_pages": 20
+    "max_pages": 20,
+    "max_items": 150
   }
 """
 import json
@@ -20,6 +21,7 @@ import re
 
 from bs4 import BeautifulSoup
 
+from ..config import DEFAULT_MAX_ITEMS_PER_STORE
 from ..extract import absolute_url
 from ..http import fetch
 from ..models import Candidate, StoreRecord
@@ -154,11 +156,14 @@ def collect(store: StoreRecord) -> list[Candidate]:
     url_contains = cfg.get("url_contains", "")
     page_param = cfg.get("page_param", "pagina")
     max_pages = int(cfg.get("max_pages", 20))
+    max_items = int(cfg.get("max_items", DEFAULT_MAX_ITEMS_PER_STORE))
 
     seen_links: set[str] = set()
     candidates: list[Candidate] = []
 
     for page in range(1, max_pages + 1):
+        if len(seen_links) >= max_items:
+            break
         try:
             listing_html = fetch(_page_url(store.site_url, page, page_param))
         except Exception as e:  # noqa: BLE001 — erro numa página não deve jogar fora as anteriores
@@ -171,6 +176,9 @@ def collect(store: StoreRecord) -> list[Candidate]:
         ]
         if not links:
             break
+        # Corta aqui, antes de abrir cada página de produto (1 request cada)
+        # — não faz sentido gastar requests com links que vão passar do teto.
+        links = links[: max_items - len(seen_links)]
         for link in links:
             seen_links.add(link)
             try:

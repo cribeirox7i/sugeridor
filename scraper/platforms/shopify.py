@@ -9,10 +9,11 @@ endpoint por `?page=N`, igual ao catálogo inteiro. Sem isso, uma loja
 genérica (não 100% cerveja) traria todo o catálogo — foi o que aconteceu
 com a Casa Flora (vinho, mercearia etc. junto com cerveja).
 
-config (opcional): { "max_pages": 50 }
+config (opcional): { "max_pages": 50, "max_items": 150 }
 """
 import re
 
+from ..config import DEFAULT_MAX_ITEMS_PER_STORE
 from ..extract import absolute_url
 from ..http import fetch_json
 from ..models import Candidate, StoreRecord
@@ -38,6 +39,7 @@ def _products_json_url(site_url: str) -> str:
 def collect(store: StoreRecord) -> list[Candidate]:
     cfg = store.config or {}
     max_pages = int(cfg.get("max_pages", 50))
+    max_items = int(cfg.get("max_items", DEFAULT_MAX_ITEMS_PER_STORE))
     endpoint = _products_json_url(store.site_url)
     domain = _domain_of(store.site_url)
 
@@ -93,5 +95,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
                     attributes=attributes,
                 )
             )
+            if len(candidates) >= max_items:
+                return candidates
 
     return candidates

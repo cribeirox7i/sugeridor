@@ -13,12 +13,14 @@ config:
     "image_attr": "src",                # ou "data-src" se for lazy-load
     "link_selector": "a",
     "page_param": "page",               # opcional, se a listagem pagina por query string
-    "max_pages": 1
+    "max_pages": 1,
+    "max_items": 150
   }
 """
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
+from ..config import DEFAULT_MAX_ITEMS_PER_STORE
 from ..extract import absolute_url
 from ..http import fetch
 from ..models import Candidate, StoreRecord
@@ -54,6 +56,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
     link_sel = cfg.get("link_selector", "a")
     page_param = cfg.get("page_param")
     max_pages = int(cfg.get("max_pages", 1))
+    max_items = int(cfg.get("max_items", DEFAULT_MAX_ITEMS_PER_STORE))
 
     candidates: list[Candidate] = []
 
@@ -97,6 +100,8 @@ def collect(store: StoreRecord) -> list[Candidate]:
                     attributes=attributes,
                 )
             )
+            if len(candidates) >= max_items:
+                return candidates
 
         if not page_param:
             break

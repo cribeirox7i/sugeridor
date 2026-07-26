@@ -46,6 +46,15 @@ admin (`web/src/lib/platforms.ts` — manter as duas em sincronia).
 O scraper escreve usando a **service_role key** do Supabase (ignora RLS). Essa
 chave nunca vai pro frontend — só existe como secret do GitHub Actions.
 
+## Teto de produtos por loja (guard-rail genérico)
+
+Todo coletor para em `DEFAULT_MAX_ITEMS_PER_STORE` (padrão 150, ver
+`scraper/config.py`) produtos coletados, não importa quantas páginas/blocos
+faltariam — proteção contra paginação que não termina (config errada, CDN
+devolvendo página repetida em vez de vazia, catálogo real gigante). Lojas
+com catálogo real maior que isso precisam de `"max_items": <N>` na `config`
+da loja (JSONB, editável no admin) pra não serem cortadas.
+
 ## Rate limit é por host, não global
 
 `http.py` guarda o timestamp do último request **por domínio**. Isso é o que

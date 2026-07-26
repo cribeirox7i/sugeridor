@@ -8,10 +8,11 @@ abrindo a aba Rede do navegador na página de categoria). Paginação via
 `_from`/`_to` é feita por este coletor; não inclua esses parâmetros na URL.
 
 config (opcional):
-  { "step": 24, "max_blocks": 200 }
+  { "step": 24, "max_blocks": 200, "max_items": 150 }
 """
 import re
 
+from ..config import DEFAULT_MAX_ITEMS_PER_STORE
 from ..extract import absolute_url
 from ..http import fetch_json
 from ..models import Candidate, StoreRecord
@@ -27,6 +28,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
     cfg = store.config or {}
     step = int(cfg.get("step", 24))
     max_blocks = int(cfg.get("max_blocks", 200))
+    max_items = int(cfg.get("max_items", DEFAULT_MAX_ITEMS_PER_STORE))
 
     base = _strip_pagination(store.site_url)
     candidates: list[Candidate] = []
@@ -78,6 +80,8 @@ def collect(store: StoreRecord) -> list[Candidate]:
                     attributes=attributes,
                 )
             )
+            if len(candidates) >= max_items:
+                return candidates
 
         if len(data) < step:
             break  # último bloco

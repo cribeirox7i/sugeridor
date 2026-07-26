@@ -18,6 +18,15 @@ REQUEST_DELAY = float(os.environ.get("SCRAPER_REQUEST_DELAY", "1.0"))
 # Teto de páginas de listagem por loja, salvaguarda contra loop.
 MAX_PAGES = int(os.environ.get("SCRAPER_MAX_PAGES", "20"))
 
+# Teto de produtos coletados por loja por execução — guard-rail genérico
+# contra qualquer coisa que faça um coletor rodar mais do que devia (loop
+# de paginação, CDN devolvendo página repetida, config errada, catálogo
+# real gigante). Cada coletor para assim que atingir esse número,
+# independente de quantas páginas/blocos faltariam. Lojas com catálogo
+# real maior que isso podem sobrescrever via `config.max_items` (JSONB da
+# loja no admin) — ver scraper/README.md.
+DEFAULT_MAX_ITEMS_PER_STORE = int(os.environ.get("SCRAPER_MAX_ITEMS_PER_STORE", "150"))
+
 # Quantas lojas coletar em paralelo (threads) — são hosts diferentes, então o
 # rate limit por host (ver http.py) continua respeitado dentro de cada uma;
 # isso só evita que uma loja lenta bloqueie a fila inteira das outras 100+.
