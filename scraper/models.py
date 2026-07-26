@@ -29,3 +29,9 @@ class StoreRecord:
     site_url: str
     platform: str
     config: dict = field(default_factory=dict)
+    # 'marketplace' revende várias marcas; 'propria' é a loja da própria
+    # cervejaria — nesse caso marca/país do produto SÃO os da loja (ver
+    # pipeline.py), não o que a fonte informa (o vendor do Shopify da Japas,
+    # por exemplo, traz o estilo da cerveja em vez da marca).
+    store_type: str = "marketplace"
+    country: str = "Brasil"

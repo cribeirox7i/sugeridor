@@ -55,3 +55,58 @@ def upsert(table: str, row: dict, on_conflict: str) -> dict | None:
     r.raise_for_status()
     data = r.json() if r.text else []
     return data[0] if isinstance(data, list) and data else None
+
+
+# ── Operações em lote ─────────────────────────────────────────────
+# O PostgREST aceita um array de linhas num único POST. Uma request por
+# LOTE em vez de uma por produto é o que viabiliza 100+ lojas: antes eram 3
+# round-trips por candidato (select do slug + upsert da oferta + insert do
+# histórico), ou seja ~60 mil requests pra 100 lojas × 200 itens — só de
+# latência isso estoura qualquer limite de tempo de job. Ver pipeline.py.
+_BATCH_SIZE = 500
+
+
+def _chunks(rows: list[dict], size: int = _BATCH_SIZE):
+    for i in range(0, len(rows), size):
+        yield rows[i : i + size]
+
+
+def insert_many(table: str, rows: list[dict], *, returning: bool = True) -> list[dict]:
+    """Insere várias linhas em lotes. Devolve as linhas criadas (na ordem em
+    que o banco as retornou) quando `returning`."""
+    out: list[dict] = []
+    prefer = "return=representation" if returning else "return=minimal"
+    for batch in _chunks(rows):
+        r = requests.post(
+            _url(table), headers=_headers({"Prefer": prefer}), json=batch, timeout=60
+        )
+        r.raise_for_status()
+        if returning and r.text:
+            data = r.json()
+            if isinstance(data, list):
+                out.extend(data)
+    return out
+
+
+def upsert_many(table: str, rows: list[dict], on_conflict: str) -> list[dict]:
+    """Upsert de várias linhas em lotes, devolvendo as linhas resultantes.
+
+    ATENÇÃO: o Postgres recusa o comando inteiro se a MESMA chave de conflito
+    aparecer duas vezes no mesmo lote ("ON CONFLICT DO UPDATE command cannot
+    affect row a second time") — o caller precisa deduplicar por
+    `on_conflict` antes de chamar."""
+    out: list[dict] = []
+    for batch in _chunks(rows):
+        r = requests.post(
+            _url(table),
+            headers=_headers({"Prefer": "resolution=merge-duplicates,return=representation"}),
+            params={"on_conflict": on_conflict},
+            json=batch,
+            timeout=60,
+        )
+        r.raise_for_status()
+        if r.text:
+            data = r.json()
+            if isinstance(data, list):
+                out.extend(data)
+    return out

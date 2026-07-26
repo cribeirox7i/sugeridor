@@ -7,7 +7,7 @@ import DeleteButton from "@/components/admin/DeleteButton";
 import ViewToggle from "@/components/admin/ViewToggle";
 import SearchBox from "@/components/admin/SearchBox";
 import { saveStore, deleteStore } from "./actions";
-import PlatformFields from "./PlatformFields";
+import StoreForm from "./StoreForm";
 import DetectPlatformCardButton from "./DetectPlatformCardButton";
 
 export const dynamic = "force-dynamic";
@@ -37,51 +37,20 @@ export default async function LojasPage({
       <h2 className="font-medium">{editing ? t("editTitle") : t("newTitle")}</h2>
       {editing && <input type="hidden" name="id" value={editing.id} />}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="space-y-1">
-          <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("name")}</span>
-          <input
-            name="name"
-            required
-            defaultValue={editing?.name ?? ""}
-            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-          />
-        </label>
-
-        <label className="space-y-1">
-          <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("storeType")}</span>
-          <select
-            name="store_type"
-            defaultValue={editing?.store_type ?? "marketplace"}
-            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-          >
-            <option value="marketplace">{t("storeTypeMarketplace")}</option>
-            <option value="propria">{t("storeTypePropria")}</option>
-          </select>
-          <span className="text-xs text-neutral-500 dark:text-neutral-600">{t("storeTypeHint")}</span>
-        </label>
-
-        <label className="space-y-1">
-          <span className="text-sm text-neutral-500 dark:text-neutral-400">{t("country")}</span>
-          <input
-            name="country"
-            defaultValue={editing?.country ?? "Brasil"}
-            className="w-full rounded border border-neutral-300 bg-white px-3 py-2 text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
-          />
-        </label>
-
-        <PlatformFields
-          defaultSiteUrl={editing?.site_url ?? ""}
-          defaultPlatform={editing?.platform ?? ""}
-          defaultConfig={
-            editing?.config && Object.keys(editing.config).length > 0
-              ? JSON.stringify(editing.config, null, 2)
-              : ""
-          }
-          defaultLogoUrl={editing?.logo_url ?? ""}
-          defaultDescription={editing?.description ?? ""}
-        />
-      </div>
+      <StoreForm
+        defaultName={editing?.name ?? ""}
+        defaultStoreType={editing?.store_type ?? "marketplace"}
+        defaultCountry={editing?.country ?? "Brasil"}
+        defaultSiteUrl={editing?.site_url ?? ""}
+        defaultPlatform={editing?.platform ?? ""}
+        defaultConfig={
+          editing?.config && Object.keys(editing.config).length > 0
+            ? JSON.stringify(editing.config, null, 2)
+            : ""
+        }
+        defaultLogoUrl={editing?.logo_url ?? ""}
+        defaultDescription={editing?.description ?? ""}
+      />
 
       <div className="flex gap-2">
         <button

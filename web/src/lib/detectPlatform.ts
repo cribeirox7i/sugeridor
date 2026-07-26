@@ -7,6 +7,11 @@ export type DetectResult = {
   note?: string;
   logo_url?: string;
   description?: string;
+  name?: string;
+  // Quando presente, a URL de listagem informada precisa ser TROCADA por
+  // esta pra a coleta funcionar (caso do VTEX, cujo coletor só aceita o
+  // endpoint da API de busca). Quem chama aplica no campo de URL.
+  site_url?: string;
 };
 
 const UA = "SugeridorBot/1.0 (+https://sugeridor.vercel.app; detector de plataforma)";
@@ -113,9 +118,12 @@ function absolutize(url: string, base: string): string {
 // Roda sobre a home da loja (não a listagem), onde esses metadados de site
 // geralmente vivem — usado só uma vez, no momento de detectar a plataforma,
 // não a cada coleta periódica de produtos.
-function extractBranding(html: string, baseUrl: string): { logo_url?: string; description?: string } {
+function extractBranding(
+  html: string,
+  baseUrl: string,
+): { logo_url?: string; description?: string; name?: string } {
   const $ = cheerio.load(html);
-  const result: { logo_url?: string; description?: string } = {};
+  const result: { logo_url?: string; description?: string; name?: string } = {};
 
   $('script[type="application/ld+json"]').each((_, el) => {
     if (result.logo_url) return;
@@ -130,6 +138,9 @@ function extractBranding(html: string, baseUrl: string): { logo_url?: string; de
           result.logo_url = absolutize(item.logo, baseUrl);
         } else if (item.logo && typeof item.logo.url === "string") {
           result.logo_url = absolutize(item.logo.url, baseUrl);
+        }
+        if (!result.name && typeof item.name === "string" && item.name.trim()) {
+          result.name = item.name.trim();
         }
         if (result.logo_url) break;
       }
@@ -149,6 +160,20 @@ function extractBranding(html: string, baseUrl: string): { logo_url?: string; de
 
   const desc = $('meta[name="description"]').attr("content");
   if (desc && desc.trim()) result.description = desc.trim();
+
+  // Nome da loja: og:site_name é o metadado feito exatamente pra isso; o
+  // <title> vem por último porque costuma trazer slogan junto ("Loja X — a
+  // maior cervejaria do Sul"), então corta no primeiro separador.
+  if (!result.name) {
+    const siteName = $('meta[property="og:site_name"]').attr("content");
+    if (siteName && siteName.trim()) result.name = siteName.trim();
+  }
+  if (!result.name) {
+    const title = $("title").first().text();
+    if (title && title.trim()) {
+      result.name = title.split(/[|—–\-:·]/)[0].trim() || title.trim();
+    }
+  }
 
   return result;
 }
@@ -203,15 +228,34 @@ export async function detectPlatform(inputUrl: string): Promise<DetectResult> {
   }
 
   if (/vteximg\.com\.br|vtexassets\.com|vtexcommercestable/i.test(html)) {
+    // O coletor VTEX só funciona com o endpoint da API de busca — a URL da
+    // página de categoria devolve HTML, o que fazia a loja coletar 0 itens
+    // *sem erro nenhum* (aconteceu de verdade com a Cerveja Box). Antes isso
+    // era só uma sugestão em texto, invisível no botão compacto do card;
+    // agora a URL corrigida é testada e aplicada.
     const path = new URL(inputUrl).pathname.replace(/^\/+|\/+$/g, "");
-    const suggestedUrl = path ? `${origin}/api/catalog_system/pub/products/search/${path}` : null;
+    const apiBase = `${origin}/api/catalog_system/pub/products/search`;
+    const candidates = path ? [`${apiBase}/${path}`, apiBase] : [apiBase];
+
+    for (const candidate of candidates) {
+      const probe = await fetchJson(`${candidate}?_from=0&_to=1`);
+      if (Array.isArray(probe) && probe.length > 0) {
+        return {
+          platform: "vtex",
+          config: {},
+          confidence: "high",
+          site_url: candidate,
+          note: `VTEX confirmado. A URL de listagem foi trocada pela API de busca (${candidate}) — é o formato que o coletor usa.`,
+          ...branding,
+        };
+      }
+    }
+
     return {
       platform: "vtex",
       config: {},
       confidence: "low",
-      note: suggestedUrl
-        ? `Parece ser VTEX. Troque a URL de listagem por algo como: ${suggestedUrl} (ajuste a categoria se necessário).`
-        : "Parece ser VTEX, mas não consegui sugerir a URL da API de busca — informe manualmente a URL de .../api/catalog_system/pub/products/search/<categoria>.",
+      note: `Parece ser VTEX, mas nenhuma URL de API respondeu com produtos. Informe manualmente algo como ${apiBase}/<categoria>.`,
       ...branding,
     };
   }

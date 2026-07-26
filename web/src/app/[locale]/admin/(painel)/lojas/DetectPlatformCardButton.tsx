@@ -31,8 +31,12 @@ export default function DetectPlatformCardButton({
       });
       const data = await res.json();
       if (data.platform) {
-        await updateStorePlatform(storeId, data.platform, data.config ?? {});
-        setMsg(t("detectFound", { platform: data.platform }));
+        await updateStorePlatform(storeId, data.platform, data.config ?? {}, data.site_url ?? null);
+        // Mostra a nota do detector quando existir (é ela que avisa, por
+        // exemplo, que a URL de listagem foi trocada pela da API no VTEX) —
+        // antes esse aviso só aparecia no modal, então por este caminho a
+        // troca acontecia sem o admin saber.
+        setMsg(data.note ?? t("detectFound", { platform: data.platform }));
       } else {
         setMsg(data.note ?? t("detectNotFound"));
       }

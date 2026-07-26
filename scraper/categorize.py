@@ -28,7 +28,10 @@ _CATEGORY_ORDER = ["eventos", "kit", "copo", "souvenirs"]
 # Rede de segurança: usado só se load_keywords() não for chamado (ex. testes
 # isolados) ou se a leitura do banco falhar/vier vazia.
 _FALLBACK_KEYWORDS = {
-    "eventos": ["ingresso", "convite", "evento", "workshop", "confraria"],
+    "eventos": [
+        "ingresso", "convite", "evento", "workshop", "confraria",
+        "vale presente", "cartão presente", "cartao presente",
+    ],
     "kit": ["kit"],
     "copo": ["copo", "taça", "taca", "caldereta"],
     "souvenirs": [
@@ -36,6 +39,10 @@ _FALLBACK_KEYWORDS = {
         "chinelo", "caneca", "chaveiro", "adesivo", "squeeze", "moletom", "growler",
         "abridor", "meia", "sacola", "bag", "ecobag", "canga", "toalha", "bandeira",
         "balde", "sombrinha", "guarda-sol", "guarda sol",
+        # Achados no catálogo real depois (ver migration 0012): "moleton" com N
+        # é como a loja escreve, e não casava com "moletom".
+        "poster", "pôster", "pin", "tote", "gorro", "corta vento", "luminoso",
+        "moleton", "cartela",
     ],
 }
 

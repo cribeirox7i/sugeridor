@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 
 // Escopo da regra decide se aparece (e o que popula) o campo scope_id — mesmo
-// padrão condicional de PlatformFields.tsx (lojas). Trocar de escopo reseta o
+// padrão condicional de StoreForm.tsx (lojas). Trocar de escopo reseta o
 // select de scope_id (key={scope}) porque as opções mudam de lista.
 export default function ScopeFields({
   defaultScope,

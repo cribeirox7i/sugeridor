@@ -30,6 +30,8 @@ def _process_store(row: dict) -> bool:
         site_url=row.get("site_url") or "",
         platform=row["platform"],
         config=row.get("config") or {},
+        store_type=row.get("store_type") or "marketplace",
+        country=row.get("country") or "Brasil",
     )
     collector = get_collector(store.platform)
     if collector is None:
@@ -43,10 +45,7 @@ def _process_store(row: dict) -> bool:
     job_id = pipeline.start_job(store.id)
     try:
         candidates = collector(store)
-        new_count = 0
-        for cand in candidates:
-            if pipeline.process_candidate(cand, store.id):
-                new_count += 1
+        new_count = pipeline.process_candidates(candidates, store)
         pipeline.finish_job(job_id, status="success", found=len(candidates), new=new_count)
         print(f"[{store.name}] OK — {len(candidates)} ofertas ({new_count} produtos novos).")
         return False
@@ -65,7 +64,7 @@ def run() -> int:
         {
             "platform": "not.is.null",
             "include_in_collection": "eq.true",
-            "select": "id,name,site_url,platform,config",
+            "select": "id,name,site_url,platform,config,store_type,country",
         },
     )
     if not rows:

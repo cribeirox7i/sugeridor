@@ -45,43 +45,59 @@ def expire_stale_offers(expiration_days: int) -> int:
 
 
 def apply_own_store_defaults() -> tuple[int, int]:
-    """Pra lojas 'propria' (a própria cervejaria vendendo o produto dela,
-    não um marketplace revendendo terceiros), produtos vendidos por ela sem
-    marca ou sem país herdam o nome e o país da loja — só completa o que
-    falta, nunca sobrescreve (mesmo princípio de backfill do resto do
-    pipeline). Roda antes de `unify_brand_country()`: o país da própria
-    loja é um sinal mais confiável do que a moda entre marcas."""
+    """Rede de segurança pra lojas 'propria' (a própria cervejaria vendendo o
+    produto dela, não um marketplace revendendo terceiros): produtos dela sem
+    marca ou sem país herdam o nome e o país da loja.
+
+    Na coleta isso já é garantido na origem (pipeline.py sobrescreve marca/
+    país do candidato antes até de calcular o slug, porque o `vendor` da fonte
+    não é confiável nessas lojas). Aqui só pega o que veio de outro caminho —
+    cadastro manual antigo, produto criado antes da loja ser marcada como
+    própria — e por isso mantém o comportamento conservador de só completar o
+    que falta. Roda antes de `unify_brand_country()`: o país da própria loja é
+    sinal mais confiável do que a moda entre marcas."""
     stores = db.select("stores", {"store_type": "eq.propria", "select": "id,name,country"})
     if not stores:
         return (0, 0)
 
     brand_updated = 0
     country_updated = 0
+    patches: list[dict] = []
+
     for store in stores:
         offers = db.select("offers", {"store_id": f"eq.{store['id']}", "select": "product_id"})
-        product_ids = {o["product_id"] for o in offers}
+        product_ids = sorted({o["product_id"] for o in offers})
+        if not product_ids:
+            continue
 
-        for pid in product_ids:
-            rows = db.select("products", {"id": f"eq.{pid}", "select": "id,brand,attributes"})
-            if not rows:
-                continue
-            product = rows[0]
-            patch: dict = {}
+        # Em lote: era 1 SELECT por produto, o que a 100 lojas × 200 itens
+        # significava dezenas de milhares de requests só neste passo.
+        for i in range(0, len(product_ids), _BATCH_SIZE):
+            batch = product_ids[i : i + _BATCH_SIZE]
+            rows = db.select(
+                "products",
+                {"id": f"in.({','.join(batch)})", "select": "id,brand,attributes"},
+            )
+            for product in rows:
+                patch: dict = {}
 
-            if not product.get("brand"):
-                patch["brand"] = store["name"]
+                if not product.get("brand"):
+                    patch["brand"] = store["name"]
 
-            attrs = dict(product.get("attributes") or {})
-            if not attrs.get("pais") and store.get("country"):
-                attrs["pais"] = store["country"]
-                patch["attributes"] = attrs
+                attrs = dict(product.get("attributes") or {})
+                if not attrs.get("pais") and store.get("country"):
+                    attrs["pais"] = store["country"]
+                    patch["attributes"] = attrs
 
-            if patch:
-                db.update("products", {"id": f"eq.{pid}"}, patch)
-                if "brand" in patch:
-                    brand_updated += 1
-                if "attributes" in patch:
-                    country_updated += 1
+                if patch:
+                    patches.append({"id": product["id"], **patch})
+                    if "brand" in patch:
+                        brand_updated += 1
+                    if "attributes" in patch:
+                        country_updated += 1
+
+    if patches:
+        db.upsert_many("products", patches, on_conflict="id")
 
     return brand_updated, country_updated
 
@@ -98,6 +114,7 @@ def unify_brand_country() -> int:
         by_brand.setdefault(row["brand"], []).append(row)
 
     updated = 0
+    patches: list[dict] = []
     for items in by_brand.values():
         counts: dict[str, int] = {}
         for row in items:
@@ -112,7 +129,12 @@ def unify_brand_country() -> int:
             attrs = dict(row.get("attributes") or {})
             if attrs.get("pais"):
                 continue
-            db.update("products", {"id": f"eq.{row['id']}"}, {"attributes": {**attrs, "pais": common_pais}})
+            patches.append({"id": row["id"], "attributes": {**attrs, "pais": common_pais}})
             updated += 1
+
+    # Em lote pelo mesmo motivo de apply_own_store_defaults: um UPDATE por
+    # produto não escala pro volume de 100+ lojas.
+    if patches:
+        db.upsert_many("products", patches, on_conflict="id")
 
     return updated

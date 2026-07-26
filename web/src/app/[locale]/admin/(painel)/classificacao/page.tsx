@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import DeleteButton from "@/components/admin/DeleteButton";
-import { addKeyword, deleteKeyword } from "./actions";
+import { addKeyword, deleteKeyword, reclassifyExistingProducts } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,12 @@ const CATEGORY_LABEL_KEY: Record<(typeof CATEGORIES)[number], string> = {
   souvenirs: "categorySouvenirs",
 };
 
-export default async function ClassificacaoPage() {
+export default async function ClassificacaoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reclassified?: string }>;
+}) {
+  const { reclassified } = await searchParams;
   const supabase = await createClient();
   const [t, tProd] = await Promise.all([
     getTranslations("admin.classification"),
@@ -38,10 +43,26 @@ export default async function ClassificacaoPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold">{t("pageTitle")}</h1>
-        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("hint")}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">{t("pageTitle")}</h1>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-500 dark:text-neutral-400">{t("hint")}</p>
+        </div>
+        <form action={reclassifyExistingProducts} className="shrink-0">
+          <button
+            type="submit"
+            className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          >
+            {t("reclassify")}
+          </button>
+        </form>
       </div>
+
+      {reclassified !== undefined && (
+        <p className="rounded bg-green-100 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+          {t("reclassifyResult", { count: Number(reclassified) })}
+        </p>
+      )}
 
       <div className="grid gap-6 sm:grid-cols-2">
         {CATEGORIES.map((category) => {

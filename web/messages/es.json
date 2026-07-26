@@ -139,7 +139,10 @@
       "detecting": "Detectando...",
       "detectFound": "Detectado: {platform}. Revisa la config sugerida antes de guardar.",
       "detectNotFound": "No pudimos detectar automáticamente — selecciona manualmente.",
-      "detectError": "Error al intentar detectar la plataforma."
+      "detectError": "Error al intentar detectar la plataforma.",
+      "sectionIdentity": "Identificación",
+      "sectionCollection": "Recolección automática",
+      "sectionAdvanced": "Logo, descripción y config avanzada"
     },
     "products": {
       "title": "Productos",
@@ -244,7 +247,9 @@
       "empty": "Ninguna palabra clave registrada.",
       "addPlaceholder": "Nueva palabra clave...",
       "add": "Agregar",
-      "confirmDelete": "¿Quitar \"{keyword}\" de esta categoría?"
+      "confirmDelete": "¿Quitar \"{keyword}\" de esta categoría?",
+      "reclassify": "Reclasificar existentes",
+      "reclassifyResult": "{count, plural, =0 {Ningún producto cambió de categoría — todos ya coinciden con las palabras clave actuales.} =1 {1 producto reclasificado.} other {# productos reclasificados.}}"
     },
     "branding": {
       "title": "Logotipo del sitio",

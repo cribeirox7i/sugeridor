@@ -68,9 +68,15 @@ export async function updateStorePlatform(
   id: string,
   platform: string | null,
   config: Record<string, unknown>,
+  // URL corrigida pelo detector (caso VTEX, cujo coletor só aceita o endpoint
+  // da API de busca). Sobrescreve a URL cadastrada de propósito: a original
+  // não coletaria nada — era o estado silenciosamente quebrado da Cerveja Box.
+  siteUrl?: string | null,
 ) {
   const supabase = await createClient();
-  await supabase.from("stores").update({ platform, config }).eq("id", id);
+  const patch: Record<string, unknown> = { platform, config };
+  if (siteUrl) patch.site_url = siteUrl;
+  await supabase.from("stores").update(patch).eq("id", id);
   revalidateAllLocales("/admin/lojas");
 }
 
