@@ -42,6 +42,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
     domain = _domain_of(store.site_url)
 
     candidates: list[Candidate] = []
+    seen_handles: set[str] = set()
 
     for page in range(1, max_pages + 1):
         try:
@@ -56,7 +57,17 @@ def collect(store: StoreRecord) -> list[Candidate]:
         if not products:
             break
 
-        for p in products:
+        # Alguns CDNs, pra página fora do intervalo real, devolvem de novo o
+        # conteúdo da última página em vez de uma lista vazia — sem checar
+        # isso, o loop ia até max_pages reprocessando o mesmo conteúdo
+        # (visto na prática: coleção com 55 produtos virou 545 candidatos,
+        # todos repetidos, e a coleta ficou bem mais lenta à toa).
+        new_products = [p for p in products if p.get("handle") not in seen_handles]
+        if not new_products:
+            break
+
+        for p in new_products:
+            seen_handles.add(p.get("handle"))
             variants = p.get("variants") or []
             price = parse_price(variants[0].get("price")) if variants else None
             if price is None:
@@ -82,8 +93,5 @@ def collect(store: StoreRecord) -> list[Candidate]:
                     attributes=attributes,
                 )
             )
-
-        if len(products) == 0:
-            break
 
     return candidates
