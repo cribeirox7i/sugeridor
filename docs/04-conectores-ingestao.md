@@ -1,7 +1,8 @@
 # Conectores de Ingestão
 
 Os quatro conectores convergem para o mesmo formato de saída — um "candidato a oferta" — que
-depois passa pelo matching/dedup contra o catálogo (`products`/`offers`). Formato comum:
+depois passa pelo matching/dedup contra o catálogo (`products`/`offers`). Desenho original
+(pré-implementação):
 
 ```ts
 type CandidatoOferta = {
@@ -18,23 +19,48 @@ type CandidatoOferta = {
 };
 ```
 
-## 1. Sites (scraping)
+O único conector implementado até agora (scraping) usa a forma real `Candidate`
+(`scraper/models.py`, Python) — mesma ideia, sem `raw_capture_id` (essa tabela não chegou a ser
+necessária, ver seção 1 abaixo).
 
-- Workflow do GitHub Actions disparado **manualmente** (botão "Rodar coleta" no admin, via
-  `workflow_dispatch` — ver [02-arquitetura.md](02-arquitetura.md)) roda um script Python por loja
-  cadastrada em `stores`. Agendamento automático fica pra depois, se fizer sentido.
-- Duas estratégias por loja, conforme o site:
-  - **`requests` + `BeautifulSoup`** pra sites com HTML estático simples (rápido, barato) — padrão.
-  - **Playwright (Python)** pra sites com conteúdo carregado via JS (mais pesado, mas GitHub
-    Actions aguenta), só onde for necessário.
-- Cada scraper é um módulo pequeno e isolado por loja (`scrapers/loja-x.ts`), pra que um site
-  quebrar não derrube os outros. Erros vão pra `ingestion_jobs.error_message`.
-- O HTML relevante (ou os campos já extraídos via seletor CSS, se o scraper for determinístico) é
-  salvo em `raw_captures`. Se o scraper já extrai campos estruturados direto (seletor CSS
-  confiável), pode pular a etapa de IA; senão, manda o trecho de HTML pro normalizador via Claude
-  API pra extrair os campos (mais resiliente a mudanças de layout do que manter regex/seletor
-  frágil por loja).
-- Resultado grava em `raw_captures` + chama a função de matching/dedup (ver abaixo).
+## 1. Sites (scraping) — implementado, ver [scraper/README.md](../scraper/README.md)
+
+O design original desta seção (scraper por loja em TS, normalizador via Claude API, `raw_captures`)
+não é como ficou implementado — a versão real, mais simples, não precisou de IA:
+
+- Python, não TS/Playwright. Workflow do GitHub Actions disparado **manualmente** (botão "Rodar
+  coleta" no admin, via `workflow_dispatch`).
+- Um coletor por **plataforma de e-commerce** (`vtex`/`shopify`/`tray`/`jsonld`/`html`/`txt`), não
+  por loja — cada loja cadastrada escolhe a plataforma e preenche um `config` (JSONB) com os
+  detalhes daquele site. Adicionar uma loja nova de plataforma já suportada é só cadastro no
+  admin, sem código novo.
+- Os coletores extraem campos estruturados direto da API/HTML de cada plataforma — o normalizador
+  via Claude API previsto originalmente **não foi necessário** até agora. A tabela `raw_captures`
+  existe no schema (migration 0001) mas nenhum código escreve nela hoje; se um site realmente não
+  der pra estruturar (texto livre, layout instável), essa peça pode voltar a fazer sentido.
+- Lojas rodam **em paralelo** (uma thread por loja) com rate limit **por host** (não trava lojas
+  diferentes entre si, mas continua educado com o mesmo site) — necessário pra escalar a 100+
+  lojas sem o tempo total virar a soma de cada uma.
+- Guard-rails contra coleta descontrolada: teto de `DEFAULT_MAX_ITEMS_PER_STORE` (200) produtos
+  por loja por execução (override por `config.max_items`), detecção de página repetida/paginação
+  que não termina, e cada etapa de uma cascata de fallback (Tray) ou de paginação (Shopify/VTEX/
+  jsonld/HTML) isolada em try/except — uma página ou etapa ruim não descarta o que já foi
+  coletado com sucesso antes dela.
+- **Classificação de categoria**: produto novo é classificado (`cervejas`/`kit`/`copo`/
+  `souvenirs`/`eventos`) por palavra-chave no nome, na criação — lojas de plataforma trazem
+  camiseta/copo/ingresso junto com cerveja de verdade. Só `cervejas`+`kit` aparecem no catálogo
+  público.
+- **Preço inválido nunca é gravado**: candidato com preço `<= 0` é descartado antes de tocar no
+  banco; o próprio banco também rejeita via `check (price > 0)` em `offers`/`price_history`
+  (defesa em profundidade, não só a aplicação).
+- **Enriquecimento pós-coleta** (depois que todas as lojas terminam): ofertas não vistas há mais
+  de `site_settings.offer_expiration_days` são desativadas; produtos de loja `store_type =
+  'propria'` sem marca/país herdam o nome/país da loja; país ausente também é inferido pela marca
+  mais comum entre produtos da mesma marca — sempre só completando o que falta, nunca
+  sobrescrevendo dado já gravado.
+- Erros (de rede, parsing, ou um site bloqueando o IP do runner do GitHub Actions — acontece,
+  ver [06-riscos-e-legal.md](06-riscos-e-legal.md)) vão pra `ingestion_jobs.error_message`, por
+  loja — uma loja falhando não derruba as outras.
 
 ## 2. E-mail
 

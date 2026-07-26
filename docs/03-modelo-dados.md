@@ -22,11 +22,15 @@ Catálogo canônico — um produto pode ter várias ofertas (em lojas diferentes
 ```sql
 id            uuid pk
 product_type_id uuid fk -> product_types
-name          text            -- ex: "Colorado Appia"
-brand         text             -- ex: "Colorado"
+name          text            -- ex: "COLORADO APPIA" (scraper grava em caixa alta)
+brand         text             -- ex: "Colorado" (ou o nome da loja, se for loja "própria")
 attributes    jsonb            -- ex: {"estilo": "APA", "pais": "Brasil", "volume_ml": 355, "abv": 4.5}
 image_url     text
 canonical_slug text unique     -- pra URL amigável /produto/colorado-appia
+category      text default 'cervejas'  -- 'cervejas'|'kit'|'copo'|'souvenirs'|'eventos' (texto livre,
+                                        -- classificado por palavra-chave no scraper — ver
+                                        -- 04-conectores-ingestao.md). Só 'cervejas'+'kit' aparecem
+                                        -- no catálogo público.
 created_at    timestamptz
 updated_at    timestamptz
 ```
@@ -36,7 +40,18 @@ updated_at    timestamptz
 id            uuid pk
 name          text
 site_url      text
-scraper_key   text nullable    -- identifica qual scraper/config usar, se aplicável
+platform      text nullable    -- 'vtex'|'shopify'|'tray'|'jsonld'|'html'|'txt' — plataforma do
+                                -- coletor (null = só cadastro manual, sem coleta automática)
+config        jsonb default '{}'  -- parâmetros específicos do coletor daquela plataforma (ver
+                                   -- scraper/README.md)
+logo_url      text nullable
+description   text nullable
+include_in_collection boolean default true  -- toggle rápido pra tirar a loja da coleta sem
+                                             -- desconfigurar a plataforma
+store_type    text default 'marketplace'  -- 'marketplace' (revende várias marcas) | 'propria'
+                                           -- (a própria cervejaria) — produtos sem marca/país de
+                                           -- loja 'propria' herdam o nome/país dela
+country       text default 'Brasil'       -- país da loja, usado na herança acima
 affiliate_program_id uuid nullable fk -> affiliate_programs
 created_at    timestamptz
 ```
@@ -60,11 +75,15 @@ currency      text default 'BRL'
 url            text            -- link original da página de venda
 source_type   text             -- 'scrape' | 'email' | 'whatsapp_ocr' | 'manual'
 source_ref    uuid nullable fk -> raw_captures
-active        boolean default true
+active        boolean default true  -- desativada automaticamente pelo scraper se last_seen_at
+                                     -- passar de site_settings.offer_expiration_days sem ser vista
 last_seen_at  timestamptz      -- última vez que essa oferta foi confirmada disponível
 created_at    timestamptz
 updated_at    timestamptz
 unique (product_id, store_id)
+check (price > 0)  -- preço <= 0 nunca é uma oferta válida — o scraper já descarta antes de
+                    -- gravar, mas o constraint garante isso na origem pra qualquer caminho de
+                    -- código (migration 0010)
 ```
 
 ### `price_history`
@@ -74,6 +93,7 @@ id            uuid pk
 offer_id      uuid fk -> offers
 price         numeric(10,2)
 captured_at   timestamptz
+check (price > 0)  -- mesmo motivo do constraint em offers (migration 0010)
 ```
 Índice em `(offer_id, captured_at desc)`.
 
@@ -128,6 +148,17 @@ started_at    timestamptz
 finished_at   timestamptz
 ```
 
+### `site_settings`
+Linha única (singleton, `id = 1`) com configurações globais do site.
+```sql
+id                     int pk (sempre 1)
+logo_black_url         text nullable  -- logo pro tema claro
+logo_white_url         text nullable  -- logo pro tema escuro
+offer_expiration_days  int default 45  -- editável em /admin/config — dias sem o scraper ver a
+                                        -- oferta até desativá-la automaticamente
+updated_at             timestamptz
+```
+
 ## Cálculo de variação de preço (resumo da lógica)
 
 1. Preço de referência de um `offer` = média (ou mínimo) dos últimos N dias de `price_history`
@@ -141,10 +172,16 @@ finished_at   timestamptz
 
 ## Índices e filtros do catálogo
 
-Os filtros do site (estilo, país, preço, loja) batem direto em:
-- `products.attributes ->> 'estilo'`, `products.attributes ->> 'pais'` (índice GIN em `attributes`)
-- `offers.price` (range)
-- `offers.store_id`
+O catálogo público busca **todas** as ofertas ativas de categoria `cervejas`/`kit` numa query só
+(sem filtro de usuário) e aplica estilo/país/loja/preço/busca/ordenação **em memória** no Next.js
+(`web/src/lib/queries.ts`), não em queries separadas por combinação de filtro — o volume atual (
+algumas centenas de ofertas) torna isso mais barato do que uma ida ao banco por filtro. Os únicos
+índices relevantes hoje:
+- `products.category` (usado no `.in()` que já separa cervejas/kit do resto)
+- `offers.active`
+
+Se o catálogo crescer muito (milhares de ofertas), vale reavaliar e voltar a filtrar no banco
+(`products.attributes ->> 'estilo'`/`'pais'` com índice GIN, `offers.price`/`store_id`).
 
 ## Sobre afiliados (preparado, não implementado)
 

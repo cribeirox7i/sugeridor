@@ -38,10 +38,16 @@ admin (`web/src/lib/platforms.ts` — manter as duas em sincronia).
    Candidatos com preço `<= 0` são descartados no `pipeline.py` (não geram
    produto, oferta nem histórico).
 4. `pipeline.py` faz o matching por slug (cria produto novo ou reusa existente,
-   classificando `category` — cervejas/souvenirs/eventos — por palavra-chave no
-   nome só na criação, ver `categorize.py`), upsert da oferta (uma por
-   produto+loja) e grava um ponto em `price_history`.
+   classificando `category` — cervejas/kit/copo/souvenirs/eventos — por
+   palavra-chave no nome só na criação, ver `categorize.py`), upsert da oferta
+   (uma por produto+loja) e grava um ponto em `price_history`.
 5. Cada execução é registrada em `ingestion_jobs` (visível no admin).
+6. Depois que **todas** as lojas terminam, `enrich.py` roda passos sobre o
+   catálogo inteiro (não faz sentido por-loja): desativa ofertas não vistas há
+   mais de `site_settings.offer_expiration_days`; pra lojas `store_type =
+   'propria'`, preenche marca/país ausente com o nome/país da própria loja;
+   preenche país ausente pela marca mais comum entre produtos da mesma marca.
+   Sempre só completa o que falta, nunca sobrescreve dado já gravado.
 
 O scraper escreve usando a **service_role key** do Supabase (ignora RLS). Essa
 chave nunca vai pro frontend — só existe como secret do GitHub Actions.

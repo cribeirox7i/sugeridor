@@ -15,7 +15,7 @@ por links de afiliado.
 
 | Fonte | Mecanismo | Observação |
 |---|---|---|
-| Sites (raspagem) | Scraper Node (Playwright/Cheerio) rodando via GitHub Actions | Ver [04-conectores-ingestao.md](04-conectores-ingestao.md) |
+| Sites (raspagem) | Scraper Python (`requests`/`BeautifulSoup`, config por plataforma) rodando via GitHub Actions | Ver [04-conectores-ingestao.md](04-conectores-ingestao.md) |
 | E-mail | Leitura via IMAP de uma caixa dedicada + extração por IA | Newsletters/promoções encaminhadas ou assinadas |
 | WhatsApp | **Print de tela + upload no admin + OCR/IA** (substitui automação de conta, que violaria os Termos de Serviço do WhatsApp) | Decisão tomada em conversa: evita risco de ban de número |
 | Cadastro manual | Formulário no painel admin | Fallback sempre disponível, também serve para correção manual |

@@ -9,7 +9,13 @@
 - **User-Agent identificável** (não fingir ser navegador comum) é mais eticamente correto, mas
   aumenta a chance de bloqueio — decisão sua caso a caso por loja.
 - **Risco de bloqueio/mudança de layout**: scraper vai quebrar eventualmente; o log em
-  `ingestion_jobs` é o que avisa isso.
+  `ingestion_jobs` é o que avisa isso. **Já aconteceu na prática** (2026-07-26): duas lojas
+  passaram a responder 403 Forbidden só quando a requisição vinha do runner do GitHub Actions —
+  o mesmo request, feito de outra rede, respondia 200 normalmente. É bloqueio pelo IP do runner
+  (datacenter, comum alvo de WAF/anti-bot), não algo que o código controla. **Decisão**: não
+  contornar isso trocando User-Agent pra fingir navegador nem qualquer outra evasão — o coletor só
+  registra a falha (por loja, sem derrubar as outras) e segue. Se uma loja específica passar a
+  falhar sempre, é sinal de conversar com ela sobre acesso, não de mascarar o coletor.
 - Exibir preço e link de um produto, com atribuição clara da loja de origem e sem republicar
   conteúdo protegido (descrições longas, fotos autorais em alta resolução) reduz risco de disputa
   — o foco do hub é a oferta (preço + link), não republicar o catálogo da loja.

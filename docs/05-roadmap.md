@@ -47,6 +47,34 @@ Lote de 15 itens após teste em celular: card de oferta reestruturado, acordeon 
 mobile, popup de produto, auto-extração de logo/descrição da loja, checklist de inclusão na
 coleta, carrossel de lojas + "página da loja".
 
+## Queda em produção + reforma grande (2026-07-26) ✅ concluída
+
+Uma loja mal configurada (Shopify, sem filtrar por coleção) trouxe o catálogo inteiro de uma loja
+de vinho/mercearia junto com cerveja, inflando as ofertas ativas de ~200 pra 1446 — uma query da
+home sem paginação em lotes estourou o limite de URL do Node e derrubou o site inteiro. A partir
+daí, uma leva grande de correções e refinamentos:
+
+- **Causa raiz**: Shopify passou a respeitar a collection cadastrada; queries da home viraram
+  lotes de 100 ids; filtro de país/loja/estilo passou a vir só de ofertas ativas (não de
+  `products` inteiro); `/go/[offerId]` parou de dar 404 (middleware do next-intl não excluía essa
+  rota); scraper ganhou rate limit por host (era global) e passou a rodar lojas em paralelo.
+- **Categorização de produtos** (`products.category`): cervejas/kit/copo/souvenirs/eventos,
+  classificados por palavra-chave no nome — só `cervejas`+`kit` aparecem no site público.
+- **Tipo de loja e país**: `store_type` (marketplace/própria) e `country` por loja — produtos de
+  loja própria sem marca/país herdam da loja.
+- **Site**: home consolidada numa única busca de ofertas (era ~7 queries por request, inclusive
+  no popup de produto — por isso ele demorava mais que a home sozinha), navbar e barra de filtros
+  fixos (só o conteúdo rola), busca por texto e ordenação (preço/nome/país), popover "outras
+  lojas" via portal (não ficava mais cortado pelo card), idioma preservando a página atual.
+- **Admin**: aba Alertas virou Config (com parâmetro de expiração de ofertas), Ofertas ganhou
+  data de captura + filtro por loja/data + seleção em lote, Coleta ganhou busca por loja, layout
+  mais largo com fonte menor nas grids.
+- **Scraper — robustez**: preço `<= 0` nunca é gravado (aplicação **e** constraint no banco); um
+  erro no meio de uma página/etapa não descarta o que já foi coletado com sucesso antes dela;
+  imagem em formato inesperado não derruba o coletor; guard-rail de 200 produtos por loja por
+  execução (override por `config.max_items`), contra qualquer paginação que não termine.
+- Migrations `0007` a `0010`.
+
 ## Fase 4 — E-mail ⏸️ pausada
 - Caixa dedicada + credenciais IMAP.
 - Cron de leitura + normalizador (Claude API) aplicado a e-mails com múltiplas ofertas por

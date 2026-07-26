@@ -23,20 +23,27 @@ pra normalização de dados não estruturados — e-mail/WhatsApp OCR — ainda 
 
 ## Estado atual
 
-Fases 0 a 3 do roadmap concluídas e em produção, além de uma reforma de UX (tema claro/escuro,
-i18n pt/en/es, carrossel de destaques, sparkline de preço) e um lote de melhorias mobile — ver
-[docs/05-roadmap.md](docs/05-roadmap.md) para o detalhe de cada fase.
+Fases 0 a 3 do roadmap concluídas e em produção, mais uma reforma de UX, um lote de melhorias
+mobile, uma correção de uma queda em produção e uma leva de refinamentos (categorização, tipo de
+loja, layout fixo do site) — ver [docs/05-roadmap.md](docs/05-roadmap.md) para o detalhe de cada
+fase.
 
-- Catálogo público com filtros (estilo, país, preço, loja), página de produto com histórico de
-  preço, popup de produto, tema claro/escuro, pt/en/es.
-- Admin (grid de cards + modais) com CRUD de lojas/produtos/ofertas, detecção automática de
-  plataforma de e-commerce + branding da loja, checklist de inclusão na coleta.
+- Catálogo público com filtros (estilo, país, preço, loja, busca por texto, ordenação por
+  preço/nome/país) numa barra fixa (não rola com o conteúdo), página de produto com histórico de
+  preço, popup de produto, tema claro/escuro, pt/en/es com bandeiras no seletor de idioma.
+- Admin (grid de cards + modais, navbar fixo) com CRUD de lojas (tipo marketplace/própria, país,
+  detecção automática de plataforma + branding), produtos (com categoria) e ofertas (data de
+  captura, filtro por loja/data, seleção e exclusão em lote), checklist de inclusão na coleta com
+  busca por nome.
 - Scraper Python config-driven por plataforma (vtex/shopify/tray/jsonld/html/txt), disparado
-  manualmente via GitHub Actions.
-- Alertas de queda de preço (trigger no Postgres), visíveis em `/admin/alertas` — sem envio de
-  e-mail de verdade ainda.
-- Migrations aplicadas: `0001` a `0006` (schema inicial → branding/site_settings → alertas →
-  `include_in_collection`).
+  manualmente via GitHub Actions, rodando lojas **em paralelo** com rate limit por host,
+  guard-rail de 200 produtos/loja por execução, classificação de categoria por palavra-chave,
+  expiração automática de ofertas paradas e herança de marca/país pra lojas próprias.
+- Preço inválido (`<= 0`) nunca é gravado — descartado na aplicação e bloqueado também por
+  constraint no banco (defesa em profundidade).
+- Alertas de queda de preço (trigger no Postgres) e parâmetro de expiração de ofertas, ambos em
+  `/admin/config` (renomeada de "Alertas") — sem envio de e-mail de verdade ainda.
+- Migrations aplicadas: `0001` a `0010`.
 
 **Pausado por decisão do usuário** (evitar dependência de API paga do Claude por ora): Fase 4
 (e-mail como fonte), Fase 5 (WhatsApp via print+OCR), e envio de e-mail de verdade para os
