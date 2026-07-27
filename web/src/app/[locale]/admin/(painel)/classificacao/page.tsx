@@ -21,9 +21,9 @@ const CATEGORY_LABEL_KEY: Record<(typeof CATEGORIES)[number], string> = {
 export default async function ClassificacaoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ reclassified?: string }>;
+  searchParams: Promise<{ reclassified?: string; erro?: string }>;
 }) {
-  const { reclassified } = await searchParams;
+  const { reclassified, erro } = await searchParams;
   const supabase = await createClient();
   const [t, tProd] = await Promise.all([
     getTranslations("admin.classification"),
@@ -57,6 +57,12 @@ export default async function ClassificacaoPage({
           </button>
         </form>
       </div>
+
+      {erro && (
+        <p className="rounded bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+          {t("actionFailed")}
+        </p>
+      )}
 
       {reclassified !== undefined && (
         <p className="rounded bg-green-100 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">

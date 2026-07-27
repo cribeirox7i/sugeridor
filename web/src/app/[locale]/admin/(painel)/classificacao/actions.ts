@@ -5,6 +5,7 @@ import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateAllLocales } from "@/lib/revalidate";
 import { normalizeDashes } from "@/lib/text";
+import { patchProducts } from "@/lib/adminBatch";
 
 const CATEGORIES = ["eventos", "kit", "copo", "souvenirs"];
 
@@ -30,10 +31,6 @@ export async function deleteKeyword(formData: FormData) {
 
   revalidateAllLocales("/admin/classificacao");
 }
-
-// Lote de linhas por upsert — mesma cautela de tamanho de request usada no
-// backfill de nomes (produtos/actions.ts).
-const RECLASSIFY_BATCH_SIZE = 200;
 
 // A ordem de prioridade é a mesma fixada em scraper/categorize.py
 // (_CATEGORY_ORDER): "Kit Copo + Cerveja" precisa virar 'kit', não 'copo'.
@@ -69,10 +66,23 @@ export async function reclassifyExistingProducts(formData?: FormData) {
     : "classificacao";
   const supabase = await createClient();
 
-  const [{ data: keywordData }, { data: productData }] = await Promise.all([
-    supabase.from("category_keywords").select("category, keyword"),
-    supabase.from("products").select("id, name, category"),
-  ]);
+  const { data: keywordData } = await supabase
+    .from("category_keywords")
+    .select("category, keyword");
+
+  // Paginado: o PostgREST corta em 1000 linhas sem avisar, e produtos além do
+  // milésimo nunca seriam reclassificados.
+  const products: { id: string; name: string; category: string }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data } = await supabase
+      .from("products")
+      .select("id, name, category")
+      .order("created_at")
+      .range(from, from + 999);
+    const page = (data ?? []) as { id: string; name: string; category: string }[];
+    products.push(...page);
+    if (page.length < 1000) break;
+  }
 
   const keywordsByCategory = new Map<string, string[]>();
   for (const row of (keywordData ?? []) as { category: string; keyword: string }[]) {
@@ -81,22 +91,21 @@ export async function reclassifyExistingProducts(formData?: FormData) {
     else keywordsByCategory.set(row.category, [row.keyword]);
   }
 
-  const products = (productData ?? []) as { id: string; name: string; category: string }[];
   const changed = products
     .map((p) => ({ id: p.id, category: classify(p.name, keywordsByCategory), was: p.category }))
     .filter((p) => p.category !== p.was)
     .map(({ id, category }) => ({ id, category }));
 
-  for (let i = 0; i < changed.length; i += RECLASSIFY_BATCH_SIZE) {
-    await supabase
-      .from("products")
-      .upsert(changed.slice(i, i + RECLASSIFY_BATCH_SIZE), { onConflict: "id" });
-  }
+  // patchProducts em vez de upsert direto: upsert parcial estoura os NOT NULL
+  // de products, e o erro ignorado fazia a tela reportar sucesso sem gravar
+  // nada — ver web/src/lib/adminBatch.ts.
+  const { error, updated } = await patchProducts(supabase, changed);
+  const locale = await getLocale();
+  if (error) redirect(`/${locale}/admin/${returnTo}?erro=reclassificar`);
 
   revalidateAllLocales("/admin/classificacao");
   revalidateAllLocales("/admin/ferramentas");
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
-  const locale = await getLocale();
-  redirect(`/${locale}/admin/${returnTo}?reclassified=${changed.length}`);
+  redirect(`/${locale}/admin/${returnTo}?reclassified=${updated}`);
 }

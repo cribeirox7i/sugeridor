@@ -207,7 +207,8 @@
       "normalizeResult": "{count, plural, =0 {No name needed adjusting — they were already Title Case.} =1 {1 name adjusted to Title Case.} other {# names adjusted to Title Case.}}",
       "confirmDelete": "Delete product \"{name}\"? This cannot be undone.",
       "searchPlaceholder": "Search product...",
-      "noTypes": "No product type registered. Run migration 0002 (which seeds \"Beer\") on Supabase before registering products."
+      "noTypes": "No product type registered. Run migration 0002 (which seeds \"Beer\") on Supabase before registering products.",
+      "actionFailed": "The action failed. Nothing was changed — please try again."
     },
     "offers": {
       "title": "Offers",
@@ -281,7 +282,8 @@
       "add": "Add",
       "confirmDelete": "Remove \"{keyword}\" from this category?",
       "reclassify": "Reclassify existing",
-      "reclassifyResult": "{count, plural, =0 {No product changed category — all already match the current keywords.} =1 {1 product reclassified.} other {# products reclassified.}}"
+      "reclassifyResult": "{count, plural, =0 {No product changed category — all already match the current keywords.} =1 {1 product reclassified.} other {# products reclassified.}}",
+      "actionFailed": "The action failed. Nothing was changed — please try again."
     },
     "branding": {
       "title": "Site logo",

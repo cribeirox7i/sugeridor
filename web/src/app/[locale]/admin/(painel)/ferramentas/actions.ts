@@ -8,9 +8,8 @@ import { normalizeDashes } from "@/lib/text";
 import { prefixBrand, productSlug } from "@/lib/slug";
 import { planReplacements, type ProductForReplace, type Replacement } from "@/lib/replacements";
 import { planMerge, type MergeOffer } from "@/lib/merge";
+import { patchProducts } from "@/lib/adminBatch";
 
-// Lote de linhas por escrita — mesma cautela dos outros backfills do admin.
-const BATCH_SIZE = 200;
 // O PostgREST corta em 1000 linhas sem avisar; ler paginado é obrigatório
 // (products já passou de 1000).
 const PAGE_SIZE = 1000;
@@ -85,28 +84,24 @@ export async function applyReplacementsAction() {
 
   const { toUpdate, conflicts } = planReplacements(products, rules);
 
-  for (let i = 0; i < toUpdate.length; i += BATCH_SIZE) {
-    const batch = toUpdate.slice(i, i + BATCH_SIZE).map((p) => ({
+  // patchProducts monta a linha completa antes do upsert — upsert parcial
+  // estoura os NOT NULL de products (ver web/src/lib/adminBatch.ts).
+  const { error, updated } = await patchProducts(
+    supabase,
+    toUpdate.map((p) => ({
       id: p.id,
       name: p.name,
       brand: p.brand,
       canonical_slug: p.canonical_slug,
-      updated_at: new Date().toISOString(),
-    }));
-    const { error } = await supabase.from("products").upsert(batch, { onConflict: "id" });
-    if (error) {
-      const locale = await getLocale();
-      redirect(`/${locale}/admin/ferramentas?erro=aplicar`);
-    }
-  }
+    })),
+  );
+  const locale = await getLocale();
+  if (error) redirect(`/${locale}/admin/ferramentas?erro=aplicar`);
 
   revalidateAllLocales("/admin/ferramentas");
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
-  const locale = await getLocale();
-  redirect(
-    `/${locale}/admin/ferramentas?aplicados=${toUpdate.length}&conflitos=${conflicts.length}`,
-  );
+  redirect(`/${locale}/admin/ferramentas?aplicados=${updated}&conflitos=${conflicts.length}`);
 }
 
 // ── Regravar marca e nome a partir da loja própria ────────────────
@@ -194,17 +189,16 @@ export async function rebrandOwnStoreProducts() {
     safe.push(c);
   }
 
-  for (let i = 0; i < safe.length; i += BATCH_SIZE) {
-    const { error } = await supabase
-      .from("products")
-      .upsert(safe.slice(i, i + BATCH_SIZE), { onConflict: "id" });
-    if (error) redirect(`/${locale}/admin/ferramentas?erro=remarcar`);
-  }
+  // patchProducts monta a linha completa antes do upsert — upsert parcial
+  // estoura os NOT NULL de products. Foi exatamente aqui que a ação falhou na
+  // primeira tentativa real (ver web/src/lib/adminBatch.ts).
+  const { error, updated } = await patchProducts(supabase, safe);
+  if (error) redirect(`/${locale}/admin/ferramentas?erro=remarcar`);
 
   revalidateAllLocales("/admin/ferramentas");
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
-  redirect(`/${locale}/admin/ferramentas?remarcados=${safe.length}&conflitos=${skipped}`);
+  redirect(`/${locale}/admin/ferramentas?remarcados=${updated}&conflitos=${skipped}`);
 }
 
 // ── Mesclar dois produtos ─────────────────────────────────────────

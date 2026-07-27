@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
 import { revalidateAllLocales } from "@/lib/revalidate";
 import { normalizeDashes, titleCaseProductName } from "@/lib/text";
+import { patchProducts } from "@/lib/adminBatch";
 import type { AttributeSchema, ProductType } from "@/lib/types";
 
 export async function saveProduct(formData: FormData) {
@@ -88,10 +89,6 @@ export async function deleteProduct(formData: FormData) {
   revalidateAllLocales("/");
 }
 
-// Lote de upsert pro backfill abaixo — mesma cautela de tamanho de request
-// já usada em web/src/lib/queries.ts (batches de ids).
-const BACKFILL_BATCH_SIZE = 200;
-
 // Botão único em /admin/produtos: aplica titleCaseProductName aos produtos
 // já cadastrados (a maioria em CAIXA ALTA, de antes desse pedido). Idempotente
 // — rodar de novo não muda nada em quem já está em Title Case, então não
@@ -103,24 +100,35 @@ export async function normalizeExistingProductNames(formData: FormData) {
   const returnToRaw = (formData?.get("returnTo") as string) || "";
   const returnTo = ["ferramentas", "produtos"].includes(returnToRaw) ? returnToRaw : "produtos";
   const supabase = await createClient();
-  const { data } = await supabase.from("products").select("id, name");
-  const products = (data ?? []) as { id: string; name: string }[];
+  // Paginado: o PostgREST corta em 1000 linhas sem avisar e products já passou
+  // disso — sem isso os produtos além do milésimo nunca seriam normalizados.
+  const products: { id: string; name: string }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data } = await supabase
+      .from("products")
+      .select("id, name")
+      .order("created_at")
+      .range(from, from + 999);
+    const page = (data ?? []) as { id: string; name: string }[];
+    products.push(...page);
+    if (page.length < 1000) break;
+  }
 
   const changed = products
     .map((p) => ({ id: p.id, name: titleCaseProductName(normalizeDashes(p.name)) }))
     .filter((p, i) => p.name !== products[i].name);
 
-  for (let i = 0; i < changed.length; i += BACKFILL_BATCH_SIZE) {
-    await supabase.from("products").upsert(changed.slice(i, i + BACKFILL_BATCH_SIZE), {
-      onConflict: "id",
-    });
-  }
+  // patchProducts em vez de upsert direto: upsert parcial estoura os NOT NULL
+  // de products. Antes o erro era ignorado e a tela mostrava "N nomes
+  // ajustados" sem ter gravado nada — ver web/src/lib/adminBatch.ts.
+  const { error, updated } = await patchProducts(supabase, changed);
+  const locale = await getLocale();
+  if (error) redirect(`/${locale}/admin/${returnTo}?erro=normalizar`);
 
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/admin/ferramentas");
   revalidateAllLocales("/");
-  const locale = await getLocale();
-  redirect(`/${locale}/admin/${returnTo}?normalized=${changed.length}`);
+  redirect(`/${locale}/admin/${returnTo}?normalized=${updated}`);
 }
 
 // Usado pelo form pra listar os tipos disponíveis.

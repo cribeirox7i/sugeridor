@@ -34,9 +34,10 @@ export default async function ProdutosPage({
     q?: string;
     view?: string;
     normalized?: string;
+    erro?: string;
   }>;
 }) {
-  const { edit, new: isNew, error, q, view, normalized } = await searchParams;
+  const { edit, new: isNew, error, q, view, normalized, erro } = await searchParams;
   const supabase = await createClient();
   const t = await getTranslations("admin.products");
   const tCommon = await getTranslations("admin.common");
@@ -106,6 +107,11 @@ export default async function ProdutosPage({
       {error === "save-failed" && (
         <p className="rounded bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
           {t("saveFailed")}
+        </p>
+      )}
+      {erro && (
+        <p className="rounded bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+          {t("actionFailed")}
         </p>
       )}
       {normalized !== undefined && (
