@@ -22,10 +22,39 @@ def _url(path: str) -> str:
     return f"{SUPABASE_URL}/rest/v1/{path}"
 
 
+# O PostgREST/Supabase limita a resposta a 1000 linhas por request e NÃO
+# avisa: vem 200 OK com a lista cortada. Medido no banco real: `products`
+# tinha 1113 linhas e o select devolvia 1000, então unify_brand_country()
+# simplesmente ignorava 113 produtos. Paginar aqui, no cliente, conserta
+# todos os callers de uma vez.
+_PAGE_SIZE = 1000
+
+
 def select(table: str, params: dict[str, str]) -> list[dict[str, Any]]:
-    r = requests.get(_url(table), headers=_headers(), params=params, timeout=20)
-    r.raise_for_status()
-    return r.json()
+    """SELECT paginado: busca em páginas de 1000 até a resposta vir incompleta.
+
+    Se o caller já passou `limit`, respeita e faz uma request só — quem pediu
+    um limite explícito não quer o resto."""
+    if "limit" in params:
+        r = requests.get(_url(table), headers=_headers(), params=params, timeout=20)
+        r.raise_for_status()
+        return r.json()
+
+    out: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        headers = _headers({"Range-Unit": "items", "Range": f"{offset}-{offset + _PAGE_SIZE - 1}"})
+        r = requests.get(_url(table), headers=headers, params=params, timeout=30)
+        r.raise_for_status()
+        page = r.json()
+        if not isinstance(page, list):
+            return page
+        out.extend(page)
+        # Página incompleta = acabou. (Página cheia com o total exatamente
+        # múltiplo de 1000 custa uma request extra que volta vazia — barato.)
+        if len(page) < _PAGE_SIZE:
+            return out
+        offset += _PAGE_SIZE
 
 
 def insert(table: str, row: dict, *, returning: bool = True) -> dict | None:

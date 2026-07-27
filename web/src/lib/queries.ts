@@ -35,15 +35,28 @@ const OFFER_SELECT = `
 // `filterOffers` — o catálogo público é pequeno o bastante (uma categoria,
 // algumas lojas) pra isso ser mais barato que reconsultar o banco a cada
 // combinação de filtro.
+// O PostgREST limita a resposta a 1000 linhas e não avisa — vem 200 OK com a
+// lista cortada. Hoje o catálogo público tem ~620 ofertas ativas, mas ao
+// passar de 1000 a home simplesmente pararia de mostrar o resto (e o cálculo
+// de queda de preço veria histórico incompleto), sem erro nenhum. Paginar
+// explicitamente evita esse limite silencioso.
+const PAGE_SIZE = 1000;
+
 export async function listOffers(supabase: SupabaseClient): Promise<OfferListItem[]> {
-  const { data, error } = await supabase
-    .from("offers")
-    .select(OFFER_SELECT)
-    .eq("active", true)
-    .in("product.category", PUBLIC_CATEGORIES)
-    .order("price", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as unknown as OfferListItem[];
+  const all: OfferListItem[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("offers")
+      .select(OFFER_SELECT)
+      .eq("active", true)
+      .in("product.category", PUBLIC_CATEGORIES)
+      .order("price", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as unknown as OfferListItem[];
+    all.push(...page);
+    if (page.length < PAGE_SIZE) return all;
+  }
 }
 
 // Aplica os filtros de usuário em memória sobre o resultado de listOffers.
@@ -181,13 +194,22 @@ export async function getPriceHistoryForProduct(
   const offerIds = (offers ?? []).map((o) => o.id);
   if (offerIds.length === 0) return [];
 
-  const { data, error } = await supabase
-    .from("price_history")
-    .select("*")
-    .in("offer_id", offerIds)
-    .order("captured_at", { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as PriceHistoryPoint[];
+  // Paginado pelo mesmo motivo de getPriceHistoryForOffers: um produto vendido
+  // por várias lojas passa de 1000 pontos depois de tempo suficiente de
+  // coleta, e o corte do PostgREST truncaria a série sem avisar.
+  const points: PriceHistoryPoint[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("price_history")
+      .select("*")
+      .in("offer_id", offerIds)
+      .order("captured_at", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as PriceHistoryPoint[];
+    points.push(...page);
+    if (page.length < PAGE_SIZE) return points;
+  }
 }
 
 // Máximo de ids por lote na cláusula `.in()`. Uma única query com centenas de
@@ -214,13 +236,24 @@ export async function getPriceHistoryForOffers(
 
   const batches = await Promise.all(
     chunk(offerIds, OFFER_ID_BATCH_SIZE).map(async (batch) => {
-      const { data, error } = await supabase
-        .from("price_history")
-        .select("*")
-        .in("offer_id", batch)
-        .order("captured_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as PriceHistoryPoint[];
+      // Paginado dentro do lote: 100 ofertas acumulam facilmente mais de 1000
+      // pontos de histórico (hoje são ~3,3 pontos por oferta, mas isso cresce
+      // a cada coleta), e o corte silencioso do PostgREST faria o cálculo de
+      // queda enxergar série incompleta — justamente o dado que decide se um
+      // selo "-X%" aparece.
+      const points: PriceHistoryPoint[] = [];
+      for (let from = 0; ; from += PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from("price_history")
+          .select("*")
+          .in("offer_id", batch)
+          .order("captured_at", { ascending: true })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        const page = (data ?? []) as PriceHistoryPoint[];
+        points.push(...page);
+        if (page.length < PAGE_SIZE) return points;
+      }
     }),
   );
 
