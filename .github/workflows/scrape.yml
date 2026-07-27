@@ -7,12 +7,26 @@ on:
   workflow_dispatch:
 
 jobs:
-  scrape:
+  # As lojas são divididas entre execuções paralelas (shards). O motivo é o
+  # coletor jsonld, que abre UMA página por produto a 1 req/s por site: uma
+  # loja de 200 produtos leva ~3min, e a 100 lojas isso passaria de 5 horas num
+  # job só. Cada shard pega uma fatia (ver _belongs_to_shard em run.py), o que
+  # divide o tempo sem ficar mais agressivo com nenhuma loja — cada site
+  # continua recebendo 1 req/s, só em runners diferentes.
+  #
+  # PRA AJUSTAR: acrescente/remova índices em `shard` e mantenha
+  # SCRAPER_SHARD_TOTAL igual ao tamanho da lista (os dois precisam bater,
+  # senão parte das lojas fica sem shard e nunca é coletada). A conta é
+  # (lojas ÷ shards) × ~3min < 40min: 4 shards dão conta de ~50 lojas; a 100
+  # lojas, use 10 ou 12.
+  collect:
     runs-on: ubuntu-latest
-    # Margem de segurança — o scraper agora coleta lojas em paralelo (ver
-    # scraper/run.py), então isso não deve ser normalmente atingido; é só
-    # rede de proteção caso uma loja específica fique presa.
     timeout-minutes: 45
+    strategy:
+      # Um shard que falha não cancela os outros — as lojas são independentes.
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - uses: actions/checkout@v4
 
@@ -24,8 +38,37 @@ jobs:
       - name: Instalar dependências
         run: pip install -r scraper/requirements.txt
 
-      - name: Rodar scraper
+      - name: Rodar scraper (shard ${{ matrix.shard }})
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SCRAPER_SHARD_INDEX: ${{ matrix.shard }}
+          SCRAPER_SHARD_TOTAL: "4"
         run: python -m scraper.run
+
+  # Expiração de ofertas velhas e unificação de marca/país olham o catálogo
+  # INTEIRO, então só podem rodar depois que todos os shards terminaram — e uma
+  # vez só, senão seriam N execuções fazendo o mesmo trabalho em paralelo,
+  # disputando as mesmas linhas. `always()` porque vale enriquecer o que foi
+  # coletado mesmo que algum shard tenha falhado.
+  enrich:
+    needs: collect
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r scraper/requirements.txt
+
+      - name: Enriquecimento pós-coleta
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m scraper.run --enrich-only

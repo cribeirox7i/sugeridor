@@ -32,6 +32,18 @@ DEFAULT_MAX_ITEMS_PER_STORE = int(os.environ.get("SCRAPER_MAX_ITEMS_PER_STORE", 
 # isso só evita que uma loja lenta bloqueie a fila inteira das outras 100+.
 MAX_WORKERS = int(os.environ.get("SCRAPER_MAX_WORKERS", "8"))
 
+# ── Sharding: dividir as lojas entre execuções paralelas ──────────
+# O gargalo pra escalar não é o banco nem o paralelismo entre lojas: o coletor
+# jsonld abre UMA página por produto, e o rate limit educado (1 req/s por site)
+# faz uma loja de 200 produtos levar ~3min. A 100 lojas isso passa de 5 horas
+# num job só — muito além do timeout.
+#
+# Rodar em N execuções paralelas (matrix do GitHub Actions), cada uma com uma
+# fatia das lojas, divide o tempo por N SEM ficar mais agressivo com nenhum
+# site: cada loja continua recebendo 1 req/s, só em runners diferentes.
+SHARD_INDEX = int(os.environ.get("SCRAPER_SHARD_INDEX", "0"))
+SHARD_TOTAL = int(os.environ.get("SCRAPER_SHARD_TOTAL", "1"))
+
 
 def require_config() -> None:
     missing = [

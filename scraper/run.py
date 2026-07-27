@@ -13,11 +13,12 @@ contra nenhum site individual, só permite que lojas diferentes andem ao
 mesmo tempo.
 """
 import concurrent.futures
+import hashlib
 import sys
 import traceback
 
 from . import categorize, db, enrich, pipeline
-from .config import MAX_WORKERS, require_config
+from .config import MAX_WORKERS, SHARD_INDEX, SHARD_TOTAL, require_config
 from .models import StoreRecord
 from .platforms import get_collector
 
@@ -56,6 +57,49 @@ def _process_store(row: dict) -> bool:
         return True
 
 
+def _belongs_to_shard(store_id: str) -> bool:
+    """Distribui as lojas entre as execuções paralelas (ver SHARD_* em
+    config.py).
+
+    A fatia sai de um hash do id da loja, não da posição dela na lista: assim
+    cadastrar (ou desmarcar) uma loja não remaneja todas as outras entre os
+    shards. `hash()` do Python não serve porque varia entre processos por
+    causa do PYTHONHASHSEED — md5 é estável e aqui não tem nada de
+    criptográfico em jogo."""
+    if SHARD_TOTAL <= 1:
+        return True
+    digest = hashlib.md5(store_id.encode()).hexdigest()
+    return int(digest, 16) % SHARD_TOTAL == SHARD_INDEX
+
+
+def run_enrichment() -> int:
+    """Passos sobre o catálogo INTEIRO — expiração de ofertas velhas e
+    unificação de marca/país.
+
+    Roda uma vez só, depois de todas as lojas: com sharding, cada execução vê
+    apenas a sua fatia, então rodar isso em N shards seria N vezes o mesmo
+    trabalho sobre o catálogo completo, em paralelo e disputando as mesmas
+    linhas. No workflow é um job separado que depende de todos os shards."""
+    try:
+        expiration_days = enrich.get_offer_expiration_days()
+        expired = enrich.expire_stale_offers(expiration_days)
+        print(f"Expiração: {expired} oferta(s) desativada(s) (>{expiration_days} dias sem ver).")
+
+        own_brand, own_country = enrich.apply_own_store_defaults()
+        print(
+            f"Lojas próprias: {own_brand} produto(s) com marca herdada da loja, "
+            f"{own_country} com país herdado da loja."
+        )
+
+        unified = enrich.unify_brand_country()
+        print(f"Enriquecimento: {unified} produto(s) com país preenchido a partir da marca.")
+        return 0
+    except Exception as e:  # noqa: BLE001 — enriquecimento não deve derrubar o exit code da coleta
+        traceback.print_exc()
+        print(f"Enriquecimento pós-coleta falhou: {e}")
+        return 0
+
+
 def run() -> int:
     require_config()
 
@@ -71,6 +115,17 @@ def run() -> int:
         print("Nenhuma loja com platform definido. Nada a fazer.")
         return 0
 
+    total_stores = len(rows)
+    rows = [r for r in rows if _belongs_to_shard(r["id"])]
+    if SHARD_TOTAL > 1:
+        print(
+            f"Shard {SHARD_INDEX + 1}/{SHARD_TOTAL}: {len(rows)} de {total_stores} "
+            f"loja(s) nesta execução."
+        )
+        if not rows:
+            print("Nenhuma loja nesta fatia. Nada a fazer.")
+            return 0
+
     # Carrega as palavras-chave de categoria (category_keywords) 1x, antes
     # dos workers paralelos — evita 1 query por produto classificado.
     categorize.load_keywords()
@@ -82,28 +137,18 @@ def run() -> int:
             if future.result():
                 total_failures += 1
 
-    # Passos sobre o catálogo inteiro, depois que todas as lojas terminaram
-    # (não faz sentido rodar por-loja: expiração e unificação de país olham
-    # o todo, não uma loja isolada).
-    try:
-        expiration_days = enrich.get_offer_expiration_days()
-        expired = enrich.expire_stale_offers(expiration_days)
-        print(f"Expiração: {expired} oferta(s) desativada(s) (>{expiration_days} dias sem ver).")
-
-        own_brand, own_country = enrich.apply_own_store_defaults()
-        print(
-            f"Lojas próprias: {own_brand} produto(s) com marca herdada da loja, "
-            f"{own_country} com país herdado da loja."
-        )
-
-        unified = enrich.unify_brand_country()
-        print(f"Enriquecimento: {unified} produto(s) com país preenchido a partir da marca.")
-    except Exception as e:  # noqa: BLE001 — enriquecimento não deve derrubar o exit code da coleta
-        traceback.print_exc()
-        print(f"Enriquecimento pós-coleta falhou: {e}")
+    # Sem sharding, a execução é única e já pode enriquecer aqui mesmo. Com
+    # sharding, quem faz isso é o job final do workflow (--enrich-only).
+    if SHARD_TOTAL <= 1:
+        run_enrichment()
 
     return 1 if total_failures else 0
 
 
 if __name__ == "__main__":
+    # `--enrich-only`: usado pelo job final do workflow, que espera todos os
+    # shards terminarem antes de mexer no catálogo inteiro.
+    if "--enrich-only" in sys.argv:
+        require_config()
+        sys.exit(run_enrichment())
     sys.exit(run())

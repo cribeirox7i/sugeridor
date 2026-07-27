@@ -32,7 +32,9 @@ admin (`web/src/lib/platforms.ts` — manter as duas em sincronia).
 1. `run.py` lê do Supabase as lojas que têm `platform` definido, e coleta
    todas **em paralelo** (threads, uma por loja — são hosts diferentes, então
    rodar em série significa que o tempo total é a soma de cada loja, inviável
-   com 100+ lojas cadastradas).
+   com 100+ lojas cadastradas). Se `SCRAPER_SHARD_TOTAL > 1`, cada execução
+   pega só a fatia de lojas que corresponde ao seu `SCRAPER_SHARD_INDEX` —
+   ver "Escala" abaixo.
 2. Para cada loja, chama o coletor da plataforma, passando `site_url` e `config`.
 3. Cada coletor devolve uma lista de `Candidate` (nome, marca, preço, etc.).
    Candidatos com preço `<= 0` são descartados no `pipeline.py` (não geram
@@ -81,7 +83,42 @@ python -m scraper.run
 
 Variáveis opcionais: `SCRAPER_MAX_PAGES` (padrão 20), `SCRAPER_REQUEST_DELAY`
 (segundos entre requests ao mesmo host, padrão 1.0), `SCRAPER_USER_AGENT`,
-`SCRAPER_MAX_WORKERS` (lojas em paralelo, padrão 8).
+`SCRAPER_MAX_WORKERS` (lojas em paralelo, padrão 8),
+`SCRAPER_MAX_ITEMS_PER_STORE` (padrão 200),
+`SCRAPER_SHARD_INDEX`/`SCRAPER_SHARD_TOTAL` (ver abaixo).
+
+## Escala: sharding entre execuções paralelas
+
+O gargalo pra crescer não é o banco (as gravações são em lote) nem o
+paralelismo entre lojas: é o coletor `jsonld`, que abre **uma página por
+produto**. Com o rate limit educado de 1 req/s por site, uma loja de 200
+produtos leva ~3min — e a 100 lojas isso passa de 5 horas num job só.
+
+A saída é dividir as lojas entre execuções paralelas. Cada shard fica com uma
+fatia (hash do id da loja, em `_belongs_to_shard`), o que divide o tempo **sem
+ficar mais agressivo com nenhuma loja**: cada site continua recebendo 1 req/s,
+só em runners diferentes.
+
+```bash
+# shard 0 de 4 (cada um roda em paralelo, num runner próprio)
+SCRAPER_SHARD_INDEX=0 SCRAPER_SHARD_TOTAL=4 python -m scraper.run
+
+# depois de TODOS os shards: passos sobre o catálogo inteiro
+python -m scraper.run --enrich-only
+```
+
+O workflow `.github/workflows/scrape.yml` já faz isso: um job `collect` com
+`strategy.matrix` de 4 shards e um job `enrich` que depende dele. Para ajustar
+o número de shards, mude a lista `shard:` **e** `SCRAPER_SHARD_TOTAL` juntos
+(se divergirem, parte das lojas fica sem shard e nunca é coletada). A conta é
+`(lojas ÷ shards) × ~3min < 40min`: 4 shards dão conta de ~50 lojas; a 100
+lojas, use 10 ou 12.
+
+O enriquecimento (expiração, unificação de marca/país) **não** roda nos shards:
+ele olha o catálogo inteiro, então rodá-lo em N shards seria N vezes o mesmo
+trabalho em paralelo, disputando as mesmas linhas. Sem sharding
+(`SCRAPER_SHARD_TOTAL=1`, o padrão), `run.py` continua fazendo tudo numa
+execução só.
 
 ## Adicionar uma loja de plataforma já suportada
 
