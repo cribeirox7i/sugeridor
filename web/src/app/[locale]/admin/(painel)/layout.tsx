@@ -27,7 +27,9 @@ export default async function PainelLayout({
     { href: "/admin/ofertas", label: t("offers") },
     { href: "/admin/config", label: t("config") },
     { href: "/admin/classificacao", label: t("classification") },
-    { href: "/admin/coleta", label: t("collection") },
+    // A tela Coleta foi absorvida por Lojas (tudo lá era sobre lojas: disparo,
+    // quais entram na coleta e histórico de execuções).
+    { href: "/admin/ferramentas", label: t("tools") },
     { href: "/admin/logomarca", label: t("branding") },
   ];
 

@@ -5,6 +5,11 @@ name: Coleta de ofertas (scraper)
 # bloco `schedule:` aqui no futuro sem mudar mais nada.
 on:
   workflow_dispatch:
+    inputs:
+      store_ids:
+        description: "Ids de loja separados por vírgula (vazio = todas as lojas marcadas)"
+        required: false
+        default: ""
 
 jobs:
   # As lojas são divididas entre execuções paralelas (shards). O motivo é o
@@ -44,6 +49,9 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SCRAPER_SHARD_INDEX: ${{ matrix.shard }}
           SCRAPER_SHARD_TOTAL: "4"
+          # Vazio na coleta normal; preenchido pelo botão "Coletar
+          # selecionadas" do admin. O filtro é aplicado antes do sharding.
+          SCRAPER_STORE_IDS: ${{ inputs.store_ids }}
         run: python -m scraper.run
 
   # Expiração de ofertas velhas e unificação de marca/país olham o catálogo

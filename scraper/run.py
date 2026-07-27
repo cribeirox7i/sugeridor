@@ -18,7 +18,7 @@ import sys
 import traceback
 
 from . import categorize, db, enrich, pipeline
-from .config import MAX_WORKERS, SHARD_INDEX, SHARD_TOTAL, require_config
+from .config import MAX_WORKERS, SHARD_INDEX, SHARD_TOTAL, STORE_IDS, require_config
 from .models import StoreRecord
 from .platforms import get_collector
 
@@ -117,6 +117,16 @@ def run() -> int:
     if not rows:
         print("Nenhuma loja com platform definido. Nada a fazer.")
         return 0
+
+    # Seleção explícita de lojas (botão "Coletar selecionadas" do admin) vem
+    # antes do sharding: a fatia é calculada sobre o que foi pedido.
+    if STORE_IDS:
+        selected = set(STORE_IDS)
+        rows = [r for r in rows if r["id"] in selected]
+        print(f"Seleção manual: {len(rows)} de {len(STORE_IDS)} loja(s) pedida(s) elegível(is).")
+        if not rows:
+            print("Nenhuma das lojas pedidas está com coleta habilitada. Nada a fazer.")
+            return 0
 
     total_stores = len(rows)
     rows = [r for r in rows if _belongs_to_shard(r["id"])]

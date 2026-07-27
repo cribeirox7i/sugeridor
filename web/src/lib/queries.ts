@@ -26,6 +26,17 @@ const OFFER_SELECT = `
   store:stores!inner ( id, name, logo_url )
 `;
 
+// Mesmo select sem as colunas da migration 0013. Serve pra janela entre o
+// deploy do código e a execução da migration: sem isso a home devolve 500
+// ("column offers.reference_price does not exist") até alguém rodar o SQL à
+// mão — aconteceu de verdade. Mesmo espírito do fallback de getSiteSettings.
+const OFFER_SELECT_LEGACY = OFFER_SELECT.replace("reference_price, drop_percent, ", "");
+
+// 42703 = undefined_column no Postgres.
+function isMissingColumn(error: { code?: string } | null): boolean {
+  return error?.code === "42703";
+}
+
 // Busca TODAS as ofertas ativas (categorias públicas), sem filtro — base
 // única reaproveitada pra grid, facetas de filtro (estilo/país/loja) e
 // destaques, em vez de uma query por consumidor (era o que deixava a home,
@@ -44,18 +55,38 @@ const PAGE_SIZE = 1000;
 
 export async function listOffers(supabase: SupabaseClient): Promise<OfferListItem[]> {
   const all: OfferListItem[] = [];
+  // Começa com o select completo e cai pro legado se as colunas de queda ainda
+  // não existirem (migration 0013 pendente) — sem isso a home fica 500 no
+  // intervalo entre o deploy e a migration.
+  let select = OFFER_SELECT;
   for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("offers")
-      .select(OFFER_SELECT)
-      .eq("active", true)
-      .in("product.category", PUBLIC_CATEGORIES)
-      .order("price", { ascending: true })
-      .range(from, from + PAGE_SIZE - 1);
+    const page = async (columns: string) =>
+      await supabase
+        .from("offers")
+        .select(columns)
+        .eq("active", true)
+        .in("product.category", PUBLIC_CATEGORIES)
+        .order("price", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+    let { data, error } = await page(select);
+    if (error && isMissingColumn(error) && select !== OFFER_SELECT_LEGACY) {
+      select = OFFER_SELECT_LEGACY;
+      ({ data, error } = await page(select));
+    }
     if (error) throw error;
-    const page = (data ?? []) as unknown as OfferListItem[];
-    all.push(...page);
-    if (page.length < PAGE_SIZE) return all;
+
+    const rows = (data ?? []) as unknown as OfferListItem[];
+    // No modo legado as colunas não vêm; normaliza pra null em vez de
+    // undefined, que é o que o resto do código espera.
+    all.push(
+      ...rows.map((o) => ({
+        ...o,
+        reference_price: o.reference_price ?? null,
+        drop_percent: o.drop_percent ?? null,
+      })),
+    );
+    if (rows.length < PAGE_SIZE) return all;
   }
 }
 

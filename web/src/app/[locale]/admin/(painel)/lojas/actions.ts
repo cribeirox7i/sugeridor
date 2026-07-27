@@ -114,6 +114,45 @@ export async function backfillStoreBranding(
   revalidateAllLocales("/admin/lojas");
 }
 
+// ── Coleta: o que era a tela /admin/coleta ────────────────────────
+// A tela Coleta foi absorvida por Lojas (tudo lá era sobre lojas). Estas
+// ações vieram de coleta/actions.ts e agora revalidam /admin/lojas.
+export async function toggleStoreCollection(id: string, included: boolean) {
+  const supabase = await createClient();
+  await supabase.from("stores").update({ include_in_collection: included }).eq("id", id);
+  revalidateAllLocales("/admin/lojas");
+}
+
+export async function setStoresCollection(
+  ids: string[],
+  included: boolean,
+): Promise<{ error: string | null }> {
+  if (ids.length === 0) return { error: null };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("stores")
+    .update({ include_in_collection: included })
+    .in("id", ids);
+  if (error) return { error: error.message };
+  revalidateAllLocales("/admin/lojas");
+  return { error: null };
+}
+
+// Exclusão em lote. Chamada direto pelo client (não por <form>) pra devolver
+// erro sem navegar — mesmo padrão de deleteOffers. As FKs de `offers` são
+// RESTRICT de propósito: um único DELETE ... WHERE id IN (...) é uma
+// transação, então se QUALQUER loja selecionada tiver oferta cadastrada, nada
+// é apagado e o client avisa — melhor que exclusão parcial silenciosa.
+export async function deleteStores(ids: string[]): Promise<{ error: string | null }> {
+  if (ids.length === 0) return { error: null };
+  const supabase = await createClient();
+  const { error } = await supabase.from("stores").delete().in("id", ids);
+  if (error) return { error: error.message };
+  revalidateAllLocales("/admin/lojas");
+  revalidateAllLocales("/");
+  return { error: null };
+}
+
 export async function deleteStore(formData: FormData) {
   const id = formData.get("id") as string;
   if (!id) return;

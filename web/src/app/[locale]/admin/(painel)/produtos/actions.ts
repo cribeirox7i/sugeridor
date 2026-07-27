@@ -96,7 +96,12 @@ const BACKFILL_BATCH_SIZE = 200;
 // já cadastrados (a maioria em CAIXA ALTA, de antes desse pedido). Idempotente
 // — rodar de novo não muda nada em quem já está em Title Case, então não
 // precisa de controle de "já rodei antes".
-export async function normalizeExistingProductNames(_formData: FormData) {
+export async function normalizeExistingProductNames(formData: FormData) {
+  // `returnTo` permite chamar a mesma ação da tela de Ferramentas sem jogar o
+  // usuário de volta pra Produtos. Sanitizado contra open redirect: só aceita
+  // uma das telas conhecidas.
+  const returnToRaw = (formData?.get("returnTo") as string) || "";
+  const returnTo = ["ferramentas", "produtos"].includes(returnToRaw) ? returnToRaw : "produtos";
   const supabase = await createClient();
   const { data } = await supabase.from("products").select("id, name");
   const products = (data ?? []) as { id: string; name: string }[];
@@ -112,9 +117,10 @@ export async function normalizeExistingProductNames(_formData: FormData) {
   }
 
   revalidateAllLocales("/admin/produtos");
+  revalidateAllLocales("/admin/ferramentas");
   revalidateAllLocales("/");
   const locale = await getLocale();
-  redirect(`/${locale}/admin/produtos?normalized=${changed.length}`);
+  redirect(`/${locale}/admin/${returnTo}?normalized=${changed.length}`);
 }
 
 // Usado pelo form pra listar os tipos disponíveis.

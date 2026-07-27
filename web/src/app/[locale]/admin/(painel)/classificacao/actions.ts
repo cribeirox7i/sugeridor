@@ -59,7 +59,14 @@ function classify(name: string, keywordsByCategory: Map<string, string[]>): stri
 // scraper nunca reclassifica produto existente (de propósito, pra não
 // sobrescrever curadoria manual), então o catálogo já coletado ficaria
 // errado pra sempre. Idempotente: rodar de novo não muda quem já está certo.
-export async function reclassifyExistingProducts() {
+export async function reclassifyExistingProducts(formData?: FormData) {
+  // `returnTo`: a mesma ação tem dois pontos de entrada — a tela de
+  // Classificação (fluxo natural depois de mexer nas palavras) e a de
+  // Ferramentas. Sanitizado contra open redirect.
+  const returnToRaw = (formData?.get("returnTo") as string) || "";
+  const returnTo = ["ferramentas", "classificacao"].includes(returnToRaw)
+    ? returnToRaw
+    : "classificacao";
   const supabase = await createClient();
 
   const [{ data: keywordData }, { data: productData }] = await Promise.all([
@@ -87,8 +94,9 @@ export async function reclassifyExistingProducts() {
   }
 
   revalidateAllLocales("/admin/classificacao");
+  revalidateAllLocales("/admin/ferramentas");
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
   const locale = await getLocale();
-  redirect(`/${locale}/admin/classificacao?reclassified=${changed.length}`);
+  redirect(`/${locale}/admin/${returnTo}?reclassified=${changed.length}`);
 }

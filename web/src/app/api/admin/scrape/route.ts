@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 // Dispara o workflow de coleta no GitHub Actions (workflow_dispatch). Protegida:
 // só um admin logado pode chamar. O PAT do GitHub fica só no servidor.
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,6 +22,21 @@ export async function POST() {
     );
   }
 
+  // Body opcional `{ storeIds: string[] }` — vem do botão "Coletar
+  // selecionadas" do admin. Sem body, a coleta roda pra todas as lojas
+  // marcadas, como sempre. Os ids são validados como UUID antes de virarem
+  // input do workflow.
+  let storeIds: string[] = [];
+  try {
+    const body = (await request.json()) as { storeIds?: unknown };
+    if (Array.isArray(body?.storeIds)) {
+      const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      storeIds = body.storeIds.filter((id): id is string => typeof id === "string" && uuid.test(id));
+    }
+  } catch {
+    // sem body (ou body inválido) = coleta completa
+  }
+
   const res = await fetch(
     `https://api.github.com/repos/${owner}/${repo}/actions/workflows/scrape.yml/dispatches`,
     {
@@ -32,7 +47,10 @@ export async function POST() {
         "X-GitHub-Api-Version": "2022-11-28",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ ref: "main" }),
+      body: JSON.stringify({
+        ref: "main",
+        inputs: { store_ids: storeIds.join(",") },
+      }),
     },
   );
 

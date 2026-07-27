@@ -44,6 +44,12 @@ MAX_WORKERS = int(os.environ.get("SCRAPER_MAX_WORKERS", "8"))
 SHARD_INDEX = int(os.environ.get("SCRAPER_SHARD_INDEX", "0"))
 SHARD_TOTAL = int(os.environ.get("SCRAPER_SHARD_TOTAL", "1"))
 
+# Coleta de um subconjunto específico de lojas (ids separados por vírgula),
+# usada pelo botão "Coletar selecionadas" do admin. Vazio = coleta todas as
+# lojas marcadas, o comportamento normal. Combina com o sharding: cada shard
+# processa a fatia dele DENTRO da seleção.
+STORE_IDS = [s.strip() for s in os.environ.get("SCRAPER_STORE_IDS", "").split(",") if s.strip()]
+
 
 def require_config() -> None:
     missing = [
