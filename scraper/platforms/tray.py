@@ -10,6 +10,7 @@ import re
 
 from bs4 import BeautifulSoup
 
+from ..config import DEFAULT_MAX_ITEMS_PER_STORE
 from ..extract import absolute_url
 from ..http import fetch, fetch_json
 from ..models import Candidate, StoreRecord
@@ -17,37 +18,103 @@ from ..normalize import clean_product_name, parse_volume_ml
 from ..price import parse_price
 
 
+# Teto de páginas do /web_api — salvaguarda contra API que nunca sinaliza fim
+# (o corte real é `max_items`, que vem da config da loja).
+_MAX_API_PAGES = 100
+
+
 def _base_url(site_url: str) -> str | None:
     m = re.match(r"https?://[^/]+", site_url)
     return m.group(0) if m else None
 
 
-def _from_web_api(base_url: str) -> list[Candidate]:
-    data = fetch_json(f"{base_url}/web_api/products?page=1")
-    if not isinstance(data, dict):
-        return []
+def _tray_link(value) -> str | None:
+    """URL de um campo do Tray, que pode ser string ou objeto.
 
+    O /web_api entrega link e imagem como `{"http": "...", "https": "..."}`,
+    não como string — e o coletor lia direto, então caía no fallback e TODA
+    oferta da loja apontava pra home em vez da página do produto, e nenhuma
+    imagem era gravada. Prefere https."""
+    if isinstance(value, str):
+        return value or None
+    if isinstance(value, dict):
+        link = value.get("https") or value.get("http")
+        return link if isinstance(link, str) and link else None
+    return None
+
+
+def _tray_image(product: dict) -> str | None:
+    """Primeira imagem do produto. O Tray usa `ProductImage` (lista de objetos
+    com http/https/thumbs); `featured_image`, que o coletor procurava antes,
+    não existe nessa API."""
+    images = product.get("ProductImage")
+    if isinstance(images, list) and images:
+        return _tray_link(images[0])
+    # Formatos alternativos vistos em outras lojas Tray.
+    return _tray_link(product.get("featured_image") or product.get("image"))
+
+
+def _tray_price(product: dict) -> float | None:
+    """Preço a exibir: o promocional quando existe (é o que a loja cobra),
+    senão o cheio. O Tray manda `promotional_price: "0"` quando não há
+    promoção, daí o teste por valor e não por presença."""
+    promo = parse_price(product.get("promotional_price"))
+    if promo is not None and promo > 0:
+        return promo
+    return parse_price(product.get("data-sell-price") or product.get("price"))
+
+
+def _from_web_api(base_url: str, max_items: int) -> list[Candidate]:
+    """Percorre o /web_api/products paginando.
+
+    Buscar só `page=1` trazia 30 de 988 produtos numa loja real (Nono Bier) —
+    a API informa o total e o tamanho de página em `paging`, e é isso que
+    limita, não o catálogo."""
     out: list[Candidate] = []
-    for item in data.get("Products", []):
-        p = item.get("Product", {})
-        name = clean_product_name(str(p.get("name") or p.get("title") or "").strip())
-        price = parse_price(p.get("data-sell-price") or p.get("price") or p.get("promotional_price"))
-        if not name or price is None:
-            continue
-        url = p.get("url") or ""
-        attributes: dict = {}
-        vol = parse_volume_ml(name)
-        if vol:
-            attributes["volume_ml"] = vol
-        out.append(
-            Candidate(
-                product_name=name,
-                price=price,
-                url=absolute_url(base_url, url) or base_url,
-                image_url=absolute_url(base_url, p.get("featured_image")),
-                attributes=attributes,
+    page = 1
+
+    while len(out) < max_items and page <= _MAX_API_PAGES:
+        data = fetch_json(f"{base_url}/web_api/products?page={page}")
+        if not isinstance(data, dict):
+            break
+        products = data.get("Products") or []
+        if not products:
+            break
+
+        for item in products:
+            p = item.get("Product", {})
+            name = clean_product_name(str(p.get("name") or p.get("title") or "").strip())
+            price = _tray_price(p)
+            if not name or price is None:
+                continue
+            attributes: dict = {}
+            vol = parse_volume_ml(name)
+            if vol:
+                attributes["volume_ml"] = vol
+            out.append(
+                Candidate(
+                    product_name=name,
+                    brand=p.get("brand") or None,
+                    price=price,
+                    url=absolute_url(base_url, _tray_link(p.get("url"))) or base_url,
+                    image_url=absolute_url(base_url, _tray_image(p)),
+                    attributes=attributes,
+                )
             )
-        )
+            if len(out) >= max_items:
+                break
+
+        # `paging` diz quantas páginas existem; sem ele, para quando a página
+        # vier menor que o limite informado.
+        paging = data.get("paging") or {}
+        total = paging.get("total")
+        limit = paging.get("limit") or len(products)
+        if isinstance(total, int) and limit and page * limit >= total:
+            break
+        if len(products) < (limit or 1):
+            break
+        page += 1
+
     return out
 
 
@@ -128,7 +195,10 @@ def collect(store: StoreRecord) -> list[Candidate]:
     if not base_url:
         return []
 
-    candidates = _try_tier(_from_web_api, base_url)
+    cfg = store.config or {}
+    max_items = int(cfg.get("max_items", DEFAULT_MAX_ITEMS_PER_STORE))
+
+    candidates = _try_tier(_from_web_api, base_url, max_items)
     if not candidates:
         candidates = _try_tier(_from_embedded_json, base_url, store.site_url)
     if not candidates:
@@ -141,4 +211,4 @@ def collect(store: StoreRecord) -> list[Candidate]:
         if c.product_name not in seen_names:
             seen_names.add(c.product_name)
             unique.append(c)
-    return unique
+    return unique[:max_items]
