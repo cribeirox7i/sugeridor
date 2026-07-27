@@ -70,8 +70,9 @@ def apply_own_store_defaults() -> tuple[int, int]:
         if not product_ids:
             continue
 
-        # Em lote: era 1 SELECT por produto, o que a 100 lojas × 200 itens
-        # significava dezenas de milhares de requests só neste passo.
+        # Leitura em lote: era 1 SELECT por produto, o que a 100 lojas × 200
+        # itens significava dezenas de milhares de requests só neste passo.
+        # (A escrita segue sendo um PATCH por produto — ver db.update_by_id_many.)
         for i in range(0, len(product_ids), _BATCH_SIZE):
             batch = product_ids[i : i + _BATCH_SIZE]
             rows = db.select(
@@ -97,7 +98,7 @@ def apply_own_store_defaults() -> tuple[int, int]:
                         country_updated += 1
 
     if patches:
-        db.upsert_many("products", patches, on_conflict="id")
+        db.update_by_id_many("products", patches)
 
     return brand_updated, country_updated
 
@@ -132,9 +133,10 @@ def unify_brand_country() -> int:
             patches.append({"id": row["id"], "attributes": {**attrs, "pais": common_pais}})
             updated += 1
 
-    # Em lote pelo mesmo motivo de apply_own_store_defaults: um UPDATE por
-    # produto não escala pro volume de 100+ lojas.
+    # Um PATCH por produto: cada um recebe um `attributes` diferente, e o
+    # PostgREST não aplica valores distintos num filtro só (ver
+    # db.update_by_id_many pro motivo de não dar pra usar upsert aqui).
     if patches:
-        db.upsert_many("products", patches, on_conflict="id")
+        db.update_by_id_many("products", patches)
 
     return updated

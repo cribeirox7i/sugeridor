@@ -120,8 +120,13 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
 
         current_attrs = dict(row.get("attributes") or {})
         missing = {k: v for k, v in p["attributes"].items() if k not in current_attrs}
-        if store.store_type == "propria" and p["attributes"].get("pais"):
-            missing["pais"] = p["attributes"]["pais"]
+        # Loja própria: o país da loja é autoridade, então corrige mesmo se já
+        # houver valor — mas só quando de fato difere, senão todo produto da
+        # loja geraria um patch inútil a cada coleta.
+        if store.store_type == "propria":
+            pais = p["attributes"].get("pais")
+            if pais and current_attrs.get("pais") != pais:
+                missing["pais"] = pais
         if missing:
             patch["attributes"] = {**current_attrs, **missing}
 
@@ -129,7 +134,7 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
             patches.append({"id": row["id"], **patch})
 
     if patches:
-        db.upsert_many("products", patches, on_conflict="id")
+        db.update_by_id_many("products", patches)
 
     # ── 3. Cria os produtos novos, num insert em lote ──
     to_create = [p for p in prepared if p["slug"] not in existing]

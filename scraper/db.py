@@ -88,6 +88,28 @@ def insert_many(table: str, rows: list[dict], *, returning: bool = True) -> list
     return out
 
 
+def update_by_id_many(table: str, patches: list[dict]) -> int:
+    """Aplica patches PARCIAIS (um por linha, cada um com sua chave `id`).
+
+    Por que não `upsert_many`: no PostgREST o upsert é um
+    `INSERT ... ON CONFLICT DO UPDATE`, então a linha enviada precisa ser
+    COMPLETA — um patch tipo {id, image_url} viola os NOT NULL de
+    `products` (product_type_id, name, canonical_slug) e o banco devolve
+    400. Aprendido na prática: a coleta quebrou em três lojas exatamente
+    assim.
+
+    Um PATCH por linha é inevitável aqui porque cada patch tem valores
+    diferentes (PostgREST não aplica valores distintos num filtro só). Não é
+    o gargalo que motivou o trabalho em lote: patch só acontece quando falta
+    imagem/atributo num produto que já existe, o que é a minoria — o volume
+    grande (produtos novos, ofertas, histórico) segue em lote de verdade."""
+    for patch in patches:
+        row = dict(patch)
+        row_id = row.pop("id")
+        update(table, {"id": f"eq.{row_id}"}, row)
+    return len(patches)
+
+
 def upsert_many(table: str, rows: list[dict], on_conflict: str) -> list[dict]:
     """Upsert de várias linhas em lotes, devolvendo as linhas resultantes.
 
