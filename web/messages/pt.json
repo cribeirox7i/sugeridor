@@ -6,7 +6,6 @@
     "offers": "Ofertas",
     "config": "Config",
     "classification": "Classificação",
-    "branding": "Logomarca",
     "signOut": "Sair",
     "tools": "Ferramentas"
   },
@@ -331,7 +330,9 @@
       "removes": "(remove)",
       "active": "Ativa",
       "inactive": "Inativa",
-      "confirmDeleteRule": "Excluir a regra \"{search}\"?"
+      "confirmDeleteRule": "Excluir a regra \"{search}\"?",
+      "resync": "Ressincronizar identificadores",
+      "resyncResult": "{count, plural, =0 {Nenhum identificador precisou de ajuste — o catálogo está sincronizado com a coleta.} =1 {1 identificador ressincronizado.} other {# identificadores ressincronizados.}} {conflicts, plural, =0 {} =1 {1 caso ficou de fora por ser duplicata — resolva mesclando.} other {# casos ficaram de fora por serem duplicatas — resolva mesclando.}}"
     }
   }
 }

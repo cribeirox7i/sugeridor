@@ -10,6 +10,7 @@ import {
   toggleReplacement,
   applyReplacementsAction,
   rebrandOwnStoreProducts,
+  resyncProductSlugs,
 } from "./actions";
 import ConflictList, { type ConflictPair } from "./ConflictList";
 
@@ -41,6 +42,7 @@ export default async function FerramentasPage({
   searchParams: Promise<{
     aplicados?: string;
     remarcados?: string;
+    ressincronizados?: string;
     conflitos?: string;
     normalized?: string;
     reclassified?: string;
@@ -134,6 +136,14 @@ export default async function FerramentasPage({
           })}
         </p>
       )}
+      {sp.ressincronizados !== undefined && (
+        <p className={okBanner}>
+          {t("resyncResult", {
+            count: Number(sp.ressincronizados),
+            conflicts: Number(sp.conflitos ?? 0),
+          })}
+        </p>
+      )}
       {sp.remarcados !== undefined && (
         <p className={okBanner}>
           {t("rebrandResult", {
@@ -167,6 +177,11 @@ export default async function FerramentasPage({
           <form action={rebrandOwnStoreProducts}>
             <button type="submit" className={btnCls}>
               {t("rebrand")}
+            </button>
+          </form>
+          <form action={resyncProductSlugs}>
+            <button type="submit" className={btnCls}>
+              {t("resync")}
             </button>
           </form>
           <form action={applyReplacementsAction}>

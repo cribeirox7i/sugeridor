@@ -34,10 +34,12 @@ async function fetchAllProducts(supabase: SupabaseLike): Promise<ProductForRepla
 // ── CRUD das regras de/para ───────────────────────────────────────
 export async function addReplacement(formData: FormData) {
   const target = (formData.get("target") as string) || "";
-  // `search` NÃO é trimado: "Alemã " com espaço no fim é justamente o que
-  // impede a regra de casar "Alemãzinha", e é o caso de uso original.
+  // NENHUM dos dois é trimado: o espaço é significativo nas duas pontas.
+  // Em `search`, "Alemã " com espaço no fim é o que impede a regra de casar
+  // "Alemãzinha". Em `replace`, o espaço à esquerda é o que permite separar
+  // texto emendado — trocar "500 ml" por " 500 ml" conserta "Alma500 ml".
   const search = normalizeDashes((formData.get("search") as string) ?? "");
-  const replace = normalizeDashes(((formData.get("replace") as string) || "").trim());
+  const replace = normalizeDashes((formData.get("replace") as string) ?? "");
   if (!["name", "brand"].includes(target) || !search) return;
 
   const supabase = await createClient();
@@ -199,6 +201,54 @@ export async function rebrandOwnStoreProducts() {
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
   redirect(`/${locale}/admin/ferramentas?remarcados=${updated}&conflitos=${skipped}`);
+}
+
+// ── Ressincronizar identificadores (slug) ─────────────────────────
+// O `canonical_slug` é a chave pela qual o scraper reconhece um produto que já
+// existe. Quando a fórmula dele muda — foi o caso quando o nome passou a
+// conter a marca e o slug deixou de repeti-la ("dogma-ipa" em vez de
+// "dogma-dogma-ipa") — os slugs JÁ GRAVADOS ficam fora da fórmula nova, e a
+// coleta seguinte não acha o produto: cria uma duplicata de cada um. Foram 717
+// de 1109 produtos nessa situação.
+//
+// Esta ação recalcula o slug de TODO o catálogo (não só lojas próprias, porque
+// o problema atinge qualquer produto cujo nome contenha a marca) e aplica onde
+// não há colisão. Idempotente: rodar de novo não muda nada.
+export async function resyncProductSlugs() {
+  const supabase = await createClient();
+  const products = await fetchAllProducts(supabase);
+  const locale = await getLocale();
+
+  const changed: { id: string; canonical_slug: string }[] = [];
+  for (const p of products) {
+    const slug = productSlug(p.brand, p.name);
+    if (slug !== p.canonical_slug) changed.push({ id: p.id, canonical_slug: slug });
+  }
+
+  // Slug é unique: dois produtos convergindo derrubariam o lote inteiro. Deixa
+  // de fora quem colide (com outro do lote ou com produto intocado) e reporta —
+  // esses casos são duplicatas de verdade, resolvidas por mesclagem.
+  const owner = new Map(products.map((p) => [p.canonical_slug, p.id]));
+  const seen = new Map<string, string>();
+  const safe: typeof changed = [];
+  let skipped = 0;
+  for (const c of changed) {
+    const existing = owner.get(c.canonical_slug);
+    if ((existing && existing !== c.id) || seen.has(c.canonical_slug)) {
+      skipped++;
+      continue;
+    }
+    seen.set(c.canonical_slug, c.id);
+    safe.push(c);
+  }
+
+  const { error, updated } = await patchProducts(supabase, safe);
+  if (error) redirect(`/${locale}/admin/ferramentas?erro=resync`);
+
+  revalidateAllLocales("/admin/ferramentas");
+  revalidateAllLocales("/admin/produtos");
+  revalidateAllLocales("/");
+  redirect(`/${locale}/admin/ferramentas?ressincronizados=${updated}&conflitos=${skipped}`);
 }
 
 // ── Mesclar dois produtos ─────────────────────────────────────────

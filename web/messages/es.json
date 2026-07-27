@@ -6,7 +6,6 @@
     "offers": "Ofertas",
     "config": "Config",
     "classification": "Clasificación",
-    "branding": "Logotipo",
     "signOut": "Salir",
     "tools": "Herramientas"
   },
@@ -331,7 +330,9 @@
       "removes": "(quita)",
       "active": "Activa",
       "inactive": "Inactiva",
-      "confirmDeleteRule": "¿Eliminar la regla \"{search}\"?"
+      "confirmDeleteRule": "¿Eliminar la regla \"{search}\"?",
+      "resync": "Resincronizar identificadores",
+      "resyncResult": "{count, plural, =0 {Ningún identificador necesitó ajuste — el catálogo está sincronizado con la recolección.} =1 {1 identificador resincronizado.} other {# identificadores resincronizados.}} {conflicts, plural, =0 {} =1 {1 caso quedó fuera por ser duplicado — resuélvelo fusionando.} other {# casos quedaron fuera por ser duplicados — resuélvelos fusionando.}}"
     }
   }
 }

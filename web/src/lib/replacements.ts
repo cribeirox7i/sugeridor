@@ -2,7 +2,7 @@
 // `text_replacements`, migration 0014). Lógica pura, sem I/O, pra dar pra
 // testar contra os nomes reais do catálogo sem depender do banco — mesmo
 // padrão de `computeFeaturedDeals`/`titleCaseProductName`.
-import { slugify } from "./slug";
+import { productSlug } from "./slug";
 
 export type Replacement = {
   id: string;
@@ -31,10 +31,20 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Fronteira de palavra nas duas pontas, senão a regra "pin" transforma
-// "CONSTELLATION SPIN" em "CONSTELLATION S" (aconteceu no teste). Só é exigida
-// na ponta que de fato começa/termina com letra ou número: a regra "Alemã "
-// termina em espaço, e cobrar fronteira depois dele nunca casaria.
+// Fronteira de palavra nas pontas, com uma exceção importante para números.
+//
+// A fronteira existe porque sem ela a regra "pin" transforma "CONSTELLATION
+// SPIN" em "CONSTELLATION S". Só é exigida na ponta que de fato começa ou
+// termina com letra/número: a regra "Alemã " termina em espaço, e cobrar
+// fronteira depois dele nunca casaria.
+//
+// A exceção: quando a ponta é um DÍGITO, a fronteira não é exigida — porque o
+// caso de uso é justamente separar volume emendado ao nome. São 154 produtos
+// assim no catálogo ("Erdinger Urweisse500ml", "Tripel Karmeliet750ml"), e uma
+// regra DE "500ml" PARA " 500ml" precisa casar logo depois de uma letra.
+// Consequência aceita: a regra também casa dentro de um número maior, o que
+// nos dados reais é o resultado desejado ("St. Bernardus Abt 12330ml" vira
+// "Abt 12 330ml") — mas convém conferir a contagem de "Afeta" antes de aplicar.
 //
 // Usa lookaround com classes Unicode em vez de `\b` porque `\b` em JS é ASCII:
 // com acento ("Alemã", "Ação") ele marca fronteira no lugar errado.
@@ -42,8 +52,8 @@ function escapeRegex(s: string): string {
 // capitalizada noutra.
 function toPattern(search: string): RegExp {
   const escaped = escapeRegex(search);
-  const before = /^[\p{L}\p{N}]/u.test(search) ? "(?<![\\p{L}\\p{N}])" : "";
-  const after = /[\p{L}\p{N}]$/u.test(search) ? "(?![\\p{L}\\p{N}])" : "";
+  const before = /^\p{L}/u.test(search) ? "(?<![\\p{L}\\p{N}])" : "";
+  const after = /\p{L}$/u.test(search) ? "(?![\\p{L}\\p{N}])" : "";
   return new RegExp(`${before}${escaped}${after}`, "giu");
 }
 
@@ -56,11 +66,12 @@ function applyToText(text: string, rules: Replacement[]): string {
   return out.replace(/\s{2,}/g, " ").trim();
 }
 
-// Aplica as regras ativas e devolve o resultado JÁ com o slug recalculado.
-// O slug é `slugify(marca + nome)` — a mesma fórmula de scraper/pipeline.py e
-// de produtos/actions.ts. Recalcular é obrigatório: mudar a marca sem o slug
-// faria a coleta seguinte não reconhecer o produto e criar uma duplicata (foi
-// o que aconteceu de verdade, ver supabase/scripts/fix-catalog-data.sql).
+// Aplica as regras ativas e devolve o resultado JÁ com o slug recalculado por
+// `productSlug` — a MESMA função que o scraper usa (espelhada em
+// scraper/normalize.py::product_slug). Usar `slugify(marca + nome)` aqui, como
+// era antes, produzia slug diferente do que a coleta calcula ("dogma-dogma-
+// ipa" em vez de "dogma-ipa") e a coleta seguinte criaria uma duplicata.
+// Recalcular é obrigatório: é pelo slug que o scraper reconhece o produto.
 export function applyReplacements(
   products: ProductForReplace[],
   replacements: Replacement[],
@@ -73,7 +84,7 @@ export function applyReplacements(
     const name = nameRules.length ? applyToText(p.name, nameRules) : p.name;
     const brand =
       p.brand && brandRules.length ? applyToText(p.brand, brandRules) || null : p.brand;
-    const canonical_slug = slugify(`${brand ?? ""} ${name}`);
+    const canonical_slug = productSlug(brand, name);
     return {
       id: p.id,
       name,

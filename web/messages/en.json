@@ -6,7 +6,6 @@
     "offers": "Offers",
     "config": "Config",
     "classification": "Classification",
-    "branding": "Logo",
     "signOut": "Sign out",
     "tools": "Tools"
   },
@@ -331,7 +330,9 @@
       "removes": "(removes)",
       "active": "Active",
       "inactive": "Inactive",
-      "confirmDeleteRule": "Delete the rule \"{search}\"?"
+      "confirmDeleteRule": "Delete the rule \"{search}\"?",
+      "resync": "Resync identifiers",
+      "resyncResult": "{count, plural, =0 {No identifier needed adjusting — the catalog is in sync with the collector.} =1 {1 identifier resynced.} other {# identifiers resynced.}} {conflicts, plural, =0 {} =1 {1 case was skipped as a duplicate — resolve it by merging.} other {# cases were skipped as duplicates — resolve them by merging.}}"
     }
   }
 }

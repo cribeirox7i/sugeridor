@@ -13,6 +13,8 @@ export async function saveSiteSettings(formData: FormData) {
     .update({ logo_black_url, logo_white_url, updated_at: new Date().toISOString() })
     .eq("id", 1);
 
-  revalidateAllLocales("/admin/logomarca");
+  // A tela /admin/logomarca foi absorvida por Config — era só este formulário,
+  // e logomarca é configuração do site como as outras que já viviam lá.
+  revalidateAllLocales("/admin/config");
   revalidateAllLocales("/");
 }

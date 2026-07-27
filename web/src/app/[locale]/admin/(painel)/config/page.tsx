@@ -7,6 +7,7 @@ import DeleteButton from "@/components/admin/DeleteButton";
 import { formatPrice } from "@/lib/format";
 import ScopeFields from "./ScopeFields";
 import { saveAlert, toggleAlertActive, deleteAlert, saveOfferExpirationDays } from "./actions";
+import { saveSiteSettings } from "./brandingActions";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +33,10 @@ export default async function ConfigPage({
 }) {
   const { edit, new: isNew, error } = await searchParams;
   const supabase = await createClient();
-  const [t, tCommon] = await Promise.all([
+  const [t, tCommon, tBranding] = await Promise.all([
     getTranslations("admin.config"),
     getTranslations("admin.common"),
+    getTranslations("admin.branding"),
   ]);
 
   const [
@@ -54,7 +56,11 @@ export default async function ConfigPage({
       )
       .order("triggered_at", { ascending: false })
       .limit(20),
-    supabase.from("site_settings").select("offer_expiration_days").eq("id", 1).maybeSingle(),
+    supabase
+      .from("site_settings")
+      .select("offer_expiration_days, logo_black_url, logo_white_url")
+      .eq("id", 1)
+      .maybeSingle(),
   ]);
 
   const alerts = (alertsData ?? []) as PriceAlert[];
@@ -62,6 +68,9 @@ export default async function ConfigPage({
   const productTypes = (typesData ?? []) as ProductTypeLite[];
   const triggers = (triggersData ?? []) as unknown as TriggerRow[];
   const offerExpirationDays = siteSettingsData?.offer_expiration_days ?? 45;
+  const siteSettings = siteSettingsData as
+    | { logo_black_url: string | null; logo_white_url: string | null }
+    | null;
 
   const productById = new Map(products.map((p) => [p.id, p]));
   const typeById = new Map(productTypes.map((pt) => [pt.id, pt]));
@@ -162,6 +171,64 @@ export default async function ConfigPage({
             className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
           >
             {t("save")}
+          </button>
+        </form>
+      </section>
+
+      {/* Logomarca: veio da tela /admin/logomarca, que era só este formulário
+          e deixou de existir — é configuração do site, como as demais aqui. */}
+      <section className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900">
+        <h2 className="font-medium">{tBranding("title")}</h2>
+        <form action={saveSiteSettings} className="max-w-xl space-y-5">
+          <div className="space-y-2">
+            <label className="block space-y-1">
+              <span className={labelCls}>{tBranding("blackLabel")}</span>
+              <input
+                name="logo_black_url"
+                type="url"
+                placeholder="https://.../logo-preta.png"
+                defaultValue={siteSettings?.logo_black_url ?? ""}
+                className={inputCls}
+              />
+            </label>
+            {siteSettings?.logo_black_url && (
+              <div className="rounded border border-neutral-200 bg-white p-4 dark:border-neutral-800">
+                <p className="mb-2 text-xs text-neutral-500">{tBranding("preview")}</p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={siteSettings.logo_black_url} alt="" className="h-10" />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="block space-y-1">
+              <span className={labelCls}>{tBranding("whiteLabel")}</span>
+              <input
+                name="logo_white_url"
+                type="url"
+                placeholder="https://.../logo-branca.png"
+                defaultValue={siteSettings?.logo_white_url ?? ""}
+                className={inputCls}
+              />
+            </label>
+            {siteSettings?.logo_white_url && (
+              <div className="rounded border border-neutral-800 bg-neutral-900 p-4">
+                <p className="mb-2 text-xs text-neutral-400">{tBranding("preview")}</p>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={siteSettings.logo_white_url} alt="" className="h-10" />
+              </div>
+            )}
+          </div>
+
+          {!siteSettings?.logo_black_url && !siteSettings?.logo_white_url && (
+            <p className="text-sm text-neutral-500">{tBranding("noLogo")}</p>
+          )}
+
+          <button
+            type="submit"
+            className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
+          >
+            {tBranding("save")}
           </button>
         </form>
       </section>
