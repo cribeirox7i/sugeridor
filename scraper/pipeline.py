@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from . import db
 from .categorize import classify_category
 from .models import Candidate, StoreRecord
-from .normalize import normalize_dashes, slugify, title_case_pt
+from .normalize import normalize_dashes, prefix_brand, product_slug, title_case_pt
 
 _type_cache: dict[str, str] = {}
 _type_cache_lock = threading.Lock()
@@ -40,25 +40,37 @@ def product_type_id(slug: str) -> str:
         return _type_cache[slug]
 
 
-def _resolve_brand_and_attributes(cand: Candidate, store: StoreRecord) -> tuple[str | None, dict]:
-    """Marca e atributos finais do candidato, já considerando o tipo da loja.
+def _resolve_identity(cand: Candidate, store: StoreRecord) -> tuple[str, str | None, dict]:
+    """Nome, marca e atributos finais do candidato — a identidade do produto.
 
     Numa loja 'propria' (a própria cervejaria vendendo o produto dela), a
-    marca É a loja e o país É o da loja — o que a fonte informa como "marca"
+    marca É a loja e o país É o da loja: o que a fonte informa como "marca"
     não é confiável nesse caso (o `vendor` do Shopify da Japas, por exemplo,
-    traz o estilo: "BOHEMIAN PILSENER | 5% ALC."). Por isso aqui SOBRESCREVE
-    em vez de só completar o que falta, e roda antes do slug ser calculado —
-    o slug deriva de marca+nome, então corrigir a marca depois (como fazia o
-    pós-processamento em enrich.py) deixaria o slug errado pra sempre."""
+    traz o estilo: "BOHEMIAN PILSENER | 5% ALC."). Por isso SOBRESCREVE em vez
+    de só completar o que falta.
+
+    E o NOME ganha a marca na frente quando ela não está lá: o nome de um
+    produto é marca + descritivo. A Dogma chama sua cerveja de "IPA" porque no
+    site dela isso basta; num agregador ao lado de dez outras IPAs, o produto é
+    "Dogma IPA" — mesma razão de "Fanta Laranja" não ser só "Laranja". Só vale
+    pra loja própria, onde a marca é confiável: no marketplace o `vendor` traz
+    razão social ("PAULANER BRAUEREI GRUPPE GMBH & CO. KGAA"), distribuidor ou
+    placeholder ("MARCA PROPRIA"), e prefixar pioraria o nome.
+
+    Roda antes do slug ser calculado — o slug deriva de marca+nome, então
+    corrigir isso depois (como fazia o pós-processamento em enrich.py) deixaria
+    o slug errado pra sempre."""
     brand = normalize_dashes(cand.brand) if cand.brand else cand.brand
     attributes = dict(cand.attributes)
+    name = cand.product_name
 
     if store.store_type == "propria":
-        brand = store.name
+        brand = store.brand  # apelido, ou o nome da loja se não houver
+        name = prefix_brand(name, brand)
         if store.country:
             attributes["pais"] = store.country
 
-    return brand, attributes
+    return name, brand, attributes
 
 
 def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
@@ -76,17 +88,19 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
         if cand.price <= 0:
             continue
 
-        brand, attributes = _resolve_brand_and_attributes(cand, store)
         # product_name já sai normalizado de clean_product_name (todo coletor
-        # passa por lá).
-        slug = slugify(f"{brand or ''} {cand.product_name}")
+        # passa por lá); aqui ele pode ganhar a marca na frente.
+        name, brand, attributes = _resolve_identity(cand, store)
+        slug = product_slug(brand, name)
         # Dois candidatos com o mesmo slug seriam o mesmo produto: mantém o
         # primeiro. Sem isso o insert em lote quebraria no unique do slug e o
         # upsert de ofertas quebraria no par (product_id, store_id).
         if slug in seen_slugs:
             continue
         seen_slugs.add(slug)
-        prepared.append({"cand": cand, "brand": brand, "attributes": attributes, "slug": slug})
+        prepared.append(
+            {"cand": cand, "name": name, "brand": brand, "attributes": attributes, "slug": slug}
+        )
 
     if not prepared:
         return 0
@@ -146,12 +160,17 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
                 {
                     "product_type_id": type_id,
                     # Title Case no título (CAIXA ALTA foi pedido antes e
-                    # depois revertido); marca fica como resolvida acima.
-                    "name": title_case_pt(p["cand"].product_name),
+                    # depois revertido); `name` já vem com a marca na frente
+                    # quando a loja é própria (ver _resolve_identity).
+                    "name": title_case_pt(p["name"]),
                     "brand": p["brand"],
                     "attributes": p["attributes"],
                     "image_url": p["cand"].image_url,
                     "canonical_slug": p["slug"],
+                    # Categoria pelo nome ORIGINAL da fonte: o prefixo de
+                    # marca poderia introduzir uma palavra-chave por acidente
+                    # (uma cervejaria chamada "Copo" classificaria tudo como
+                    # copo).
                     "category": classify_category(p["cand"].product_name),
                 }
                 for p in to_create

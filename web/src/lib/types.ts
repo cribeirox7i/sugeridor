@@ -40,6 +40,11 @@ export type Store = {
   include_in_collection: boolean;
   store_type: StoreType;
   country: string;
+  // Forma curta do nome ("Dogma" para "Cervejaria Dogma"), usada como marca
+  // dos produtos e como prefixo do nome deles em loja própria — o nome de um
+  // produto é marca + descritivo ("Dogma IPA", não "IPA"). Ver migration 0015.
+  // null = usa `name`.
+  brand_alias: string | null;
   // Dias sem ser vista pelo coletor até a oferta desta loja ser desativada.
   // null = usa o padrão global de site_settings (ver migration 0013).
   offer_expiration_days: number | null;

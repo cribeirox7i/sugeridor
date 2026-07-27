@@ -5,7 +5,7 @@ import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateAllLocales } from "@/lib/revalidate";
 import { normalizeDashes } from "@/lib/text";
-import { slugify } from "@/lib/slug";
+import { prefixBrand, productSlug } from "@/lib/slug";
 import { planReplacements, type ProductForReplace, type Replacement } from "@/lib/replacements";
 import { planMerge, type MergeOffer } from "@/lib/merge";
 
@@ -109,31 +109,44 @@ export async function applyReplacementsAction() {
   );
 }
 
-// ── Regravar marca a partir da loja própria ───────────────────────
-// Numa loja 'propria' a marca É a loja: o campo "marca" da fonte não é
-// confiável (o vendor do Shopify da Japas traz o estilo da cerveja). O
-// scraper já garante isso na coleta; este botão reaplica no que já está
-// gravado — por exemplo depois de mudar o tipo de uma loja pra 'propria'.
+// ── Regravar marca e nome a partir da loja própria ────────────────
+// Duas coisas, porque nas lojas próprias as duas dependem da mesma fonte:
+//
+//  1. A marca É a loja (o apelido, se houver): o campo "marca" da fonte não é
+//     confiável aí — o vendor do Shopify da Japas traz o estilo da cerveja.
+//  2. O NOME ganha a marca na frente quando não a tem: o nome de um produto é
+//     marca + descritivo. A Dogma chama sua cerveja de "IPA" porque no site
+//     dela isso basta; num agregador o produto é "Dogma IPA", como
+//     "Fanta Laranja" não é só "Laranja".
+//
+// Só lojas próprias: no marketplace a marca vem do vendor e traz razão social
+// ("PAULANER BRAUEREI GRUPPE GMBH & CO. KGAA"), distribuidor ou placeholder
+// ("MARCA PROPRIA"), e prefixar pioraria o nome.
 //
 // O canonical_slug é recalculado JUNTO, obrigatoriamente: ele deriva de
 // marca+nome e é por ele que o scraper reconhece um produto existente.
-// Corrigir a marca sem o slug faz a coleta seguinte criar uma duplicata de
-// cada produto (aconteceu de verdade, ver supabase/scripts/fix-catalog-data.sql).
+// Corrigir sem o slug faz a coleta seguinte criar uma duplicata de cada
+// produto (aconteceu de verdade, ver supabase/scripts/fix-catalog-data.sql).
 export async function rebrandOwnStoreProducts() {
   const supabase = await createClient();
 
   const { data: storesData } = await supabase
     .from("stores")
-    .select("id, name, country")
+    .select("id, name, brand_alias, country")
     .eq("store_type", "propria");
-  const stores = (storesData ?? []) as { id: string; name: string; country: string }[];
+  const stores = (storesData ?? []) as {
+    id: string;
+    name: string;
+    brand_alias: string | null;
+    country: string;
+  }[];
 
   const locale = await getLocale();
   if (stores.length === 0) redirect(`/${locale}/admin/ferramentas?remarcados=0`);
 
   // produto -> loja própria que o vende. Ordem determinística por nome de loja
   // pra o resultado não depender da ordem que o banco devolveu.
-  const storeByProduct = new Map<string, { name: string; country: string }>();
+  const storeByProduct = new Map<string, { brand: string; country: string }>();
   for (const store of [...stores].sort((a, b) => a.name.localeCompare(b.name))) {
     const { data: offersData } = await supabase
       .from("offers")
@@ -141,19 +154,25 @@ export async function rebrandOwnStoreProducts() {
       .eq("store_id", store.id);
     for (const o of (offersData ?? []) as { product_id: string }[]) {
       if (!storeByProduct.has(o.product_id)) {
-        storeByProduct.set(o.product_id, { name: store.name, country: store.country });
+        storeByProduct.set(o.product_id, {
+          brand: store.brand_alias || store.name,
+          country: store.country,
+        });
       }
     }
   }
 
   const products = await fetchAllProducts(supabase);
-  const changed: { id: string; brand: string; canonical_slug: string }[] = [];
+  const changed: { id: string; name: string; brand: string; canonical_slug: string }[] = [];
   for (const p of products) {
     const store = storeByProduct.get(p.id);
     if (!store) continue;
-    const slug = slugify(`${store.name} ${p.name}`);
-    if (p.brand !== store.name || p.canonical_slug !== slug) {
-      changed.push({ id: p.id, brand: store.name, canonical_slug: slug });
+    // Mesmas funções que o scraper usa (espelhadas em scraper/normalize.py),
+    // pra o resultado aqui e na coleta serem idênticos.
+    const name = prefixBrand(p.name, store.brand);
+    const slug = productSlug(store.brand, name);
+    if (p.brand !== store.brand || p.name !== name || p.canonical_slug !== slug) {
+      changed.push({ id: p.id, name, brand: store.brand, canonical_slug: slug });
     }
   }
 

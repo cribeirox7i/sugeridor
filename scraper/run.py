@@ -33,6 +33,7 @@ def _process_store(row: dict) -> bool:
         config=row.get("config") or {},
         store_type=row.get("store_type") or "marketplace",
         country=row.get("country") or "Brasil",
+        brand_alias=row.get("brand_alias"),
     )
     collector = get_collector(store.platform)
     if collector is None:
@@ -111,7 +112,7 @@ def run() -> int:
         {
             "platform": "not.is.null",
             "include_in_collection": "eq.true",
-            "select": "id,name,site_url,platform,config,store_type,country",
+            "select": "id,name,site_url,platform,config,store_type,country,brand_alias",
         },
     )
     if not rows:

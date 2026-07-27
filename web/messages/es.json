@@ -171,7 +171,10 @@
       "offersColumn": "Ofertas",
       "newColumn": "Nuevos",
       "startColumn": "Inicio",
-      "endColumn": "Fin"
+      "endColumn": "Fin",
+      "brandAlias": "Apodo (marca en los productos)",
+      "brandAliasPlaceholder": "usa el nombre de la tienda",
+      "brandAliasHint": "Forma corta usada como marca y al inicio del nombre de los productos de esta tienda: \"Dogma\" genera \"Dogma IPA\" en vez de \"Cervejaria Dogma IPA\". Solo para tienda propia."
     },
     "products": {
       "title": "Productos",
@@ -295,7 +298,7 @@
       "actionsHint": "Se aplican sobre todo el catálogo guardado.",
       "normalizeNames": "Normalizar nombres",
       "reclassify": "Reclasificar categorías",
-      "rebrand": "Regrabar marca de tiendas propias",
+      "rebrand": "Regrabar marca y nombre (tiendas propias)",
       "applyReplacements": "Aplicar sustituciones{count, plural, =0 {} other { ({count})}}",
       "actionFailed": "La acción falló. Nada fue alterado — inténtalo de nuevo.",
       "normalizeResult": "{count, plural, =0 {Ningún nombre necesitó ajuste.} =1 {1 nombre ajustado.} other {# nombres ajustados.}}",

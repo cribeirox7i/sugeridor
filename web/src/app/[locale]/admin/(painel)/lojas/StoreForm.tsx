@@ -22,6 +22,7 @@ export default function StoreForm({
   defaultConfig,
   defaultLogoUrl,
   defaultDescription,
+  defaultBrandAlias,
   defaultExpirationDays,
   globalExpirationDays,
 }: {
@@ -33,6 +34,8 @@ export default function StoreForm({
   defaultConfig: string;
   defaultLogoUrl: string;
   defaultDescription: string;
+  // Vazio = usa o nome da loja como marca dos produtos dela.
+  defaultBrandAlias: string;
   // Vazio = herda o prazo global; `globalExpirationDays` só alimenta o
   // placeholder, pra deixar claro qual valor está valendo quando em branco.
   defaultExpirationDays: string;
@@ -111,6 +114,19 @@ export default function StoreForm({
               onChange={(e) => setName(e.target.value)}
               className={inputCls}
             />
+          </label>
+
+          <label className="space-y-1">
+            <span className={labelCls}>{t("brandAlias")}</span>
+            <input
+              name="brand_alias"
+              defaultValue={defaultBrandAlias}
+              placeholder={name || t("brandAliasPlaceholder")}
+              className={inputCls}
+            />
+            <span className="text-xs text-neutral-500 dark:text-neutral-600">
+              {t("brandAliasHint")}
+            </span>
           </label>
 
           <label className="space-y-1">

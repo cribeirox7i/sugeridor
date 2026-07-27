@@ -35,3 +35,11 @@ class StoreRecord:
     # por exemplo, traz o estilo da cerveja em vez da marca).
     store_type: str = "marketplace"
     country: str = "Brasil"
+    # Forma curta do nome, usada como marca e como prefixo do nome do produto
+    # em loja 'propria' (ver migration 0015). Vazio = usa `name`.
+    brand_alias: str | None = None
+
+    @property
+    def brand(self) -> str:
+        """Marca a gravar nos produtos desta loja."""
+        return self.brand_alias or self.name

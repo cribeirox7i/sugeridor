@@ -18,6 +18,9 @@ export async function saveStore(formData: FormData) {
   const store_type = ((formData.get("store_type") as string) || "marketplace").trim();
   const countryRaw = ((formData.get("country") as string) || "").trim();
   const country = countryRaw ? normalizeDashes(countryRaw) : "Brasil";
+  // Apelido vazio = usa o nome da loja (ver migration 0015), por isso null.
+  const aliasRaw = ((formData.get("brand_alias") as string) || "").trim();
+  const brand_alias = aliasRaw ? normalizeDashes(aliasRaw) : null;
   // Vazio = herda o padrão global de site_settings (ver migration 0013), por
   // isso null em vez de 0 — 0 expiraria tudo na coleta seguinte.
   const expirationRaw = ((formData.get("offer_expiration_days") as string) || "").trim();
@@ -47,11 +50,11 @@ export async function saveStore(formData: FormData) {
   const { error } = id
     ? await supabase
         .from("stores")
-        .update({ name, site_url, logo_url, description, platform, config, store_type, country, offer_expiration_days })
+        .update({ name, site_url, logo_url, description, platform, config, store_type, country, brand_alias, offer_expiration_days })
         .eq("id", id)
     : await supabase
         .from("stores")
-        .insert({ name, site_url, logo_url, description, platform, config, store_type, country, offer_expiration_days });
+        .insert({ name, site_url, logo_url, description, platform, config, store_type, country, brand_alias, offer_expiration_days });
 
   const locale = await getLocale();
 

@@ -90,6 +90,7 @@ export default async function LojasPage({
         }
         defaultLogoUrl={editing?.logo_url ?? ""}
         defaultDescription={editing?.description ?? ""}
+        defaultBrandAlias={editing?.brand_alias ?? ""}
         defaultExpirationDays={
           editing?.offer_expiration_days ? String(editing.offer_expiration_days) : ""
         }

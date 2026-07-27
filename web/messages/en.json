@@ -171,7 +171,10 @@
       "offersColumn": "Offers",
       "newColumn": "New",
       "startColumn": "Start",
-      "endColumn": "End"
+      "endColumn": "End",
+      "brandAlias": "Alias (brand on products)",
+      "brandAliasPlaceholder": "uses the store name",
+      "brandAliasHint": "Short form used as the brand and at the start of this store's product names: \"Dogma\" yields \"Dogma IPA\" instead of \"Cervejaria Dogma IPA\". Own stores only."
     },
     "products": {
       "title": "Products",
@@ -295,7 +298,7 @@
       "actionsHint": "Applied across the whole stored catalog.",
       "normalizeNames": "Normalize names",
       "reclassify": "Reclassify categories",
-      "rebrand": "Rewrite own-store brands",
+      "rebrand": "Rewrite brand and name (own stores)",
       "applyReplacements": "Apply replacements{count, plural, =0 {} other { ({count})}}",
       "actionFailed": "The action failed. Nothing was changed — please try again.",
       "normalizeResult": "{count, plural, =0 {No name needed adjusting.} =1 {1 name adjusted.} other {# names adjusted.}}",
