@@ -83,7 +83,10 @@ def run_enrichment() -> int:
     try:
         expiration_days = enrich.get_offer_expiration_days()
         expired = enrich.expire_stale_offers(expiration_days)
-        print(f"Expiração: {expired} oferta(s) desativada(s) (>{expiration_days} dias sem ver).")
+        print(
+            f"Expiração: {expired} oferta(s) desativada(s) "
+            f"(prazo padrão {expiration_days} dias; lojas podem ter o próprio)."
+        )
 
         own_brand, own_country = enrich.apply_own_store_defaults()
         print(

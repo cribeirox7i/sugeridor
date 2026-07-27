@@ -142,7 +142,10 @@
       "detectError": "Error trying to detect the platform.",
       "sectionIdentity": "Identification",
       "sectionCollection": "Automatic collection",
-      "sectionAdvanced": "Logo, description and advanced config"
+      "sectionAdvanced": "Logo, description and advanced config",
+      "expirationDays": "Offer expiration (days)",
+      "expirationPlaceholder": "default: {days}",
+      "expirationHint": "Days without the collector seeing an offer before it's deactivated. Blank uses the global default."
     },
     "products": {
       "title": "Products",

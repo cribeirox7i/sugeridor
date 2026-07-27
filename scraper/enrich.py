@@ -19,29 +19,47 @@ def get_offer_expiration_days() -> int:
     return _DEFAULT_EXPIRATION_DAYS
 
 
-def expire_stale_offers(expiration_days: int) -> int:
-    """Desativa ofertas ativas cujo `last_seen_at` é mais antigo que
-    `expiration_days` — sinal de que a loja parou de vender aquele produto
-    (ou o scraper parou de achá-lo nas últimas coletas). Só marca
-    active=false; nunca apaga a oferta nem o histórico de preço."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=expiration_days)).isoformat()
-    stale = db.select(
-        "offers",
-        {"active": "eq.true", "last_seen_at": f"lt.{cutoff}", "select": "id"},
-    )
-    if not stale:
-        return 0
+def expire_stale_offers(default_expiration_days: int) -> int:
+    """Desativa ofertas ativas não vistas pelo coletor há mais tempo que o
+    prazo da loja — sinal de que a loja parou de vender aquele produto (ou o
+    scraper parou de achá-lo nas últimas coletas). Só marca `active=false`;
+    nunca apaga a oferta nem o histórico de preço (é o histórico que sustenta
+    o cálculo de queda, e uma oferta pode voltar).
 
-    ids = [row["id"] for row in stale]
+    O prazo é por loja (`stores.offer_expiration_days`, migration 0013) com
+    fallback pro global de `site_settings` — uma loja que atualiza o catálogo
+    devagar precisa de prazo mais folgado que uma que muda toda semana."""
+    stores = db.select("stores", {"select": "id,name,offer_expiration_days"})
     now = _now_iso()
-    for i in range(0, len(ids), _BATCH_SIZE):
-        batch = ids[i : i + _BATCH_SIZE]
-        db.update(
+    total = 0
+
+    for store in stores:
+        days = store.get("offer_expiration_days") or default_expiration_days
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=int(days))).isoformat()
+        stale = db.select(
             "offers",
-            {"id": f"in.({','.join(batch)})"},
-            {"active": False, "updated_at": now},
+            {
+                "store_id": f"eq.{store['id']}",
+                "active": "eq.true",
+                "last_seen_at": f"lt.{cutoff}",
+                "select": "id",
+            },
         )
-    return len(ids)
+        if not stale:
+            continue
+
+        ids = [row["id"] for row in stale]
+        for i in range(0, len(ids), _BATCH_SIZE):
+            batch = ids[i : i + _BATCH_SIZE]
+            db.update(
+                "offers",
+                {"id": f"in.({','.join(batch)})"},
+                {"active": False, "updated_at": now},
+            )
+        print(f"  {store['name']}: {len(ids)} oferta(s) expirada(s) (>{days} dias sem ver).")
+        total += len(ids)
+
+    return total
 
 
 def apply_own_store_defaults() -> tuple[int, int]:

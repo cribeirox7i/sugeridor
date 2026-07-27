@@ -1,13 +1,14 @@
 import { getTranslations } from "next-intl/server";
 import type { Product, PriceHistoryPoint } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
-import { computeFeaturedDeals } from "@/lib/queries";
+import { dropPercentByOffer } from "@/lib/queries";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
 
 type OfferRow = {
   id: string;
   price: number;
   currency: string;
+  drop_percent: number | null;
   store: { name: string };
 };
 
@@ -36,18 +37,10 @@ export default async function ProductDetailView({
   const currency = offers[0]?.currency ?? "BRL";
   const attrEntries = Object.entries(product.attributes ?? {});
 
-  // Mesmo cálculo de selo "-X%" da home, aplicado às ofertas ativas deste
-  // produto. `history` já traz o price_history relevante — reagrupar em
-  // memória em vez de refazer a mesma consulta.
-  const historyByOffer = new Map<string, PriceHistoryPoint[]>();
-  for (const point of history) {
-    const list = historyByOffer.get(point.offer_id);
-    if (list) list.push(point);
-    else historyByOffer.set(point.offer_id, [point]);
-  }
-  const dropByOffer = new Map(
-    computeFeaturedDeals(offers, historyByOffer, offers.length).map((d) => [d.id, d.dropPercent]),
-  );
+  // Selo "-X%" vem da mesma coluna que a home usa (offers.drop_percent,
+  // mantida por trigger — migration 0013), em vez de recalcular a partir da
+  // série. `history` aqui serve só pro gráfico.
+  const dropByOffer = dropPercentByOffer(offers);
 
   return (
     <div className="space-y-10">

@@ -7,10 +7,11 @@ import {
   distinctAttributeValues,
   distinctBrandValues,
   storesWithActiveOffers,
-  getPriceHistoryForOffers,
   getSiteSettings,
   getStoreById,
-  computeFeaturedDeals,
+  getPriceHistoryForProduct,
+  featuredDealsFromOffers,
+  dropPercentByOffer,
 } from "@/lib/queries";
 import OfferCard from "@/components/OfferCard";
 import FilterBar from "@/components/FilterBar";
@@ -25,7 +26,8 @@ import Footer from "@/components/Footer";
 import Modal from "@/components/admin/Modal";
 import ProductDetail from "@/components/ProductDetail";
 import ProductDetailView from "@/components/ProductDetailView";
-import type { OfferListItem, PriceHistoryPoint } from "@/lib/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { OfferListItem } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -35,22 +37,24 @@ function toNumber(v: string | undefined): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-// Deriva produto/ofertas/histórico do catálogo que a Home já buscou
-// (allOffers/historyByOffer), em vez de disparar as 3 queries próprias que
-// ProductDetail faria — é o motivo do popup ser lento: cada abertura/
-// fechamento reexecuta a Home inteira, e o produto clicado quase sempre já
-// está no mesmo array que a Home acabou de buscar um instante antes. Só cai
-// pro ProductDetail com query (fallback) quando o slug não está no catálogo
-// ativo — ex.: link antigo/compartilhado apontando pra um produto sem oferta
-// ativa hoje.
-function ProductPopup({
+// Deriva produto e ofertas do catálogo que a Home já buscou (`allOffers`), em
+// vez de disparar as queries próprias que ProductDetail faria — cada abertura
+// ou fechamento do popup reexecuta a Home inteira, e o produto clicado quase
+// sempre já está no array que ela acabou de buscar. Só cai pro ProductDetail
+// com query (fallback) quando o slug não está no catálogo ativo — ex.: link
+// antigo apontando pra um produto sem oferta ativa hoje.
+//
+// O histórico é a única coisa que ainda precisa de consulta, e só do produto
+// aberto: são poucos pontos, contra o histórico de TODAS as ofertas ativas que
+// a home carregava antes.
+async function ProductPopup({
+  supabase,
   slug,
   allOffers,
-  historyByOffer,
 }: {
+  supabase: SupabaseClient;
   slug: string;
   allOffers: OfferListItem[];
-  historyByOffer: Map<string, PriceHistoryPoint[]>;
 }) {
   const matches = allOffers.filter((o) => o.product.canonical_slug === slug);
   if (matches.length === 0) return <ProductDetail slug={slug} />;
@@ -60,11 +64,10 @@ function ProductPopup({
     id: o.id,
     price: o.price,
     currency: o.currency,
+    drop_percent: o.drop_percent,
     store: { name: o.store.name },
   }));
-  const history = matches
-    .flatMap((o) => historyByOffer.get(o.id) ?? [])
-    .sort((a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime());
+  const history = await getPriceHistoryForProduct(supabase, product.id);
 
   return <ProductDetailView product={product} offers={offers} history={history} />;
 }
@@ -124,14 +127,6 @@ export default async function Home({
 
   const offers = sortOffers(filterOffers(allOffers, filters), sort);
 
-  // Histórico de TODAS as ofertas ativas, numa query só — cobre tanto o
-  // selo "-X%" da grid filtrada quanto os destaques (que olham o catálogo
-  // inteiro, independente do filtro atual).
-  const historyByOffer = await getPriceHistoryForOffers(
-    supabase,
-    allOffers.map((o) => o.id),
-  );
-
   // A barra de filtros aparece nos dois modos (na "página da loja" só sem o
   // select de loja) — mas estilo/país lá devem refletir só o catálogo
   // DAQUELA loja, não o site inteiro. `stores` (opções do select de loja) e
@@ -141,13 +136,12 @@ export default async function Home({
   const paises = distinctAttributeValues(facetOffers, "pais");
   const marcas = distinctBrandValues(facetOffers);
   const stores = storeMode ? [] : storesWithActiveOffers(allOffers);
-  const featuredDeals = storeMode ? [] : computeFeaturedDeals(allOffers, historyByOffer, 5);
 
-  // Selo "-X%" por card: mesma lógica de queda do carrossel de destaques,
-  // sem limite, pra cobrir qualquer oferta com queda real (não só o top 5).
-  const dropByOffer = new Map(
-    computeFeaturedDeals(offers, historyByOffer, offers.length).map((d) => [d.id, d.dropPercent]),
-  );
+  // Queda de preço vem pronta de `offers.drop_percent` (trigger da migration
+  // 0013) — a home não busca mais price_history. Antes eram os pontos de
+  // histórico de TODAS as ofertas ativas em cada renderização.
+  const featuredDeals = storeMode ? [] : featuredDealsFromOffers(allOffers, 5);
+  const dropByOffer = dropPercentByOffer(offers);
 
   // Carrossel de lojas usa o mesmo conjunto (com oferta ativa) do filtro.
   const storesWithOffers = stores;
@@ -235,7 +229,7 @@ export default async function Home({
 
       {sp.produto && (
         <Modal closeHref={closeHref} instantClose>
-          <ProductPopup slug={sp.produto} allOffers={allOffers} historyByOffer={historyByOffer} />
+          <ProductPopup supabase={supabase} slug={sp.produto} allOffers={allOffers} />
         </Modal>
       )}
     </div>

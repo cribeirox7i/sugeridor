@@ -40,6 +40,9 @@ export type Store = {
   include_in_collection: boolean;
   store_type: StoreType;
   country: string;
+  // Dias sem ser vista pelo coletor até a oferta desta loja ser desativada.
+  // null = usa o padrão global de site_settings (ver migration 0013).
+  offer_expiration_days: number | null;
   created_at: string;
 };
 
@@ -72,6 +75,12 @@ export type Offer = {
   source_ref: string | null;
   active: boolean;
   last_seen_at: string;
+  // Queda de preço já calculada, mantida por trigger em price_history (ver
+  // migration 0013). Antes a home recalculava isso a partir do histórico de
+  // TODAS as ofertas ativas a cada renderização, o que não escala.
+  // null = sem queda ou sem histórico suficiente pra comparar.
+  reference_price: number | null;
+  drop_percent: number | null;
   created_at: string;
   updated_at: string;
 };

@@ -18,6 +18,14 @@ export async function saveStore(formData: FormData) {
   const store_type = ((formData.get("store_type") as string) || "marketplace").trim();
   const countryRaw = ((formData.get("country") as string) || "").trim();
   const country = countryRaw ? normalizeDashes(countryRaw) : "Brasil";
+  // Vazio = herda o padrão global de site_settings (ver migration 0013), por
+  // isso null em vez de 0 — 0 expiraria tudo na coleta seguinte.
+  const expirationRaw = ((formData.get("offer_expiration_days") as string) || "").trim();
+  const expirationDays = Number(expirationRaw);
+  const offer_expiration_days =
+    expirationRaw && Number.isFinite(expirationDays) && expirationDays > 0
+      ? Math.round(expirationDays)
+      : null;
 
   if (!name) return;
 
@@ -39,11 +47,11 @@ export async function saveStore(formData: FormData) {
   const { error } = id
     ? await supabase
         .from("stores")
-        .update({ name, site_url, logo_url, description, platform, config, store_type, country })
+        .update({ name, site_url, logo_url, description, platform, config, store_type, country, offer_expiration_days })
         .eq("id", id)
     : await supabase
         .from("stores")
-        .insert({ name, site_url, logo_url, description, platform, config, store_type, country });
+        .insert({ name, site_url, logo_url, description, platform, config, store_type, country, offer_expiration_days });
 
   const locale = await getLocale();
 

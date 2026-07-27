@@ -19,8 +19,12 @@ export default async function LojasPage({
 }) {
   const { edit, new: isNew, error, q, view } = await searchParams;
   const supabase = await createClient();
-  const { data } = await supabase.from("stores").select("*").order("name");
+  const [{ data }, { data: settings }] = await Promise.all([
+    supabase.from("stores").select("*").order("name"),
+    supabase.from("site_settings").select("offer_expiration_days").eq("id", 1).maybeSingle(),
+  ]);
   const allStores = (data ?? []) as Store[];
+  const globalExpirationDays = settings?.offer_expiration_days ?? 45;
   const stores = q
     ? allStores.filter((s) => s.name.toLowerCase().includes(q.toLowerCase()))
     : allStores;
@@ -50,6 +54,10 @@ export default async function LojasPage({
         }
         defaultLogoUrl={editing?.logo_url ?? ""}
         defaultDescription={editing?.description ?? ""}
+        defaultExpirationDays={
+          editing?.offer_expiration_days ? String(editing.offer_expiration_days) : ""
+        }
+        globalExpirationDays={globalExpirationDays}
       />
 
       <div className="flex gap-2">

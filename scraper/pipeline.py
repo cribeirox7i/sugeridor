@@ -183,15 +183,44 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
         )
         price_by_product[row["id"]] = p["cand"].price
 
-    if offer_rows:
-        offers = db.upsert_many("offers", offer_rows, on_conflict="product_id,store_id")
-        history = [
-            {"offer_id": o["id"], "price": price_by_product[o["product_id"]], "captured_at": now}
-            for o in offers
-            if o.get("product_id") in price_by_product
-        ]
-        if history:
-            db.insert_many("price_history", history, returning=False)
+    if not offer_rows:
+        return len(to_create)
+
+    # Preço que já está gravado, ANTES do upsert sobrescrever — é o que diz se
+    # o preço mudou. Uma query por loja (paginada), não por oferta.
+    previous_price: dict[str, float] = {}
+    for row in db.select("offers", {"store_id": f"eq.{store.id}", "select": "product_id,price"}):
+        if row.get("price") is not None:
+            previous_price[row["product_id"]] = float(row["price"])
+
+    offers = db.upsert_many("offers", offer_rows, on_conflict="product_id,store_id")
+
+    # Ponto de histórico SÓ quando o preço muda (ou na primeira vez que se vê a
+    # oferta). Gravar um ponto por coleta, mesmo com preço idêntico, fazia a
+    # tabela crescer por tempo em vez de por informação: a projeção com 150
+    # lojas dava ~4,9 milhões de linhas/ano, quase tudo repetido. E repetição
+    # ainda atrapalhava a leitura do dado — a média do histórico anterior
+    # (base do selo "-X%") ficava diluída por dezenas de pontos iguais, então
+    # uma queda real aparecia menor do que é.
+    # `offers.last_seen_at` continua sendo atualizado a cada coleta, então a
+    # informação de "a loja ainda vende isso" não se perde (é o que a
+    # expiração usa).
+    history = []
+    for o in offers:
+        product_id = o.get("product_id")
+        if product_id not in price_by_product:
+            continue
+        price = price_by_product[product_id]
+        before = previous_price.get(product_id)
+        if before is None or abs(before - price) > 0.001:  # tolerância de float
+            history.append({"offer_id": o["id"], "price": price, "captured_at": now})
+
+    if history:
+        db.insert_many("price_history", history, returning=False)
+    print(
+        f"[{store.name}] histórico: {len(history)} ponto(s) novo(s) "
+        f"de {len(offers)} oferta(s) (só o que mudou de preço)."
+    )
 
     return len(to_create)
 

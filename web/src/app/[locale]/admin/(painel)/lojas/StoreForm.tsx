@@ -22,6 +22,8 @@ export default function StoreForm({
   defaultConfig,
   defaultLogoUrl,
   defaultDescription,
+  defaultExpirationDays,
+  globalExpirationDays,
 }: {
   defaultName: string;
   defaultStoreType: string;
@@ -31,6 +33,10 @@ export default function StoreForm({
   defaultConfig: string;
   defaultLogoUrl: string;
   defaultDescription: string;
+  // Vazio = herda o prazo global; `globalExpirationDays` só alimenta o
+  // placeholder, pra deixar claro qual valor está valendo quando em branco.
+  defaultExpirationDays: string;
+  globalExpirationDays: number;
 }) {
   const t = useTranslations("admin.stores");
   const [name, setName] = useState(defaultName);
@@ -118,7 +124,7 @@ export default function StoreForm({
             </select>
           </label>
 
-          <label className="space-y-1 sm:col-span-2">
+          <label className="space-y-1">
             <span className={labelCls}>{t("storeType")}</span>
             <select name="store_type" defaultValue={defaultStoreType} className={inputCls}>
               <option value="marketplace">{t("storeTypeMarketplace")}</option>
@@ -126,6 +132,20 @@ export default function StoreForm({
             </select>
             <span className="text-xs text-neutral-500 dark:text-neutral-600">
               {t("storeTypeHint")}
+            </span>
+          </label>
+
+          <label className="space-y-1">
+            <span className={labelCls}>{t("expirationDays")}</span>
+            <input
+              name="offer_expiration_days"
+              inputMode="numeric"
+              defaultValue={defaultExpirationDays}
+              placeholder={t("expirationPlaceholder", { days: globalExpirationDays })}
+              className={inputCls}
+            />
+            <span className="text-xs text-neutral-500 dark:text-neutral-600">
+              {t("expirationHint")}
             </span>
           </label>
         </div>

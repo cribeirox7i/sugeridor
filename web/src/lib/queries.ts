@@ -21,7 +21,7 @@ const PUBLIC_CATEGORIES = ["cervejas", "kit"];
 
 const OFFER_SELECT = `
   id, product_id, store_id, price, currency, url, source_type, source_ref,
-  active, last_seen_at, created_at, updated_at,
+  active, last_seen_at, reference_price, drop_percent, created_at, updated_at,
   product:products!inner ( id, name, brand, attributes, image_url, canonical_slug ),
   store:stores!inner ( id, name, logo_url )
 `;
@@ -269,6 +269,37 @@ export type FeaturedDeal = OfferListItem & {
   dropPercent: number;
   referencePrice: number;
 };
+
+// Limite abaixo do qual a variação é considerada ruído, não promoção.
+const MIN_DROP_PERCENT = 0.5;
+
+// Maiores quedas de preço, lidas da coluna que o banco já mantém
+// (offers.drop_percent, trigger da migration 0013) — sem tocar em
+// price_history. Antes isso exigia carregar o histórico de TODAS as ofertas
+// ativas em cada renderização da home: ~600KB por visita com 620 ofertas, mas
+// dezenas de MB com 13 mil ofertas e um ano de pontos, o que estouraria o
+// egress do plano muito antes do disco.
+export function featuredDealsFromOffers(offers: OfferListItem[], limit = 5): FeaturedDeal[] {
+  return offers
+    .filter((o) => (o.drop_percent ?? 0) > MIN_DROP_PERCENT)
+    .sort((a, b) => (b.drop_percent ?? 0) - (a.drop_percent ?? 0))
+    .slice(0, limit)
+    .map((o) => ({
+      ...o,
+      dropPercent: Number(o.drop_percent),
+      referencePrice: Number(o.reference_price ?? 0),
+    }));
+}
+
+// Selo "-X%" por oferta, do mesmo dado — evita percorrer a lista inteira duas
+// vezes quando a página precisa dos dois (grid + destaques).
+export function dropPercentByOffer(offers: { id: string; drop_percent: number | null }[]) {
+  const map = new Map<string, number>();
+  for (const o of offers) {
+    if ((o.drop_percent ?? 0) > MIN_DROP_PERCENT) map.set(o.id, Number(o.drop_percent));
+  }
+  return map;
+}
 
 // Função pura (sem I/O) — separada pra dar pra testar isoladamente com dados
 // sintéticos, sem precisar de rede/banco. Calcula a queda de preço de cada

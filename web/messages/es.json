@@ -142,7 +142,10 @@
       "detectError": "Error al intentar detectar la plataforma.",
       "sectionIdentity": "Identificación",
       "sectionCollection": "Recolección automática",
-      "sectionAdvanced": "Logo, descripción y config avanzada"
+      "sectionAdvanced": "Logo, descripción y config avanzada",
+      "expirationDays": "Expiración de oferta (días)",
+      "expirationPlaceholder": "predeterminado: {days}",
+      "expirationHint": "Días sin que el recolector vea la oferta antes de desactivarla. En blanco usa el valor global."
     },
     "products": {
       "title": "Productos",
