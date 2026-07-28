@@ -10,7 +10,19 @@ export type Replacement = {
   search: string;
   replace: string;
   active: boolean;
+  created_at: string;
 };
+
+// Regras aplicadas em cadeia: o resultado depende da ORDEM (remover " Garrafa "
+// antes ou depois de separar o volume dá strings diferentes). A tela e a ação de
+// aplicar precisam usar a mesma, senão o número que a tela mostra não é o que a
+// ação faz. Ordena por criação, que é a única ordem que o usuário consegue
+// prever — a do banco não é garantida sem `order by`.
+export function sortRules(rules: Replacement[]): Replacement[] {
+  return [...rules].sort(
+    (a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id),
+  );
+}
 
 export type ProductForReplace = {
   id: string;
@@ -76,7 +88,9 @@ export function applyReplacements(
   products: ProductForReplace[],
   replacements: Replacement[],
 ): ReplaceResult[] {
-  const active = replacements.filter((r) => r.active);
+  // Ordena aqui, não no caller: aplicar em cadeia depende da ordem, e o número
+  // que a tela mostra tem que ser o que a ação grava.
+  const active = sortRules(replacements.filter((r) => r.active));
   const nameRules = active.filter((r) => r.target === "name");
   const brandRules = active.filter((r) => r.target === "brand");
 

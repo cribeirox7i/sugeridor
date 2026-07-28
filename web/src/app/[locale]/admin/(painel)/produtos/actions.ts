@@ -3,16 +3,20 @@
 import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { slugify } from "@/lib/slug";
+import { productSlug, slugify } from "@/lib/slug";
 import { revalidateAllLocales } from "@/lib/revalidate";
-import { normalizeDashes, titleCaseProductName } from "@/lib/text";
+import { normalizeDashes, separateUnits, titleCaseProductName } from "@/lib/text";
 import { patchProducts } from "@/lib/adminBatch";
 import type { AttributeSchema, ProductType } from "@/lib/types";
 
 export async function saveProduct(formData: FormData) {
   const id = (formData.get("id") as string) || null;
   const product_type_id = formData.get("product_type_id") as string;
-  const name = titleCaseProductName(normalizeDashes((formData.get("name") as string)?.trim() ?? ""));
+  // separateUnits antes do Title Case: ele solta a unidade como palavra
+  // própria ("500ml" -> "500 ml") e o Title Case é quem garante a caixa dela.
+  const name = titleCaseProductName(
+    separateUnits(normalizeDashes((formData.get("name") as string)?.trim() ?? "")),
+  );
   const brandRaw = ((formData.get("brand") as string) || "").trim();
   const brand = brandRaw ? normalizeDashes(brandRaw) : null;
   const image_url = ((formData.get("image_url") as string) || "").trim() || null;
@@ -89,10 +93,17 @@ export async function deleteProduct(formData: FormData) {
   revalidateAllLocales("/");
 }
 
-// Botão único em /admin/produtos: aplica titleCaseProductName aos produtos
-// já cadastrados (a maioria em CAIXA ALTA, de antes desse pedido). Idempotente
-// — rodar de novo não muda nada em quem já está em Title Case, então não
-// precisa de controle de "já rodei antes".
+// Botão único em /admin/produtos: reaplica a normalização de nome aos produtos
+// já cadastrados — Title Case (a maioria estava em CAIXA ALTA), travessão
+// virando hífen e unidade de medida separada do número ("500ml" -> "500 ml").
+// Idempotente: rodar de novo não muda nada em quem já está normalizado, então
+// não precisa de controle de "já rodei antes".
+//
+// O `canonical_slug` é recalculado JUNTO. Separar a unidade muda o nome e,
+// portanto, o slug — e é pelo slug que o scraper reconhece um produto
+// existente: ajustar o nome sem o slug faria a coleta seguinte criar uma
+// duplicata de cada produto ajustado (aconteceu de verdade quando a fórmula do
+// slug mudou; ver resyncProductSlugs em ferramentas/actions.ts).
 export async function normalizeExistingProductNames(formData: FormData) {
   // `returnTo` permite chamar a mesma ação da tela de Ferramentas sem jogar o
   // usuário de volta pra Produtos. Sanitizado contra open redirect: só aceita
@@ -102,33 +113,57 @@ export async function normalizeExistingProductNames(formData: FormData) {
   const supabase = await createClient();
   // Paginado: o PostgREST corta em 1000 linhas sem avisar e products já passou
   // disso — sem isso os produtos além do milésimo nunca seriam normalizados.
-  const products: { id: string; name: string }[] = [];
+  const products: { id: string; name: string; brand: string | null; canonical_slug: string }[] = [];
   for (let from = 0; ; from += 1000) {
     const { data } = await supabase
       .from("products")
-      .select("id, name")
+      .select("id, name, brand, canonical_slug")
       .order("created_at")
       .range(from, from + 999);
-    const page = (data ?? []) as { id: string; name: string }[];
+    const page = (data ?? []) as typeof products;
     products.push(...page);
     if (page.length < 1000) break;
   }
 
-  const changed = products
-    .map((p) => ({ id: p.id, name: titleCaseProductName(normalizeDashes(p.name)) }))
-    .filter((p, i) => p.name !== products[i].name);
+  const changed: { id: string; name: string; canonical_slug: string }[] = [];
+  for (const p of products) {
+    const name = titleCaseProductName(separateUnits(normalizeDashes(p.name)));
+    const canonical_slug = productSlug(p.brand, name);
+    if (name !== p.name || canonical_slug !== p.canonical_slug) {
+      changed.push({ id: p.id, name, canonical_slug });
+    }
+  }
+
+  // Slug é unique: dois produtos convergindo derrubariam o lote inteiro (é o
+  // caso de "Erdinger Urweisse500ml" e "Erdinger Urweisse 500 ml", que são o
+  // mesmo produto cadastrado duas vezes). Deixa de fora quem colide — com
+  // outro do lote ou com produto intocado — e reporta; esses casos se resolvem
+  // mesclando em /admin/ferramentas. Mesmo princípio de resyncProductSlugs.
+  const owner = new Map(products.map((p) => [p.canonical_slug, p.id]));
+  const seen = new Map<string, string>();
+  const safe: typeof changed = [];
+  let skipped = 0;
+  for (const c of changed) {
+    const existing = owner.get(c.canonical_slug);
+    if ((existing && existing !== c.id) || seen.has(c.canonical_slug)) {
+      skipped++;
+      continue;
+    }
+    seen.set(c.canonical_slug, c.id);
+    safe.push(c);
+  }
 
   // patchProducts em vez de upsert direto: upsert parcial estoura os NOT NULL
   // de products. Antes o erro era ignorado e a tela mostrava "N nomes
   // ajustados" sem ter gravado nada — ver web/src/lib/adminBatch.ts.
-  const { error, updated } = await patchProducts(supabase, changed);
+  const { error, updated } = await patchProducts(supabase, safe);
   const locale = await getLocale();
   if (error) redirect(`/${locale}/admin/${returnTo}?erro=normalizar`);
 
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/admin/ferramentas");
   revalidateAllLocales("/");
-  redirect(`/${locale}/admin/${returnTo}?normalized=${updated}`);
+  redirect(`/${locale}/admin/${returnTo}?normalized=${updated}&conflitos=${skipped}`);
 }
 
 // Usado pelo form pra listar os tipos disponíveis.

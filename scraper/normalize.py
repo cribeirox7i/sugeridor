@@ -23,10 +23,62 @@ def normalize_dashes(text: str) -> str:
     return text.replace("—", "-").replace("–", "-").replace("‑", "-")
 
 
+# Forma canônica de cada unidade de medida. O símbolo do litro é 'L' maiúsculo
+# (o minúsculo se confunde com o dígito 1); os prefixados ficam minúsculos.
+_UNIT_CANONICAL = {
+    "ml": "ml", "cl": "cl", "dl": "dl", "l": "L", "kg": "kg", "g": "g", "oz": "oz",
+}
+
+_UNIT_ALT = "ml|cl|dl|kg|oz|l|g"
+
+# Palavra colada na MEDIDA ("Urweisse500ml"). Só separa quando os dígitos são
+# de fato uma medida (o lookahead exige a unidade depois) — senão "Abt 12" e
+# "Kasteel 4+1" seriam picados sem motivo.
+_WORD_BEFORE_MEASURE = re.compile(
+    rf"(?<=[^\W\d_])(?=\d+(?:[.,]\d+)?[ \t]*(?:{_UNIT_ALT})(?!\w))",
+    re.IGNORECASE,
+)
+
+# Unidade colada no número, com ou sem espaço. A alternância lista as de duas
+# letras antes das de uma pra "ml" não ser lida como "l" solto, e o lookbehind
+# de dígito é o que impede casar a letra final de uma palavra ("Duvel" não vira
+# "Duve L", "500kg" não casa em 'g').
+_GLUED_UNIT = re.compile(rf"(?<=\d)[ \t]*({_UNIT_ALT})(?!\w)", re.IGNORECASE)
+
+
+def separate_units(name: str) -> str:
+    """Isola a medida no nome: "Erdinger Urweisse500ml" -> "Erdinger Urweisse
+    500 ml".
+
+    São dois cortes, e os dois são necessários:
+
+      1. entre a palavra e o número, que é o que produzia nome ilegível
+         ("Tripel Karmeliet750ml") — e também o que fazia o Title Case
+         estragar sigla de estilo, porque "IPA355ml" é uma palavra só e virava
+         "Ipa355ml";
+      2. entre o número e a unidade, uniformizando espaço e caixa ("500ML",
+         "330Ml" e "500 ml" convergem pra mesma forma).
+
+    Sem isso o MESMO volume escrito de duas formas virava dois produtos: o
+    `canonical_slug` deriva do nome, então "Erdinger Urweisse500ml" e "Erdinger
+    Urweisse 500ml" são registros distintos que nunca agregam ofertas.
+
+    Idempotente: rodar sobre um nome já separado não muda nada, então dá pra
+    aplicar no catálogo existente quantas vezes for.
+
+    Espelhado em web/src/lib/text.ts::separateUnits — mudar aqui sem mudar lá
+    dessincroniza o slug que a coleta calcula do que o admin calcula, e a
+    coleta seguinte cria uma duplicata de cada produto."""
+    out = _WORD_BEFORE_MEASURE.sub(" ", name)
+    return _GLUED_UNIT.sub(lambda m: " " + _UNIT_CANONICAL[m.group(1).lower()], out)
+
+
 # Remove prefixo "Cerveja " que o site costuma colocar no nome, pra o slug ficar
 # mais próximo do que um humano digitaria no admin.
 def clean_product_name(name: str) -> str:
-    return normalize_dashes(re.sub(r"^\s*cerveja\s+", "", name, flags=re.IGNORECASE).strip())
+    return separate_units(
+        normalize_dashes(re.sub(r"^\s*cerveja\s+", "", name, flags=re.IGNORECASE).strip())
+    )
 
 
 # Artigos/preposições/conjunções comuns em pt/es que ficam minúsculos no
@@ -45,14 +97,21 @@ _UPPERCASE_ACRONYMS = {"ipa", "apa", "neipa", "dipa", "tipa", "ipl", "esb", "ris
 
 
 def title_case_pt(name: str) -> str:
-    """Nome em Title Case, com artigos/preposições minúsculos e siglas de
-    estilo sempre maiúsculas. Substitui o `.upper()` usado antes só no título
-    (nunca em `brand`, que continua exatamente como a fonte grava)."""
+    """Nome em Title Case, com artigos/preposições minúsculos, siglas de
+    estilo sempre maiúsculas e unidades de medida na forma canônica. Substitui
+    o `.upper()` usado antes só no título (nunca em `brand`, que continua
+    exatamente como a fonte grava).
+
+    A unidade precisa estar aqui porque `separate_units` a solta como palavra
+    própria: sem isso o Title Case a capitalizava e o catálogo ficava com
+    "330 Ml" (aconteceu com 17 produtos)."""
     words = name.split()
     result = []
     for i, word in enumerate(words):
         lower = word.lower()
-        if lower in _UPPERCASE_ACRONYMS:
+        if lower in _UNIT_CANONICAL:
+            result.append(_UNIT_CANONICAL[lower])
+        elif lower in _UPPERCASE_ACRONYMS:
             result.append(lower.upper())
         elif i > 0 and lower in _LOWERCASE_WORDS:
             result.append(lower)

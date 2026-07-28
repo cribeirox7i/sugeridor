@@ -113,12 +113,15 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
         quoted = ",".join(f'"{s}"' for s in batch)
         rows = db.select(
             "products",
-            {"canonical_slug": f"in.({quoted})", "select": "id,canonical_slug,image_url,attributes"},
+            {
+                "canonical_slug": f"in.({quoted})",
+                "select": "id,canonical_slug,image_url,attributes,brand",
+            },
         )
         for row in rows:
             existing[row["canonical_slug"]] = row
 
-    # ── 2. Backfill dos que já existiam (imagem/atributos que faltavam) ──
+    # ── 2. Backfill dos que já existiam (marca/imagem/atributos que faltavam) ──
     # Só completa chaves ausentes, nunca sobrescreve o que já está lá (pode
     # ter sido curado à mão no admin) — exceção é a loja 'propria', cujo
     # país/marca são autoridade e já vieram resolvidos acima.
@@ -131,6 +134,17 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
 
         if not row.get("image_url") and p["cand"].image_url:
             patch["image_url"] = p["cand"].image_url
+
+        # Marca também precisa de backfill: sem isto, um produto criado por uma
+        # coleta em que a fonte não trazia a marca ficava sem marca PARA SEMPRE,
+        # mesmo com a marca chegando em toda coleta seguinte — foi o que deixou
+        # produtos aparecendo no site sem marca depois de o coletor Tray passar a
+        # ler o campo. Preencher aqui é seguro justamente porque o produto foi
+        # encontrado POR ESTE slug: o slug já foi calculado com esta marca (ela
+        # entra nele quando o nome não a contém), então gravá-la não deixa o
+        # identificador fora de sincronia.
+        if not (row.get("brand") or "").strip() and p["brand"]:
+            patch["brand"] = p["brand"]
 
         current_attrs = dict(row.get("attributes") or {})
         missing = {k: v for k, v in p["attributes"].items() if k not in current_attrs}

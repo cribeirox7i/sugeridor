@@ -14,7 +14,7 @@ export function slugify(input: string): string {
 // nome sem tropeçar em variações de escrita. O apóstrofo é REMOVIDO em vez de
 // virar espaço: "FULLER'S" precisa virar "fullers" pra bater com a marca
 // "Fullers"; virando "fuller s" o nome ganharia prefixo redundante.
-function fold(text: string): string {
+export function fold(text: string): string {
   return text
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")

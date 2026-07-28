@@ -34,10 +34,11 @@ export default async function ProdutosPage({
     q?: string;
     view?: string;
     normalized?: string;
+    conflitos?: string;
     erro?: string;
   }>;
 }) {
-  const { edit, new: isNew, error, q, view, normalized, erro } = await searchParams;
+  const { edit, new: isNew, error, q, view, normalized, conflitos, erro } = await searchParams;
   const supabase = await createClient();
   const t = await getTranslations("admin.products");
   const tCommon = await getTranslations("admin.common");
@@ -116,7 +117,10 @@ export default async function ProdutosPage({
       )}
       {normalized !== undefined && (
         <p className="rounded bg-green-100 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
-          {t("normalizeResult", { count: Number(normalized) })}
+          {t("normalizeResult", {
+            count: Number(normalized),
+            conflicts: Number(conflitos ?? 0),
+          })}
         </p>
       )}
 

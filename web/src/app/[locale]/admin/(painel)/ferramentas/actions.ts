@@ -7,12 +7,16 @@ import { revalidateAllLocales } from "@/lib/revalidate";
 import { normalizeDashes } from "@/lib/text";
 import { prefixBrand, productSlug } from "@/lib/slug";
 import { planReplacements, type ProductForReplace, type Replacement } from "@/lib/replacements";
-import { planMerge, type MergeOffer } from "@/lib/merge";
+import { chooseKeeper, planMerge, type MergeCandidate, type MergeOffer } from "@/lib/merge";
 import { patchProducts } from "@/lib/adminBatch";
 
 // O PostgREST corta em 1000 linhas sem avisar; ler paginado é obrigatório
 // (products já passou de 1000).
 const PAGE_SIZE = 1000;
+
+// Ids por consulta: UUID é longo e uma cláusula in(...) com centenas deles gera
+// URL que estoura limite de header (mesma cautela de queries.ts).
+const ID_BATCH = 100;
 
 type SupabaseLike = Awaited<ReturnType<typeof createClient>>;
 
@@ -41,6 +45,11 @@ export async function addReplacement(formData: FormData) {
   const search = normalizeDashes((formData.get("search") as string) ?? "");
   const replace = normalizeDashes((formData.get("replace") as string) ?? "");
   if (!["name", "brand"].includes(target) || !search) return;
+  // Regra que não pode mudar nada: só espaço no DE (casa em todo nome e não
+  // muda coisa alguma) ou DE igual ao PARA. Sem esta guarda a regra entra na
+  // lista mostrando "afeta: nenhum produto" e fica pra sempre confundindo quem
+  // olha a tela procurando por que o aplicar não faz nada.
+  if (!search.trim() || search === replace) return;
 
   const supabase = await createClient();
   // Duplicata (unique target+search) é ignorada em silêncio — a regra já
@@ -67,18 +76,33 @@ export async function toggleReplacement(formData: FormData) {
 }
 
 // ── Aplicar as substituições ──────────────────────────────────────
+// Aplica UMA regra por vez (`ruleId`), não o conjunto todo.
+//
+// O botão único que aplicava todas as regras ativas juntas parecia quebrado, e
+// não estava: com quatro regras ativas no catálogo real, o plano combinado dava
+// 0 produtos aplicáveis e 260 colisões — cada nome que mudaria virava duplicata
+// de outro, então não havia nada seguro a gravar e o clique não fazia nada
+// mesmo. Isoladas, as mesmas regras aplicam: separar o volume rendia 56
+// produtos, remover " Garrafa " rendia 5. Além disso o usuário quase sempre
+// quer resolver uma correção pontual, não disparar todas.
+//
 // Aplica só onde o slug resultante não colide com outro produto. Colisão
 // significa "estes dois registros são o mesmo produto", e resolver isso move
-// ofertas e apaga um produto — decisão do usuário, caso a caso (ver
-// mergeProducts). Os conflitos voltam listados na própria tela.
-export async function applyReplacementsAction() {
+// ofertas e apaga um produto — decisão do usuário (ver mergeProductGroups). Os
+// conflitos voltam listados na própria tela.
+export async function applyReplacementsAction(formData: FormData) {
+  const ruleId = (formData?.get("ruleId") as string) || "";
   const supabase = await createClient();
   const [{ data: rulesData }, products] = await Promise.all([
     supabase.from("text_replacements").select("*").eq("active", true),
     fetchAllProducts(supabase),
   ]);
 
-  const rules = (rulesData ?? []) as Replacement[];
+  const active = (rulesData ?? []) as Replacement[];
+  // Sem ruleId não aplica nada: aplicar o conjunto todo de uma vez era
+  // justamente o comportamento que confundia, e a tela só oferece o botão por
+  // regra.
+  const rules = ruleId ? active.filter((r) => r.id === ruleId) : [];
   if (rules.length === 0) {
     const locale = await getLocale();
     redirect(`/${locale}/admin/ferramentas?aplicados=0&conflitos=0`);
@@ -251,61 +275,163 @@ export async function resyncProductSlugs() {
   redirect(`/${locale}/admin/ferramentas?ressincronizados=${updated}&conflitos=${skipped}`);
 }
 
-// ── Mesclar dois produtos ─────────────────────────────────────────
+// ── Mesclar produtos duplicados ───────────────────────────────────
 // É o que faz as ofertas de lojas diferentes finalmente aparecerem numa página
 // só. Chamada direto pelo client (não por <form>) pra devolver erro sem
 // navegar — mesmo padrão de deleteOffers.
-export async function mergeProducts(
-  keepId: string,
-  dropId: string,
-): Promise<{ error: string | null }> {
-  if (!keepId || !dropId || keepId === dropId) return { error: "ids inválidos" };
+//
+// Recebe GRUPOS de ids, não pares, por dois motivos:
+//
+//  * em lote. Eram 219 pares a confirmar um por um na tela, o que na prática
+//    inviabilizava resolver o catálogo. Um clique agora resolve a lista toda,
+//    e um par que falhe não interrompe os outros (o relato diz quantos ficaram
+//    de fora);
+//  * um mesmo produto pode estar duplicado três vezes ou mais. Resolver por
+//    pares independentes falharia no segundo par do grupo, que aponta pra um
+//    produto que o primeiro já apagou — por isso o grupo é a unidade, e as
+//    ofertas do produto mantido são reavaliadas depois de cada mesclagem.
+//
+// Quem fica é decidido por `chooseKeeper` (lib/merge.ts), a MESMA função que a
+// tela usa pra mostrar o lado mantido, mas aqui reconferida com dados frescos.
+// Devolve os ÍNDICES dos grupos resolvidos, não só a contagem: em lote o
+// sucesso é parcial com frequência (uma oferta com disparo de alerta vinculado
+// barra a exclusão daquele grupo e não afeta os outros), e sem saber QUAIS
+// deram certo a tela só poderia adivinhar quais marcar como resolvidos.
+export async function mergeProductGroups(
+  groups: string[][],
+): Promise<{ mergedIndexes: number[]; failed: number; error: string | null }> {
+  const ids = [...new Set(groups.flat())].filter(Boolean);
+  if (ids.length === 0) return { mergedIndexes: [], failed: 0, error: null };
 
   const supabase = await createClient();
 
-  const { data: keepOffers, error: keepErr } = await supabase
-    .from("offers")
-    .select("id, store_id, last_seen_at")
-    .eq("product_id", keepId);
-  if (keepErr) return { error: keepErr.message };
+  // Linhas dos envolvidos e as ofertas deles, em lotes (uma cláusula in(...)
+  // com centenas de UUIDs gera URL que estoura limite de header — mesma
+  // cautela de queries.ts).
+  const products = new Map<string, MergeCandidate>();
+  const offersByProduct = new Map<string, MergeOffer[]>();
 
-  const { data: dropOffers, error: dropErr } = await supabase
-    .from("offers")
-    .select("id, store_id, last_seen_at")
-    .eq("product_id", dropId);
-  if (dropErr) return { error: dropErr.message };
+  for (let i = 0; i < ids.length; i += ID_BATCH) {
+    const batch = ids.slice(i, i + ID_BATCH);
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, brand, image_url, created_at")
+      .in("id", batch);
+    if (error) return { mergedIndexes: [], failed: 0, error: error.message };
+    for (const row of (data ?? []) as Omit<MergeCandidate, "offers" | "lastSeenAt">[]) {
+      products.set(row.id, { ...row, offers: 0, lastSeenAt: null });
+    }
 
-  // A decisão de quais ofertas mover e quais apagar é lógica pura, testada
-  // isoladamente em lib/merge.ts.
-  const { toMove, toDelete } = planMerge(
-    (keepOffers ?? []) as MergeOffer[],
-    (dropOffers ?? []) as MergeOffer[],
-  );
-
-  // Apaga primeiro: mover antes deixaria duas ofertas da mesma loja no mesmo
-  // produto e violaria o unique.
-  if (toDelete.length > 0) {
-    const { error } = await supabase.from("offers").delete().in("id", toDelete);
-    if (error) return { error: error.message };
-  }
-
-  if (toMove.length > 0) {
-    const { error } = await supabase
+    const { data: offerRows, error: offersErr } = await supabase
       .from("offers")
-      .update({ product_id: keepId, updated_at: new Date().toISOString() })
-      .in("id", toMove);
-    if (error) return { error: error.message };
+      .select("id, product_id, store_id, last_seen_at")
+      .in("product_id", batch);
+    if (offersErr) return { mergedIndexes: [], failed: 0, error: offersErr.message };
+    for (const o of (offerRows ?? []) as (MergeOffer & { product_id: string })[]) {
+      const list = offersByProduct.get(o.product_id);
+      if (list) list.push(o);
+      else offersByProduct.set(o.product_id, [o]);
+    }
   }
 
-  // price_history segue a oferta (FK com cascade em offers), então não precisa
-  // ser movido. O produto órfão sai por último: as FKs são RESTRICT de
-  // propósito, então se sobrou oferta apontando pra ele o banco barra aqui em
-  // vez de deixar dado inconsistente.
-  const { error: delErr } = await supabase.from("products").delete().eq("id", dropId);
-  if (delErr) return { error: delErr.message };
+  for (const [productId, list] of offersByProduct) {
+    const p = products.get(productId);
+    if (!p) continue;
+    p.offers = list.length;
+    p.lastSeenAt = list.reduce<string | null>(
+      (max, o) => (max === null || o.last_seen_at > max ? o.last_seen_at : max),
+      null,
+    );
+  }
 
-  revalidateAllLocales("/admin/ferramentas");
-  revalidateAllLocales("/admin/produtos");
-  revalidateAllLocales("/");
-  return { error: null };
+  const now = new Date().toISOString();
+  const mergedIndexes: number[] = [];
+  let failed = 0;
+  let firstError: string | null = null;
+
+  for (const [index, group] of groups.entries()) {
+    const candidates = group.map((id) => products.get(id)).filter((p): p is MergeCandidate => !!p);
+    if (candidates.length < 2) {
+      // Já resolvido numa chamada anterior (ou id inexistente): não é falha, e
+      // marcar como resolvido é o que tira da tela um grupo que não existe mais.
+      mergedIndexes.push(index);
+      continue;
+    }
+
+    const [keep, ...drops] = chooseKeeper(candidates);
+    // Um grupo só conta como resolvido se TODOS os descartes dele saíram — num
+    // grupo de 3, resolver metade deixaria uma duplicata de pé.
+    let groupOk = true;
+    // Vai mudando conforme as ofertas migram: no grupo de 3+, o segundo
+    // descarte precisa enxergar as ofertas que o primeiro já trouxe, senão o
+    // planMerge não vê o conflito de loja e o unique (product_id, store_id)
+    // estoura.
+    let keepOffers = offersByProduct.get(keep.id) ?? [];
+
+    for (const drop of drops) {
+      const dropOffers = offersByProduct.get(drop.id) ?? [];
+      // A decisão de quais ofertas mover e quais apagar é lógica pura, testada
+      // isoladamente em lib/merge.ts.
+      const { toMove, toDelete } = planMerge(keepOffers, dropOffers);
+
+      // Apaga primeiro: mover antes deixaria duas ofertas da mesma loja no
+      // mesmo produto e violaria o unique.
+      //
+      // Os três passos não são uma transação (são chamadas separadas ao
+      // PostgREST): se o segundo falhar, o primeiro já aconteceu. Na prática o
+      // que falha aqui é a exclusão de uma oferta com disparo de alerta
+      // vinculado (FK sem cascade, de propósito), que é o PRIMEIRO passo — então
+      // o grupo é reportado como não mesclado e nada foi tocado nele.
+      if (toDelete.length > 0) {
+        const { error } = await supabase.from("offers").delete().in("id", toDelete);
+        if (error) {
+          firstError ??= error.message;
+          groupOk = false;
+          break;
+        }
+      }
+
+      if (toMove.length > 0) {
+        const { error } = await supabase
+          .from("offers")
+          .update({ product_id: keep.id, updated_at: now })
+          .in("id", toMove);
+        if (error) {
+          firstError ??= error.message;
+          groupOk = false;
+          break;
+        }
+      }
+
+      // price_history segue a oferta (FK com cascade em offers), então não
+      // precisa ser movido. O produto órfão sai por último: as FKs são RESTRICT
+      // de propósito, então se sobrou oferta apontando pra ele o banco barra
+      // aqui em vez de deixar dado inconsistente.
+      const { error: delErr } = await supabase.from("products").delete().eq("id", drop.id);
+      if (delErr) {
+        firstError ??= delErr.message;
+        groupOk = false;
+        break;
+      }
+
+      // Estado do produto mantido depois desta mesclagem.
+      const movedIds = new Set(toMove);
+      const deletedIds = new Set(toDelete);
+      keepOffers = [
+        ...keepOffers.filter((o) => !deletedIds.has(o.id)),
+        ...dropOffers.filter((o) => movedIds.has(o.id)),
+      ];
+      products.delete(drop.id);
+    }
+
+    if (groupOk) mergedIndexes.push(index);
+    else failed++;
+  }
+
+  if (mergedIndexes.length > 0) {
+    revalidateAllLocales("/admin/ferramentas");
+    revalidateAllLocales("/admin/produtos");
+    revalidateAllLocales("/");
+  }
+  return { mergedIndexes, failed, error: firstError };
 }
