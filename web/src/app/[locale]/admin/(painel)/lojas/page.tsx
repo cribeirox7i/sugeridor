@@ -78,6 +78,7 @@ export default async function LojasPage({
       {editing && <input type="hidden" name="id" value={editing.id} />}
 
       <StoreForm
+        storeId={editing?.id}
         defaultName={editing?.name ?? ""}
         defaultStoreType={editing?.store_type ?? "marketplace"}
         defaultCountry={editing?.country ?? "Brasil"}

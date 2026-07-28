@@ -56,7 +56,7 @@ export const PLATFORMS: {
   {
     key: "txt",
     label: "Texto posicional (último recurso)",
-    hint: "Para sites sem estrutura previsível. fields é uma lista de {tag, ini, fim, tipo}, tipo em NOM/PRC/IMG/URL.",
+    hint: "Para sites sem estrutura previsível (comum em lojas próprias). Use o botão \"Detectar campos\" abaixo em vez de escrever isto à mão. fields é uma lista de {tag, ini, fim, tipo}, tipo em NOM/PRC/IMG/URL/MARCA/PAIS/ESTILO.",
     configExample: `{
   "fields": [
     {"tag": "...", "ini": "...", "fim": "...", "tipo": "NOM"},

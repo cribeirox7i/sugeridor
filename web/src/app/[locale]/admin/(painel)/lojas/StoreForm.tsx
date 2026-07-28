@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { PLATFORMS } from "@/lib/platforms";
 import { STORE_COUNTRIES } from "@/lib/countries";
+import TxtFieldDetector from "./TxtFieldDetector";
 
 // Dono de TODOS os campos da loja, porque o botão "Detectar" escreve em vários
 // deles de uma vez: plataforma, config, logo, descrição, nome e — no caso do
@@ -14,6 +15,7 @@ import { STORE_COUNTRIES } from "@/lib/countries";
 // acordeon pro que é longo e raramente editado à mão (descrição e config JSON)
 // — antes tudo isso ficava solto num grid só, o que embaralhava os campos.
 export default function StoreForm({
+  storeId,
   defaultName,
   defaultStoreType,
   defaultCountry,
@@ -26,6 +28,10 @@ export default function StoreForm({
   defaultExpirationDays,
   globalExpirationDays,
 }: {
+  // Ausente = loja nova, ainda não salva — o painel "Detectar campos" (txt)
+  // não tem produto anterior pra recuperar nesse caso, então já nasce
+  // sabendo que só o caminho manual é possível.
+  storeId?: string;
   defaultName: string;
   defaultStoreType: string;
   defaultCountry: string;
@@ -48,6 +54,11 @@ export default function StoreForm({
   const [config, setConfig] = useState(defaultConfig);
   const [logoUrl, setLogoUrl] = useState(defaultLogoUrl);
   const [description, setDescription] = useState(defaultDescription);
+  // Controlados (e não só `defaultValue`) porque o painel "Detectar campos"
+  // (txt) precisa ler o valor ATUAL pra mandar pra API — mesmo motivo que já
+  // tinha tornado `platform`/`config` controlados.
+  const [storeType, setStoreType] = useState(defaultStoreType);
+  const [brandAlias, setBrandAlias] = useState(defaultBrandAlias);
   const [detecting, setDetecting] = useState(false);
   const [detectMsg, setDetectMsg] = useState<string | null>(null);
 
@@ -120,7 +131,8 @@ export default function StoreForm({
             <span className={labelCls}>{t("brandAlias")}</span>
             <input
               name="brand_alias"
-              defaultValue={defaultBrandAlias}
+              value={brandAlias}
+              onChange={(e) => setBrandAlias(e.target.value)}
               placeholder={name || t("brandAliasPlaceholder")}
               className={inputCls}
             />
@@ -142,7 +154,12 @@ export default function StoreForm({
 
           <label className="space-y-1">
             <span className={labelCls}>{t("storeType")}</span>
-            <select name="store_type" defaultValue={defaultStoreType} className={inputCls}>
+            <select
+              name="store_type"
+              value={storeType}
+              onChange={(e) => setStoreType(e.target.value)}
+              className={inputCls}
+            >
               <option value="marketplace">{t("storeTypeMarketplace")}</option>
               <option value="propria">{t("storeTypePropria")}</option>
             </select>
@@ -214,6 +231,17 @@ export default function StoreForm({
           </select>
           <span className="text-xs text-neutral-500 dark:text-neutral-600">{t("configHint")}</span>
         </label>
+
+        {platform === "txt" && (
+          <TxtFieldDetector
+            storeId={storeId}
+            siteUrl={siteUrl}
+            storeType={storeType}
+            brandAlias={brandAlias}
+            storeName={name}
+            onConfigDetected={setConfig}
+          />
+        )}
       </section>
 
       {/* Descrição, logo e config JSON: longos e quase nunca digitados à mão
