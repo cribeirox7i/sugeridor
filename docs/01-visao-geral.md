@@ -31,6 +31,13 @@ por links de afiliado.
   sem migração estrutural.
 - **Auditável**: toda oferta sabe de qual fonte/captura ela veio, para debug e para desconfiar de
   dados ruins (ex: OCR errado, scraper quebrado).
+- **Identificável**: o nome de um produto é **marca + descritivo** ("Dogma IPA", não "IPA"), porque
+  num agregador o descritivo sozinho não distingue nada — como "Fanta Laranja" não é só "Laranja".
+  Essa regra também sustenta a identidade técnica do produto (`canonical_slug`), que é o que permite
+  juntar a mesma cerveja vendida em lojas diferentes sem juntar cervejas diferentes de mesmo nome.
+- **Curável**: o dado vem torto das lojas (marca como razão social, prefixo órfão no nome, volume
+  emendado), então o admin tem ferramentas para corrigir em lote sem mudar código — palavras-chave de
+  categoria, regras de/para e mesclagem de duplicados. Ver [05-roadmap.md](05-roadmap.md).
 
 ## Documentos relacionados
 

@@ -18,32 +18,35 @@ branch `main`).
 ## Stack (resumo)
 
 Next.js 16 (App Router) + Vercel (site, admin, API) · Supabase (Postgres + Auth + Storage) ·
-GitHub Actions (scraping, disparado manualmente por um botão no admin) · Claude API (reservado
+GitHub Actions (scraping em shards paralelos, disparo manual) · Claude API (reservado
 pra normalização de dados não estruturados — e-mail/WhatsApp OCR — ainda não ativado, ver roadmap).
 
 ## Estado atual
 
-Fases 0 a 3 do roadmap concluídas e em produção, mais uma reforma de UX, um lote de melhorias
-mobile, uma correção de uma queda em produção e uma leva de refinamentos (categorização, tipo de
-loja, layout fixo do site) — ver [docs/05-roadmap.md](docs/05-roadmap.md) para o detalhe de cada
-fase.
+Fases 0 a 3 do roadmap concluídas e em produção, mais uma reforma de UX, lotes de melhoria mobile,
+a correção de uma queda em produção e uma leva de trabalho sobre identidade de produto, escala do
+scraper e ferramentas de curadoria — ver [docs/05-roadmap.md](docs/05-roadmap.md) para o detalhe.
 
-- Catálogo público com filtros (estilo, país, preço, loja, busca por texto, ordenação por
-  preço/nome/país) numa barra fixa (não rola com o conteúdo), página de produto com histórico de
-  preço, popup de produto, tema claro/escuro, pt/en/es com bandeiras no seletor de idioma.
-- Admin (grid de cards + modais, navbar fixo) com CRUD de lojas (tipo marketplace/própria, país,
-  detecção automática de plataforma + branding), produtos (com categoria) e ofertas (data de
-  captura, filtro por loja/data, seleção e exclusão em lote), checklist de inclusão na coleta com
-  busca por nome.
+- Catálogo público com filtros (estilo, país, **marca**, preço, loja, busca por texto, ordenação)
+  numa barra fixa, página de produto com histórico de preço, popup de produto, tema claro/escuro,
+  pt/en/es.
+- **O nome do produto é marca + descritivo** — "Dogma IPA", não "IPA" — em Title Case, com siglas de
+  estilo preservadas. Em loja própria a marca vem do apelido da loja e é prefixada ao nome quando
+  falta. O `canonical_slug` é a identidade do produto e inclui a marca de propósito, para não
+  agregar ofertas de produtos diferentes de mesmo nome.
+- Admin com 6 telas: Início, **Lojas** (CRUD + seleção em lote + disparo da coleta + histórico de
+  execuções — absorveu a antiga tela Coleta), Produtos, Ofertas, Classificação (palavras-chave de
+  categoria) e **Ferramentas** (ações de curadoria em lote e regras de/para). Config concentra
+  alertas, expiração e logomarca.
 - Scraper Python config-driven por plataforma (vtex/shopify/tray/jsonld/html/txt), disparado
-  manualmente via GitHub Actions, rodando lojas **em paralelo** com rate limit por host,
-  guard-rail de 200 produtos/loja por execução, classificação de categoria por palavra-chave,
-  expiração automática de ofertas paradas e herança de marca/país pra lojas próprias.
-- Preço inválido (`<= 0`) nunca é gravado — descartado na aplicação e bloqueado também por
-  constraint no banco (defesa em profundidade).
-- Alertas de queda de preço (trigger no Postgres) e parâmetro de expiração de ofertas, ambos em
-  `/admin/config` (renomeada de "Alertas") — sem envio de e-mail de verdade ainda.
-- Migrations aplicadas: `0001` a `0010`.
+  manualmente via GitHub Actions em **4 shards paralelos**, com rate limit por host, gravação em
+  lote no banco, leituras paginadas, guard-rail de 200 produtos/loja, classificação de categoria por
+  palavra-chave (editável no admin), expiração com prazo por loja e coleta seletiva por loja.
+- `price_history` recebe ponto **só quando o preço muda**; a queda percentual é materializada em
+  `offers.drop_percent` por trigger, então a home não carrega histórico a cada render.
+- Preço inválido (`<= 0`) nunca é gravado — descartado na aplicação e bloqueado por constraint no
+  banco (defesa em profundidade).
+- Migrations aplicadas: `0001` a `0015`.
 
 **Pausado por decisão do usuário** (evitar dependência de API paga do Claude por ora): Fase 4
 (e-mail como fonte), Fase 5 (WhatsApp via print+OCR), e envio de e-mail de verdade para os

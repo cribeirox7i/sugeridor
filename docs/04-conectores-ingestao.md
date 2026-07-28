@@ -41,6 +41,22 @@ não é como ficou implementado — a versão real, mais simples, não precisou 
 - Lojas rodam **em paralelo** (uma thread por loja) com rate limit **por host** (não trava lojas
   diferentes entre si, mas continua educado com o mesmo site) — necessário pra escalar a 100+
   lojas sem o tempo total virar a soma de cada uma.
+- **Sharding entre execuções paralelas**: o workflow tem uma matriz de 4 shards e cada um coleta a
+  fatia de lojas que corresponde a ele (hash do id da loja). O gargalo pra crescer não é o banco nem
+  o paralelismo entre lojas, é o coletor `jsonld`, que abre **uma página por produto** — a 1 req/s
+  uma loja de 200 produtos leva ~3min, e a 100 lojas isso passaria de 5h num job só. Sharding divide
+  o tempo **sem ficar mais agressivo com nenhuma loja**: cada site continua recebendo 1 req/s, só em
+  runners diferentes. Ver "Escala" em scraper/README.md — a lista `shard:` e `SCRAPER_SHARD_TOTAL`
+  precisam bater, senão parte das lojas nunca é coletada.
+- **Gravação em lote**: eram 3 idas ao banco por produto (select do slug, upsert da oferta, insert do
+  histórico), o que a 100 lojas × 200 itens dá ~60 mil requests — só de latência isso estoura o
+  tempo de job. Agora é um punhado de requests por loja. Cuidado registrado no código: o Postgres
+  recusa o comando inteiro se a mesma chave de conflito aparecer duas vezes no mesmo lote, daí o
+  dedup por slug e por (product_id, store_id) antes de enviar; e **upsert do PostgREST exige linha
+  completa** — patch parcial vai por PATCH (`db.update_by_id_many`), senão os NOT NULL são violados.
+- **Leituras paginadas**: o PostgREST corta a resposta em 1000 linhas com 200 OK, sem avisar.
+  `db.select` pagina até a página vir incompleta — sem isso o enriquecimento simplesmente ignorava
+  os produtos além do milésimo.
 - Guard-rails contra coleta descontrolada: teto de `DEFAULT_MAX_ITEMS_PER_STORE` (200) produtos
   por loja por execução (override por `config.max_items`), detecção de página repetida/paginação
   que não termina, e cada etapa de uma cascata de fallback (Tray) ou de paginação (Shopify/VTEX/
@@ -49,15 +65,30 @@ não é como ficou implementado — a versão real, mais simples, não precisou 
 - **Classificação de categoria**: produto novo é classificado (`cervejas`/`kit`/`copo`/
   `souvenirs`/`eventos`) por palavra-chave no nome, na criação — lojas de plataforma trazem
   camiseta/copo/ingresso junto com cerveja de verdade. Só `cervejas`+`kit` aparecem no catálogo
-  público.
+  público. As palavras vivem em `category_keywords` (editáveis em `/admin/classificacao`), lidas uma
+  vez por execução e cacheadas; a ordem de prioridade entre categorias continua fixa no código.
+- **Identidade do produto (nome e slug)**: o nome é **marca + descritivo**. Em loja `propria` o
+  scraper grava `brand` = apelido da loja e **prefixa a marca no nome** quando ela não está lá
+  ("IPA" → "Dogma IPA"), porque num agregador "IPA" não identifica nada. Isso vale só pra loja
+  própria: no marketplace a marca vem do vendor e traz razão social, distribuidor ou placeholder, e
+  prefixar pioraria o nome. Tudo isso acontece **antes** do slug ser calculado — o slug deriva de
+  marca+nome, então corrigir depois deixaria a chave errada e a coleta seguinte criaria duplicata.
 - **Preço inválido nunca é gravado**: candidato com preço `<= 0` é descartado antes de tocar no
   banco; o próprio banco também rejeita via `check (price > 0)` em `offers`/`price_history`
   (defesa em profundidade, não só a aplicação).
-- **Enriquecimento pós-coleta** (depois que todas as lojas terminam): ofertas não vistas há mais
-  de `site_settings.offer_expiration_days` são desativadas; produtos de loja `store_type =
-  'propria'` sem marca/país herdam o nome/país da loja; país ausente também é inferido pela marca
-  mais comum entre produtos da mesma marca — sempre só completando o que falta, nunca
-  sobrescrevendo dado já gravado.
+- **Histórico só quando o preço muda**: `price_history` recebe ponto apenas se o preço difere do
+  gravado (ou é a primeira vez que a oferta é vista). `offers.last_seen_at` continua sendo
+  atualizado a cada coleta, então a expiração não é afetada. Ver 03-modelo-dados.md pro porquê.
+- **Enriquecimento pós-coleta** — roda **uma vez só**, num job separado que depende de todos os
+  shards (`python -m scraper.run --enrich-only`), porque olha o catálogo inteiro: rodá-lo em N
+  shards seria N vezes o mesmo trabalho disputando as mesmas linhas. Ofertas não vistas há mais de
+  `stores.offer_expiration_days` (ou o global de `site_settings`, se a loja não tiver o seu) são
+  desativadas; produtos de loja `store_type = 'propria'` sem marca/país herdam o nome/país da loja;
+  país ausente também é inferido pela marca mais comum entre produtos da mesma marca — sempre só
+  completando o que falta, nunca sobrescrevendo dado já gravado.
+- **Coleta seletiva**: o `workflow_dispatch` aceita `store_ids` (csv), repassado como
+  `SCRAPER_STORE_IDS` e aplicado **antes** do sharding. É o que o botão "Coletar selecionadas" da
+  tela de Lojas usa.
 - Erros (de rede, parsing, ou um site bloqueando o IP do runner do GitHub Actions — acontece,
   ver [06-riscos-e-legal.md](06-riscos-e-legal.md)) vão pra `ingestion_jobs.error_message`, por
   loja — uma loja falhando não derruba as outras.

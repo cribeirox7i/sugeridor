@@ -85,21 +85,74 @@ No início, nenhum conector roda sozinho por tempo — você decide quando rodar
    navegador.
 4. O admin lê `ingestion_jobs` (ver [03-modelo-dados.md](03-modelo-dados.md)) pra mostrar
    status/resultado da última execução (em andamento, sucesso, erro).
+5. O body da chamada aceita `{ storeIds: [...] }` opcional, repassado como input `store_ids` do
+   workflow — é o que o botão "Coletar selecionadas" da tela de Lojas usa. Sem body, coleta todas
+   as lojas marcadas.
+
+**Estado real:** as três variáveis (`GITHUB_PAT`/`GITHUB_OWNER`/`GITHUB_REPO`) ainda **não** estão
+configuradas no Vercel, então o botão devolve 503 "Coleta não configurada" e as coletas até aqui
+foram disparadas pela aba Actions do GitHub. O PAT precisa ser fine-grained com permissão
+**Actions: Read and write** só neste repositório.
+
+Ao disparar pelo GitHub, usar **"Run workflow"** e nunca **"Re-run jobs"**: re-run reusa o
+`head_sha` da execução original, ou seja, roda o código de quando aquela execução foi criada. Isso
+já custou uma sessão inteira de diagnóstico — 7 re-runs reproduzindo erros já corrigidos.
 
 Quando fizer sentido automatizar, basta adicionar um gatilho `schedule:` ao mesmo arquivo `.yml`
 — o botão manual continua funcionando em paralelo, não é uma migração, é um acréscimo.
 
 ## Escalabilidade no plano free
 
-- **Supabase free**: 500MB de banco, 1GB de storage, pausa o projeto após 7 dias de inatividade —
-  mas como o cron de scraping roda periodicamente, o projeto nunca fica inativo por muito tempo.
-  Usar o cliente `supabase-js` (via PostgREST) em vez de conexão Postgres direta evita esgotar o
-  pool de conexões em ambiente serverless.
+- **GitHub Actions**: o repositório é **público**, então os minutos de runner são gratuitos e
+  ilimitados — uma coleta com 4 shards + enrich soma ~6 min de runner e não consome cota. Só passaria
+  a consumir se o repositório virasse privado.
+- **Supabase free**: 500MB de banco, 1GB de storage, ~5GB de egress/mês, pausa o projeto após 7 dias
+  de inatividade — mas como a coleta roda periodicamente, o projeto nunca fica inativo por muito
+  tempo. No plano free **não há cobrança por excedente**: o Supabase restringe o projeto em vez de
+  emitir fatura. Usar o cliente `supabase-js` (via PostgREST) em vez de conexão Postgres direta evita
+  esgotar o pool de conexões em ambiente serverless.
+  - **O que cresce é `price_history`.** Projeção medida com a média real de 89 ofertas/loja: 100
+    lojas a 1 coleta/dia dariam ~3,2M linhas/ano (~500MB), estourando o free tier em ~10-13 meses;
+    150 lojas, em ~7-9 meses. Duas decisões já tomadas por causa disso: gravar ponto **só quando o
+    preço muda** e materializar a queda em `offers.drop_percent` (a home parou de carregar o
+    histórico de todas as ofertas a cada render — com 13 mil ofertas aquilo seriam dezenas de MB de
+    egress por visita, o que esgotaria a banda antes do disco).
+  - **Coletar 1-2x/dia, não mais.** Além do respeito às lojas, coleta muito frequente *piora* a
+    detecção de queda: o preço de referência é a média do histórico anterior, e dezenas de pontos
+    idênticos por dia diluem essa média, fazendo uma queda real parecer menor do que é.
+- **Limite silencioso do PostgREST**: qualquer leitura devolve no máximo 1000 linhas com 200 OK, sem
+  erro. Toda consulta que pode passar disso precisa paginar explicitamente (`db.select` no scraper,
+  `.range()` no front) — sem isso a home simplesmente para de mostrar o resto do catálogo e o
+  enriquecimento ignora produtos, sem nenhum sinal.
 - **Vercel free**: ISR com `revalidate` (ex: a cada 15-30 min) faz as páginas de listagem serem
   servidas do cache/edge, não do banco, em quase todo request. Isso é o que permite aguentar
   milhares de acessos diários sem estourar o free tier de nenhum dos dois.
 - **Imagens**: Supabase Storage serve com CDN; ainda assim, vale usar `next/image` com otimização
   pra não estourar banda.
+
+## Telas do admin (organização atual)
+
+Seis itens no menu. A organização já mudou duas vezes: telas que eram só um formulário foram
+absorvidas por onde o assunto pertence, em vez de virarem abas próprias.
+
+| Tela | O que tem |
+|---|---|
+| **Início** | Contadores de lojas/produtos/ofertas |
+| **Lojas** | CRUD (identificação, apelido, país, tipo, prazo de expiração; coleta em acordeon com logo/descrição/config JSON) · seleção em lote (excluir, incluir/tirar da coleta, **coletar selecionadas**) · toggle de inclusão na coleta por linha · botão de disparo geral · histórico das últimas 20 execuções. **Absorveu a antiga tela Coleta** — tudo lá era sobre lojas |
+| **Produtos** | CRUD + normalizar nomes |
+| **Ofertas** | CRUD + filtro por loja/data + seleção e exclusão em lote |
+| **Classificação** | Palavras-chave de `category` por categoria + reclassificar existentes |
+| **Ferramentas** | Ações de curadoria em lote (normalizar nomes, reclassificar, regravar marca e nome das lojas próprias, ressincronizar identificadores, aplicar de/para) + CRUD das regras **de/para** com lista de duplicados e mesclagem manual |
+| **Config** | Expiração global de ofertas · alertas de queda · **logomarca** (absorveu a antiga tela Logomarca) |
+
+Duas convenções que se repetem e vale seguir ao criar tela nova:
+
+- **Ação de escrita em lote é chamada direto do client** (não por `<form action>`) quando precisa
+  devolver `{ error }` sem navegar — o padrão nasceu em `OffersTable` e se repete em `StoresTable` e
+  na mesclagem de produtos. Toda ação **deve checar o erro**: três ações contavam o que pretendiam
+  mudar e exibiam sucesso sem ter gravado nada.
+- **Ação de curadoria é idempotente e informa quantas linhas mudaram de fato**, não quantas
+  pretendia mudar.
 
 ## Preparando o terreno pra afiliados (sem implementar ainda)
 

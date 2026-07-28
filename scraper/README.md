@@ -32,24 +32,54 @@ admin (`web/src/lib/platforms.ts` — manter as duas em sincronia).
 1. `run.py` lê do Supabase as lojas que têm `platform` definido, e coleta
    todas **em paralelo** (threads, uma por loja — são hosts diferentes, então
    rodar em série significa que o tempo total é a soma de cada loja, inviável
-   com 100+ lojas cadastradas). Se `SCRAPER_SHARD_TOTAL > 1`, cada execução
-   pega só a fatia de lojas que corresponde ao seu `SCRAPER_SHARD_INDEX` —
-   ver "Escala" abaixo.
+   com 100+ lojas cadastradas). Se `SCRAPER_STORE_IDS` estiver preenchido (é o
+   que o botão "Coletar selecionadas" do admin manda), só essas lojas entram —
+   filtro aplicado ANTES do sharding. Se `SCRAPER_SHARD_TOTAL > 1`, cada
+   execução pega só a fatia que corresponde ao seu `SCRAPER_SHARD_INDEX` — ver
+   "Escala" abaixo.
 2. Para cada loja, chama o coletor da plataforma, passando `site_url` e `config`.
 3. Cada coletor devolve uma lista de `Candidate` (nome, marca, preço, etc.).
    Candidatos com preço `<= 0` são descartados no `pipeline.py` (não geram
    produto, oferta nem histórico).
-4. `pipeline.py` faz o matching por slug (cria produto novo ou reusa existente,
-   classificando `category` — cervejas/kit/copo/souvenirs/eventos — por
-   palavra-chave no nome só na criação, ver `categorize.py`), upsert da oferta
-   (uma por produto+loja) e grava um ponto em `price_history`.
+4. `pipeline.py` resolve a **identidade** do candidato e grava, tudo em LOTE
+   (era 1 select + 1 upsert + 1 insert por produto, o que a 100 lojas × 200
+   itens dá ~60 mil requests e estoura o tempo de job só de latência):
+   - **Loja `propria`**: `brand` = apelido da loja (`stores.brand_alias`, ou o
+     nome dela) e o **nome ganha a marca na frente** quando não a tem ("IPA" →
+     "Dogma IPA") — o nome de um produto é marca + descritivo. No marketplace
+     isso NÃO se aplica: lá a marca vem do vendor e traz razão social,
+     distribuidor ou placeholder.
+   - Só então o slug é calculado (`product_slug`): se o nome já contém a marca,
+     deriva só do nome; senão, marca + nome. A ordem importa — o slug deriva de
+     marca+nome, então resolver a identidade depois deixaria a chave errada.
+   - `category` (cervejas/kit/copo/souvenirs/eventos) é classificada por
+     palavra-chave só na criação (`categorize.py`, palavras vindas da tabela
+     `category_keywords`), usando o nome ORIGINAL da fonte — o prefixo de marca
+     poderia introduzir uma palavra-chave por acidente.
+   - Upsert da oferta (uma por produto+loja) e ponto em `price_history`
+     **apenas se o preço mudou** (ou é a primeira vez que a oferta é vista).
+     `last_seen_at` é atualizado sempre, então a expiração não é afetada.
+
+   Dois cuidados registrados no código: o Postgres recusa o lote inteiro se a
+   mesma chave de conflito aparecer duas vezes (daí o dedup antes de enviar), e
+   o `upsert` do PostgREST exige linha COMPLETA — patch parcial vai por PATCH
+   (`db.update_by_id_many`), senão os NOT NULL são violados.
 5. Cada execução é registrada em `ingestion_jobs` (visível no admin).
 6. Depois que **todas** as lojas terminam, `enrich.py` roda passos sobre o
    catálogo inteiro (não faz sentido por-loja): desativa ofertas não vistas há
-   mais de `site_settings.offer_expiration_days`; pra lojas `store_type =
-   'propria'`, preenche marca/país ausente com o nome/país da própria loja;
-   preenche país ausente pela marca mais comum entre produtos da mesma marca.
-   Sempre só completa o que falta, nunca sobrescreve dado já gravado.
+   mais de `stores.offer_expiration_days` (ou o global de `site_settings`, se a
+   loja não tiver prazo próprio); pra lojas `store_type = 'propria'`, preenche
+   marca/país ausente com o nome/país da própria loja; preenche país ausente
+   pela marca mais comum entre produtos da mesma marca. Sempre só completa o
+   que falta, nunca sobrescreve dado já gravado.
+
+   Com sharding, isso NÃO roda nos shards: é um job separado
+   (`--enrich-only`) que depende de todos eles, porque rodá-lo em N execuções
+   seria N vezes o mesmo trabalho disputando as mesmas linhas.
+
+Toda leitura passa por `db.select`, que **pagina de 1000 em 1000**: o PostgREST
+corta a resposta nesse limite devolvendo 200 OK, sem erro — sem paginar, o
+enriquecimento simplesmente ignorava os produtos além do milésimo.
 
 O scraper escreve usando a **service_role key** do Supabase (ignora RLS). Essa
 chave nunca vai pro frontend — só existe como secret do GitHub Actions.

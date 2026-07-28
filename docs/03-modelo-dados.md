@@ -22,11 +22,25 @@ Catálogo canônico — um produto pode ter várias ofertas (em lojas diferentes
 ```sql
 id            uuid pk
 product_type_id uuid fk -> product_types
-name          text            -- ex: "COLORADO APPIA" (scraper grava em caixa alta)
-brand         text             -- ex: "Colorado" (ou o nome da loja, se for loja "própria")
+name          text            -- ex: "Dogma IPA" — o nome é MARCA + DESCRITIVO. "IPA" sozinho não
+                                -- identifica produto, como "Fanta Laranja" não é só "Laranja". Em
+                                -- loja 'propria' o scraper prefixa a marca quando ela não está no
+                                -- nome. Gravado em Title Case (artigos minúsculos, siglas de estilo
+                                -- como IPA/NEIPA em maiúscula) — ver scraper/normalize.py.
+brand         text             -- ex: "Dogma". Em loja 'propria' é sempre o apelido da loja (ou o
+                                -- nome dela); em marketplace vem do vendor da fonte e é
+                                -- inconsistente (razão social, distribuidor, placeholder).
 attributes    jsonb            -- ex: {"estilo": "APA", "pais": "Brasil", "volume_ml": 355, "abv": 4.5}
 image_url     text
-canonical_slug text unique     -- pra URL amigável /produto/colorado-appia
+canonical_slug text unique     -- identidade do produto E url amigável. Fórmula: se o nome já
+                                -- contém a marca, é slugify(nome); senão slugify(marca + nome) —
+                                -- ver product_slug/productSlug (espelhados em
+                                -- scraper/normalize.py e web/src/lib/slug.ts). A marca faz parte
+                                -- da chave de propósito: sem ela o "IPA" da Dogma colidiria com o
+                                -- "IPA" de outra cervejaria e ofertas de produtos DIFERENTES
+                                -- seriam agregadas. ATENÇÃO: mudar essa fórmula dessincroniza
+                                -- todos os slugs gravados e a coleta seguinte cria duplicatas —
+                                -- existe "Ressincronizar identificadores" em /admin/ferramentas.
 category      text default 'cervejas'  -- 'cervejas'|'kit'|'copo'|'souvenirs'|'eventos' (texto livre,
                                         -- classificado por palavra-chave no scraper — ver
                                         -- 04-conectores-ingestao.md). Só 'cervejas'+'kit' aparecem
@@ -52,6 +66,11 @@ store_type    text default 'marketplace'  -- 'marketplace' (revende várias marc
                                            -- (a própria cervejaria) — produtos sem marca/país de
                                            -- loja 'propria' herdam o nome/país dela
 country       text default 'Brasil'       -- país da loja, usado na herança acima
+brand_alias   text nullable   -- forma curta do nome ("Dogma" para "Cervejaria Dogma"), usada como
+                               -- products.brand e como prefixo do nome dos produtos em loja
+                               -- 'propria'. null = usa `name` (migration 0015)
+offer_expiration_days int nullable  -- prazo próprio de expiração desta loja; null = usa o global
+                                     -- de site_settings (migration 0013)
 affiliate_program_id uuid nullable fk -> affiliate_programs
 created_at    timestamptz
 ```
@@ -77,7 +96,16 @@ source_type   text             -- 'scrape' | 'email' | 'whatsapp_ocr' | 'manual'
 source_ref    uuid nullable fk -> raw_captures
 active        boolean default true  -- desativada automaticamente pelo scraper se last_seen_at
                                      -- passar de site_settings.offer_expiration_days sem ser vista
-last_seen_at  timestamptz      -- última vez que essa oferta foi confirmada disponível
+last_seen_at  timestamptz      -- última vez que essa oferta foi confirmada disponível. Atualizado
+                                 -- a CADA coleta (é o que a expiração usa), mesmo quando o preço
+                                 -- não muda e nenhum price_history é gravado
+reference_price numeric(10,2) nullable -- média do histórico anterior ao ponto mais recente
+drop_percent    numeric(5,2) nullable  -- queda % frente a essa referência; null = sem queda ou sem
+                                        -- histórico suficiente. Mantidos por TRIGGER em
+                                        -- price_history (migration 0013). A home lê estas colunas
+                                        -- em vez de carregar o histórico de todas as ofertas a cada
+                                        -- render — com 13 mil ofertas aquilo seriam dezenas de MB
+                                        -- por visita
 created_at    timestamptz
 updated_at    timestamptz
 unique (product_id, store_id)
@@ -96,6 +124,13 @@ captured_at   timestamptz
 check (price > 0)  -- mesmo motivo do constraint em offers (migration 0010)
 ```
 Índice em `(offer_id, captured_at desc)`.
+
+**Um ponto é gravado só quando o preço MUDA** (ou na primeira vez que a oferta é vista). Gravar a
+cada coleta fazia a tabela crescer por tempo em vez de por informação — a projeção com 150 lojas a
+1 coleta/dia dava ~4,9 milhões de linhas/ano, quase tudo repetido — e a repetição ainda distorcia a
+leitura: a média do histórico anterior (base do selo "-X%") ficava diluída por dezenas de pontos
+iguais e uma queda real aparecia menor do que é. Consequência visível: o gráfico tem degraus em vez
+de um ponto por dia, o que representa melhor a realidade (o preço é constante entre mudanças).
 
 ### `price_alerts`
 Regras de alerta, parametrizáveis.
@@ -148,11 +183,45 @@ started_at    timestamptz
 finished_at   timestamptz
 ```
 
+### `category_keywords`
+Palavras que classificam `products.category` pelo nome, editáveis em `/admin/classificacao`
+(migrations 0011/0012). Antes eram lista hardcoded no scraper, o que exigia mudar código a cada
+palavra nova.
+```sql
+id            uuid pk
+category      text           -- 'eventos'|'kit'|'copo'|'souvenirs' ('cervejas' é o fallback, sem linha)
+keyword       text
+created_at    timestamptz
+unique (category, keyword)
+```
+A **ordem de prioridade** entre categorias NÃO é dado: fica fixa no código
+(`scraper/categorize.py::_CATEGORY_ORDER`), porque "Kit Copo + Cerveja" precisa virar 'kit' e não
+'copo'. O scraper carrega a tabela uma vez por execução e cacheia em memória.
+
+### `text_replacements`
+Regras de/para aplicadas **sob demanda** (nunca na coleta) sobre nome e marca, em
+`/admin/ferramentas` (migration 0014).
+```sql
+id            uuid pk
+target        text           -- 'name' | 'brand'
+search        text           -- o espaço importa nas duas pontas: "Alemã " (com espaço) não casa
+                              -- "Alemãzinha"; " 500ml" no `replace` separa volume emendado
+replace       text default ''  -- vazio = remove o trecho
+active        boolean default true
+created_at    timestamptz
+unique (target, search)
+```
+Existe porque o coletor grava o que a loja escreve: remover o prefixo "Cerveja" deixa "Alemã
+Paulaner…" (58 produtos), e a mesma cervejaria aparece com marcas diferentes entre lojas
+("PAULANER BRAUEREI GRUPPE GMBH & CO. KGAA" vs "Paulaner"), o que impedia as ofertas de agregarem.
+Aplicar recalcula o slug; onde dois produtos convergem, o conflito é **listado** para o usuário
+mesclar caso a caso, nunca mesclado sozinho.
+
 ### `site_settings`
 Linha única (singleton, `id = 1`) com configurações globais do site.
 ```sql
 id                     int pk (sempre 1)
-logo_black_url         text nullable  -- logo pro tema claro
+logo_black_url         text nullable  -- logo pro tema claro (editável em /admin/config)
 logo_white_url         text nullable  -- logo pro tema escuro
 offer_expiration_days  int default 45  -- editável em /admin/config — dias sem o scraper ver a
                                         -- oferta até desativá-la automaticamente
