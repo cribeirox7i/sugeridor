@@ -13,7 +13,7 @@
 //     delimitador quebrado — ver evaluateTxtPreview).
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { detectTxtFields, type TxtSamples } from "@/lib/detectTxtFields";
+import { detectTxtFields, type TxtField, type TxtSamples } from "@/lib/detectTxtFields";
 import { parseTxtConfig, evaluateTxtPreview, type TxtPreview } from "@/lib/parseTxtConfig";
 
 const UA = "SugeridorBot/1.0 (+https://sugeridor.vercel.app; detector de campos txt)";
@@ -38,6 +38,11 @@ type RequestBody = {
   brandAlias?: string;
   storeName?: string;
   samples?: Partial<TxtSamples>;
+  // Modo MANUAL: o admin digitou os delimitadores em vez de dar um produto de
+  // exemplo. Aqui não há nada a detectar — só rodar o parser contra a página e
+  // devolver a prévia, que é a única forma de ele saber se acertou (em especial
+  // a ORDEM dos campos, que o parser exige que seja a do HTML).
+  fields?: TxtField[];
 };
 
 type OfferForSample = {
@@ -152,6 +157,21 @@ export async function POST(req: Request) {
       missingRequired: [],
       warnings: [],
       error: "Não consegui acessar essa URL pra analisar.",
+    });
+  }
+
+  // ── Modo manual: só testar os delimitadores digitados ──
+  if (body.fields && body.fields.length > 0) {
+    const rows = parseTxtConfig(html, body.fields);
+    const preview = evaluateTxtPreview(rows, null);
+    return NextResponse.json<DetectResponse>({
+      config: { fields: body.fields, max_items: 200 },
+      preview,
+      usedAutoSample: false,
+      sampleUsed: null,
+      needsManualSample: false,
+      missingRequired: [],
+      warnings: preview.warnings,
     });
   }
 

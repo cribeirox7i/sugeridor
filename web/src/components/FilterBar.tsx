@@ -80,8 +80,12 @@ export default function FilterBar({ estilos, paises, marcas, stores, hideStore, 
         <input type="hidden" name="loja" value={current.storeId} />
       )}
 
-      {/* Busca com o botão acoplado, como um campo só. */}
-      <div className="flex min-w-0 flex-1 items-center sm:flex-none">
+      {/* Busca com o botão acoplado, como um campo só.
+          No mobile ocupa a LINHA INTEIRA (`w-full`), e País/botão de filtros
+          descem por flex-wrap. Antes era `flex-1 min-w-0` também no mobile:
+          disputando a linha com País (206px) e o botão (128px) num form de
+          327px, a busca era comprimida a uns poucos pixels. */}
+      <div className="flex w-full items-center sm:w-auto">
         <label className="sr-only" htmlFor="filtro-busca">
           {t("search")}
         </label>

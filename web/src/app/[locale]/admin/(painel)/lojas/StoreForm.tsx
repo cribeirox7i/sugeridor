@@ -249,6 +249,9 @@ export default function StoreForm({
             storeType={storeType}
             brandAlias={brandAlias}
             storeName={name}
+            // Pré-carrega as tags já salvas no modo manual, pra reabrir a loja
+            // e ajustar em vez de digitar tudo de novo.
+            currentConfig={config}
             onConfigDetected={setConfig}
           />
         )}

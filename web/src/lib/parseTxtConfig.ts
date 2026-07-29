@@ -118,7 +118,14 @@ export type TxtPreview = {
 // isso, porque o valor É positivo, só está sempre errado). Os demais
 // problemas (poucos produtos, nome vazio) viram aviso, não bloqueio — o
 // catálogo é pequeno o bastante, e a decisão de usar mesmo assim é do admin.
-export function evaluateTxtPreview(rows: TxtRow[], samplePrice: number, previewLimit = 5): TxtPreview {
+// `samplePrice` é null no modo manual (o admin digitou os delimitadores, não um
+// produto de exemplo): sem preço de referência, a checagem de "preço travado no
+// valor da amostra" não se aplica e é pulada — as demais valem igual.
+export function evaluateTxtPreview(
+  rows: TxtRow[],
+  samplePrice: number | null,
+  previewLimit = 5,
+): TxtPreview {
   const warnings: string[] = [];
 
   if (rows.length < 2) {
@@ -140,7 +147,11 @@ export function evaluateTxtPreview(rows: TxtRow[], samplePrice: number, previewL
 
   const distinctPrices = new Set(prices.map((p) => p.toFixed(2)));
   const broken =
-    rows.length >= 2 && prices.length === rows.length && distinctPrices.size === 1 && distinctPrices.has(samplePrice.toFixed(2));
+    samplePrice !== null &&
+    rows.length >= 2 &&
+    prices.length === rows.length &&
+    distinctPrices.size === 1 &&
+    distinctPrices.has(samplePrice.toFixed(2));
   if (broken) {
     warnings.push(
       "Todos os produtos ficaram com o MESMO preço do exemplo — o delimitador de preço provavelmente grudou no valor específico do produto de exemplo, em vez de um marcador que se repete. Ajuste o exemplo ou os campos antes de salvar.",
