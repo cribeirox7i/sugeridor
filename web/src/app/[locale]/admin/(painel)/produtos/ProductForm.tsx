@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import type { Product, ProductType } from "@/lib/types";
+import ClearableInput from "@/components/admin/ClearableInput";
 import { saveProduct } from "./actions";
 
 export default function ProductForm({
@@ -15,6 +16,7 @@ export default function ProductForm({
 }) {
   const t = useTranslations("admin.products");
   const tAttr = useTranslations("attributes");
+  const tCommon = useTranslations("admin.common");
   const [typeId, setTypeId] = useState(
     editing?.product_type_id ?? productTypes[0]?.id ?? "",
   );
@@ -49,22 +51,34 @@ export default function ProductForm({
 
         <label className="space-y-1">
           <span className={labelCls}>{t("name")}</span>
-          <input name="name" required defaultValue={editing?.name ?? ""} className={inputCls} />
+          <ClearableInput
+            name="name"
+            required
+            defaultValue={editing?.name ?? ""}
+            className={inputCls}
+            clearLabel={tCommon("clear")}
+          />
         </label>
 
         <label className="space-y-1">
           <span className={labelCls}>{t("brand")}</span>
-          <input name="brand" defaultValue={editing?.brand ?? ""} className={inputCls} />
+          <ClearableInput
+            name="brand"
+            defaultValue={editing?.brand ?? ""}
+            className={inputCls}
+            clearLabel={tCommon("clear")}
+          />
         </label>
 
         <label className="space-y-1">
           <span className={labelCls}>{t("image")}</span>
-          <input
+          <ClearableInput
             name="image_url"
             type="url"
             placeholder="https://..."
             defaultValue={editing?.image_url ?? ""}
             className={inputCls}
+            clearLabel={tCommon("clear")}
           />
         </label>
 
@@ -101,12 +115,12 @@ export default function ProductForm({
                       ))}
                     </select>
                   ) : (
-                    <input
+                    <ClearableInput
                       name={`attr_${f.key}`}
                       type={f.type === "number" ? "number" : "text"}
-                      step={f.type === "number" ? "any" : undefined}
                       defaultValue={current != null ? String(current) : ""}
                       className={inputCls}
+                      clearLabel={tCommon("clear")}
                     />
                   )}
                 </label>

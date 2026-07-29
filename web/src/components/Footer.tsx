@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { PUBLIC_CONTAINER } from "@/lib/layout";
 
 // Sempre escuro (barra preta), independente do tema claro/escuro do site —
 // pedido explícito, funciona como assinatura visual fixa da marca.
@@ -8,7 +9,9 @@ export default async function Footer() {
 
   return (
     <footer className="mt-auto bg-neutral-950 text-neutral-400">
-      <div className="mx-auto max-w-[860px] px-6 py-10">
+      {/* Mesma faixa central do conteúdo (ver lib/layout.ts) — se divergir,
+          o rodapé desalinha do grid de produtos. */}
+      <div className={`${PUBLIC_CONTAINER} py-10`}>
         <div className="grid gap-8 sm:grid-cols-2">
           <div>
             <p className="text-lg font-semibold text-neutral-100">Sugeridor</p>

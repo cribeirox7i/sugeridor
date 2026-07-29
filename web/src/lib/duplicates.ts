@@ -52,3 +52,34 @@ export function groupByName<T extends DuplicateCandidate>(products: T[]): T[][] 
 
   return groups.sort((a, b) => a[0].name.localeCompare(b[0].name, "pt-BR"));
 }
+
+// ── Pares ignorados ──────────────────────────────────────────────────
+//
+// O par é sempre CANÔNICO (id menor primeiro), igual ao check da tabela
+// `ignored_duplicates` (migration 0017): sem isso o mesmo par seria gravado
+// duas vezes, invertido, e a checagem de "já ignorei este?" falharia metade
+// das vezes.
+export function pairKey(a: string, b: string): string {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+// Todos os pares internos de um grupo. Um grupo de 2 tem 1 par; de 3 tem 3.
+export function groupPairs(ids: string[]): [string, string][] {
+  const pairs: [string, string][] = [];
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      pairs.push(ids[i] < ids[j] ? [ids[i], ids[j]] : [ids[j], ids[i]]);
+    }
+  }
+  return pairs;
+}
+
+// Um grupo só sai da tela quando TODOS os seus pares estão ignorados.
+//
+// Importa para grupo de 3+: ignorar A-B não diz nada sobre C. Se bastasse um
+// par ignorado, o grupo inteiro desapareceria e a duplicata A-C ficaria
+// escondida pra sempre — o oposto do que a tela existe pra fazer.
+export function isGroupIgnored(ids: string[], ignored: Set<string>): boolean {
+  const pairs = groupPairs(ids);
+  return pairs.length > 0 && pairs.every(([a, b]) => ignored.has(pairKey(a, b)));
+}

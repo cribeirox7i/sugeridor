@@ -19,10 +19,9 @@ import FiltersAccordion from "@/components/FiltersAccordion";
 import FeaturedDeals from "@/components/FeaturedDeals";
 import StoreCarousel from "@/components/StoreCarousel";
 import StoreHeader from "@/components/StoreHeader";
-import ThemeToggle from "@/components/ThemeToggle";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
-import Logo from "@/components/Logo";
+import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
+import { PUBLIC_CONTAINER } from "@/lib/layout";
 import Modal from "@/components/admin/Modal";
 import ProductDetail from "@/components/ProductDetail";
 import ProductDetailView from "@/components/ProductDetailView";
@@ -129,22 +128,21 @@ export default async function Home({
 
   // A barra de filtros aparece nos dois modos (na "página da loja" só sem o
   // select de loja) — mas estilo/país lá devem refletir só o catálogo
-  // DAQUELA loja, não o site inteiro. `stores` (opções do select de loja) e
-  // destaques só fazem sentido fora da página da loja.
+  // DAQUELA loja, não o site inteiro.
   const facetOffers = storeMode ? allOffers.filter((o) => o.store_id === filters.storeId) : allOffers;
   const estilos = distinctAttributeValues(facetOffers, "estilo");
   const paises = distinctAttributeValues(facetOffers, "pais");
   const marcas = distinctBrandValues(facetOffers);
-  const stores = storeMode ? [] : storesWithActiveOffers(allOffers);
+  // Derivado do array NÃO filtrado nos dois modos: na página da loja o
+  // carrossel continua listando todas as lojas, funcionando como trocador (a
+  // atual aparece destacada). Sem query nova.
+  const stores = storesWithActiveOffers(allOffers);
 
   // Queda de preço vem pronta de `offers.drop_percent` (trigger da migration
   // 0013) — a home não busca mais price_history. Antes eram os pontos de
   // histórico de TODAS as ofertas ativas em cada renderização.
   const featuredDeals = storeMode ? [] : featuredDealsFromOffers(allOffers, 5);
   const dropByOffer = dropPercentByOffer(offers);
-
-  // Carrossel de lojas usa o mesmo conjunto (com oferta ativa) do filtro.
-  const storesWithOffers = stores;
 
   // storeId sempre vem preenchido em storeMode (é o que define o modo) — não
   // conta como "filtro ativo" pro badge do acordeon nesse caso, senão o
@@ -156,67 +154,59 @@ export default async function Home({
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       {/* Navbar fixo — fora da área rolável, nunca sai de vista. */}
-      <header className="shrink-0 border-b border-neutral-200 dark:border-neutral-800">
-        <div className="mx-auto flex max-w-[860px] items-start justify-between px-6 py-6">
-          <div>
-            <Logo settings={siteSettings} fallbackText={t("title")} className="h-8" />
-            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("subtitle")}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      <SiteHeader settings={siteSettings} />
 
-      {/* Barra de filtros também fixa, logo abaixo do navbar — aparece nos
-          dois modos (na página da loja, sem o select de loja). */}
-      <div className="shrink-0 border-b border-neutral-200 px-6 py-4 dark:border-neutral-800">
-        <div className="mx-auto w-full max-w-[860px]">
-          <FiltersAccordion activeCount={activeFilterCount}>
-            <FilterBar
-              estilos={estilos}
-              paises={paises}
-              marcas={marcas}
-              stores={stores}
-              hideStore={storeMode}
-              current={{
-                estilo: sp.estilo,
-                pais: sp.pais,
-                storeId: sp.loja,
-                brand: sp.marca,
-                precoMin: sp.min,
-                precoMax: sp.max,
-                q: sp.q,
-                ordenar: sp.ordenar,
-              }}
-            />
-          </FiltersAccordion>
+      {/* Barra de ferramentas fixa: busca/filtros à esquerda, lojas à direita,
+          numa faixa só. Aparece nos dois modos — na página da loja o
+          `hideStore` tira apenas o select de loja. */}
+      <div className="shrink-0 border-b border-neutral-200 py-3 dark:border-neutral-800">
+        <div className={`${PUBLIC_CONTAINER} flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between`}>
+          <div className="min-w-0 flex-1">
+            <FiltersAccordion activeCount={activeFilterCount}>
+              <FilterBar
+                estilos={estilos}
+                paises={paises}
+                marcas={marcas}
+                stores={stores}
+                hideStore={storeMode}
+                current={{
+                  estilo: sp.estilo,
+                  pais: sp.pais,
+                  storeId: sp.loja,
+                  brand: sp.marca,
+                  precoMin: sp.min,
+                  precoMax: sp.max,
+                  q: sp.q,
+                  ordenar: sp.ordenar,
+                }}
+              />
+            </FiltersAccordion>
+          </div>
+
+          <StoreCarousel stores={stores} currentStoreId={filters.storeId} />
         </div>
       </div>
 
       {/* Só esta área rola — o "conteúdo orgânico" da página. */}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-[860px] space-y-6 px-6 py-6">
+        <div className={`${PUBLIC_CONTAINER} space-y-5 py-5`}>
           {storeMode ? (
-            <StoreHeader store={storeDetail} />
+            <StoreHeader store={storeDetail} offerCount={offers.length} />
           ) : (
             <>
               <FeaturedDeals deals={featuredDeals} />
-              <StoreCarousel stores={storesWithOffers} />
+              <p className="text-sm text-neutral-500 dark:text-neutral-500">
+                {t("offerCount", { count: offers.length })}
+              </p>
             </>
           )}
-
-          <p className="text-sm text-neutral-500 dark:text-neutral-500">
-            {t("offerCount", { count: offers.length })}
-          </p>
 
           {offers.length === 0 ? (
             <div className="rounded-lg border border-dashed border-neutral-300 p-12 text-center text-neutral-500 dark:border-neutral-800">
               {t("noOffers")}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {offers.map((offer) => (
                 <OfferCard key={offer.id} offer={offer} dropPercent={dropByOffer.get(offer.id)} />
               ))}
@@ -227,8 +217,11 @@ export default async function Home({
         <Footer />
       </div>
 
+      {/* `dismissOnBackdrop`: aqui o clique fora FECHA, porque o popup é uma
+          espiada no produto. Os modais de cadastro do admin não passam a prop e
+          só fecham no ✕, pra não perder o que foi digitado. */}
       {sp.produto && (
-        <Modal closeHref={closeHref} instantClose>
+        <Modal closeHref={closeHref} instantClose dismissOnBackdrop>
           <ProductPopup supabase={supabase} slug={sp.produto} allOffers={allOffers} />
         </Modal>
       )}

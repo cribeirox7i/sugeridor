@@ -16,7 +16,8 @@
     "noOffers": "No offers found.",
     "featuredTitle": "🔥 Featured deals",
     "storesTitle": "Stores",
-    "backToCatalog": "← Back to catalog"
+    "backToCatalog": "← Back to catalog",
+    "allStores": "All stores"
   },
   "filters": {
     "toggle": "Filters{count, plural, =0 {} other { ({count})}}",
@@ -34,7 +35,7 @@
     "sortPrice": "Price",
     "sortName": "Name",
     "sortCountry": "Country",
-    "moreFilters": "More filters{count, plural, =0 {} other { ({count})}}",
+    "moreFilters": "More filters and sorting{count, plural, =0 {} other { ({count})}}",
     "lessFilters": "Fewer filters",
     "filter": "Filter",
     "clear": "Clear"
@@ -87,7 +88,8 @@
       "include": "Add new",
       "viewGrid": "Cards",
       "viewList": "List",
-      "search": "Search"
+      "search": "Search",
+      "clear": "Clear"
     },
     "login": {
       "title": "Admin — login",
@@ -366,7 +368,22 @@
       "inactive": "Inactive",
       "confirmDeleteRule": "Delete the rule \"{search}\"?",
       "resync": "Resync identifiers",
-      "resyncResult": "{count, plural, =0 {No identifier needed adjusting — the catalog is in sync with the collector.} =1 {1 identifier resynced.} other {# identifiers resynced.}} {conflicts, plural, =0 {} =1 {1 case was skipped as a duplicate — resolve it by merging.} other {# cases were skipped as duplicates — resolve them by merging.}}"
+      "resyncResult": "{count, plural, =0 {No identifier needed adjusting — the catalog is in sync with the collector.} =1 {1 identifier resynced.} other {# identifiers resynced.}} {conflicts, plural, =0 {} =1 {1 case was skipped as a duplicate — resolve it by merging.} other {# cases were skipped as duplicates — resolve them by merging.}}",
+      "ignoreButton": "Ignore",
+      "ignoreHint": "Marks this pair as \"not a duplicate\" and removes it from the list for good. Nothing is deleted or merged — both products stay separate. You can undo it in the ignored section.",
+      "ignoreSelected": "Ignore selected{count, plural, =0 {} other { ({count})}}",
+      "ignoredTitle": "{count, plural, =1 {1 ignored duplicate} other {# ignored duplicates}}",
+      "ignoredHint": "Pairs you marked as \"not duplicates\". They no longer show in the lists above until you bring them back here.",
+      "unignoreButton": "Show again",
+      "rewriteCountries": "Rewrite countries",
+      "rewriteCountriesHint": "Two rules, in this order: (1) for an own store, the store's country OVERWRITES the product's — this is what fixes a store switched from marketplace to own; (2) a product with no country gets the most common country among products of the same brand. Does not change the product identifier.",
+      "rewriteCountriesResult": "{byStore, plural, =0 {No country rewritten from an own store} =1 {1 country rewritten from the own store} other {# countries rewritten from own stores}}. {byBrand, plural, =0 {None filled in from the brand.} =1 {1 filled in from the brand.} other {# filled in from the brand.}}"
     }
+  },
+  "stores": {
+    "pageTitle": "All stores",
+    "pageHint": "{count, plural, =0 {No store has active offers right now.} =1 {1 store with active offers.} other {# stores with active offers.}}",
+    "empty": "No store has active offers at the moment.",
+    "productCount": "{count, plural, =1 {1 product} other {# products}}"
   }
 }

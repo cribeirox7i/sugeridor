@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { mergeProductGroups } from "./actions";
+import { mergeProductGroups, ignoreDuplicateGroups } from "./actions";
 
 export type ConflictSide = {
   id: string;
@@ -51,6 +51,28 @@ export default function ConflictList({
 
   const pendentes = groups.filter((g) => !feitos.has(g.key));
   const selecionados = pendentes.filter((g) => marcados.has(g.key));
+
+  // Ignorar: marca o par como "não é duplicata" e tira da lista pra sempre
+  // (tabela ignored_duplicates). Não mexe em produto nem oferta — nada a
+  // confirmar com alarme, e é reversível na seção "ignoradas" da tela.
+  function ignorar(alvos: ConflictGroup[]) {
+    if (alvos.length === 0) return;
+    setErro(null);
+    setAviso(null);
+    startTransition(async () => {
+      const { error } = await ignoreDuplicateGroups(alvos.map((g) => g.sides.map((s) => s.id)));
+      if (error) {
+        setErro(error);
+        return;
+      }
+      setFeitos((prev) => {
+        const next = new Set(prev);
+        for (const g of alvos) next.add(g.key);
+        return next;
+      });
+      setMarcados(new Set());
+    });
+  }
 
   function mesclar(alvos: ConflictGroup[], confirmMessage: string) {
     if (alvos.length === 0) return;
@@ -128,6 +150,14 @@ export default function ConflictList({
         </button>
         <button
           type="button"
+          disabled={isPending || selecionados.length === 0}
+          onClick={() => ignorar(selecionados)}
+          className={btn}
+        >
+          {t("ignoreSelected", { count: selecionados.length })}
+        </button>
+        <button
+          type="button"
           disabled={isPending || pendentes.length === 0}
           onClick={() => mesclar(pendentes, t("confirmMergeAll", { count: pendentes.length }))}
           className="rounded bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-500 disabled:opacity-50 dark:text-neutral-950"
@@ -198,16 +228,27 @@ export default function ConflictList({
                     {t("merged")}
                   </span>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      mesclar([grupo], t("confirmMerge", { keep: keep.name, drop: drops[0]?.name ?? "" }))
-                    }
-                    disabled={isPending}
-                    className={`shrink-0 ${btn}`}
-                  >
-                    {t("mergeButton")}
-                  </button>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        mesclar([grupo], t("confirmMerge", { keep: keep.name, drop: drops[0]?.name ?? "" }))
+                      }
+                      disabled={isPending}
+                      className={btn}
+                    >
+                      {t("mergeButton")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => ignorar([grupo])}
+                      disabled={isPending}
+                      title={t("ignoreHint")}
+                      className={btn}
+                    >
+                      {t("ignoreButton")}
+                    </button>
+                  </div>
                 )}
               </div>
             </li>

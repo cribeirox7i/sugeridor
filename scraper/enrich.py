@@ -74,7 +74,9 @@ def apply_own_store_defaults() -> tuple[int, int]:
     própria — e por isso mantém o comportamento conservador de só completar o
     que falta. Roda antes de `unify_brand_country()`: o país da própria loja é
     sinal mais confiável do que a moda entre marcas."""
-    stores = db.select("stores", {"store_type": "eq.propria", "select": "id,name,country"})
+    stores = db.select(
+        "stores", {"store_type": "eq.propria", "select": "id,name,country,brand_alias"}
+    )
     if not stores:
         return (0, 0)
 
@@ -100,8 +102,13 @@ def apply_own_store_defaults() -> tuple[int, int]:
             for product in rows:
                 patch: dict = {}
 
+                # Apelido primeiro, nome como fallback — MESMA regra de
+                # StoreRecord.brand em models.py. Usar `name` direto aqui
+                # contradizia o pipeline a cada coleta numa loja com apelido
+                # ("Cervejaria Dogma" aqui vs "Dogma" lá), e `brand` entra no
+                # slug: a marca ficava oscilando entre as duas formas.
                 if not product.get("brand"):
-                    patch["brand"] = store["name"]
+                    patch["brand"] = store.get("brand_alias") or store["name"]
 
                 attrs = dict(product.get("attributes") or {})
                 if not attrs.get("pais") and store.get("country"):

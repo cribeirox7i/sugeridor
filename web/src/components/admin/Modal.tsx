@@ -11,6 +11,7 @@ export default function Modal({
   children,
   closeHref,
   instantClose,
+  dismissOnBackdrop = false,
 }: {
   children: React.ReactNode;
   closeHref: string;
@@ -20,6 +21,11 @@ export default function Modal({
   // carregamento da home via push. Modais do admin não passam essa prop e
   // continuam fechando com push, como sempre.
   instantClose?: boolean;
+  // Clicar no fundo escuro fecha? Padrão NÃO: nos modais de cadastro/edição do
+  // admin um clique fora perdia tudo que tinha sido digitado no formulário.
+  // O popup público de produto passa `true` — ali fechar por clique fora é o
+  // comportamento esperado de uma espiada, e não há nada a perder.
+  dismissOnBackdrop?: boolean;
 }) {
   const router = useRouter();
   const close = () => {
@@ -43,11 +49,13 @@ export default function Modal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={close}
+      onClick={dismissOnBackdrop ? close : undefined}
     >
+      {/* stopPropagation só é necessário quando o fundo fecha — sem ele, um
+          clique dentro do painel borbulharia até o backdrop. */}
       <div
         className="max-h-[90vh] w-full max-w-[780px] overflow-y-auto rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900"
-        onClick={(e) => e.stopPropagation()}
+        onClick={dismissOnBackdrop ? (e) => e.stopPropagation() : undefined}
       >
         <div className="mb-2 flex justify-end">
           <button

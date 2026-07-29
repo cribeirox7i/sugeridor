@@ -8,7 +8,7 @@ import {
   type Replacement,
 } from "@/lib/replacements";
 import { chooseKeeper, type MergeCandidate } from "@/lib/merge";
-import { groupByName } from "@/lib/duplicates";
+import { groupByName, isGroupIgnored, pairKey } from "@/lib/duplicates";
 import { formatPrice } from "@/lib/format";
 import { normalizeExistingProductNames } from "../produtos/actions";
 import { reclassifyExistingProducts } from "../classificacao/actions";
@@ -19,6 +19,8 @@ import {
   applyReplacementsAction,
   rebrandOwnStoreProducts,
   resyncProductSlugs,
+  rewriteProductCountries,
+  unignoreDuplicate,
 } from "./actions";
 import ConflictList, { type ConflictGroup, type ConflictSide } from "./ConflictList";
 
@@ -135,6 +137,8 @@ export default async function FerramentasPage({
     conflitos?: string;
     normalized?: string;
     reclassified?: string;
+    paisesLoja?: string;
+    paisesMarca?: string;
     erro?: string;
   }>;
 }) {
@@ -142,15 +146,26 @@ export default async function FerramentasPage({
   const supabase = await createClient();
   const t = await getTranslations("admin.tools");
 
-  const [{ data: rulesData }, products, offers] = await Promise.all([
+  const [{ data: rulesData }, products, offers, { data: ignoredData }] = await Promise.all([
     supabase.from("text_replacements").select("*").order("created_at"),
     allProducts(supabase),
     allOffers(supabase),
+    supabase.from("ignored_duplicates").select("*").order("created_at", { ascending: false }),
   ]);
 
   const rules = sortRules((rulesData ?? []) as Replacement[]);
   const stats = statsByProduct(offers);
   const byId = new Map(products.map((p) => [p.id, p]));
+
+  // Pares que o admin marcou como "não são duplicata" (migration 0017). Se a
+  // migration ainda não rodou, o select devolve erro e `ignoredData` vem null —
+  // a tela segue funcionando como antes, sem nada ignorado.
+  const ignoredRows = (ignoredData ?? []) as {
+    id: string;
+    product_a_id: string;
+    product_b_id: string;
+  }[];
+  const ignoredPairs = new Set(ignoredRows.map((r) => pairKey(r.product_a_id, r.product_b_id)));
 
   // Números POR REGRA, que é a unidade em que o usuário pensa e agora também a
   // unidade em que o botão age:
@@ -182,6 +197,10 @@ export default async function FerramentasPage({
     const key = ids.join("|");
     if (vistos.has(key)) continue;
     vistos.add(key);
+    // Grupo cujos pares TODOS foram ignorados sai da lista (ver
+    // lib/duplicates.ts::isGroupIgnored — num grupo de 3+, ignorar um par não
+    // esconde os outros).
+    if (isGroupIgnored(ids, ignoredPairs)) continue;
     const linhas = ids.map((id) => byId.get(id)).filter((p): p is ProductRow => !!p);
     if (linhas.length < 2) continue;
     gruposDeRegra.push(toGroup(key, linhas, stats));
@@ -192,9 +211,15 @@ export default async function FerramentasPage({
   // (marca descoberta depois, nome corrigido à mão, fórmula do slug alterada) —
   // caso em que os dois aparecem no site, um deles sem marca, sem imagem e com o
   // preço da última coleta que o viu. Ver lib/duplicates.ts.
-  const gruposPorNome = groupByName(products).map((grupo) =>
-    toGroup(`nome:${grupo[0].id}`, grupo, stats),
-  );
+  const gruposPorNome = groupByName(products)
+    .filter((grupo) => !isGroupIgnored(grupo.map((p) => p.id), ignoredPairs))
+    .map((grupo) => toGroup(`nome:${grupo[0].id}`, grupo, stats));
+
+  // Lista de desfazer: ignorar é permanente, então sem isto um clique errado
+  // esconderia uma duplicata real pra sempre.
+  const ignoradas = ignoredRows
+    .map((r) => ({ id: r.id, a: byId.get(r.product_a_id), b: byId.get(r.product_b_id) }))
+    .filter((r) => r.a && r.b);
 
   const btnCls =
     "rounded border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800";
@@ -250,6 +275,14 @@ export default async function FerramentasPage({
           })}
         </p>
       )}
+      {sp.paisesLoja !== undefined && (
+        <p className={okBanner}>
+          {t("rewriteCountriesResult", {
+            byStore: Number(sp.paisesLoja),
+            byBrand: Number(sp.paisesMarca ?? 0),
+          })}
+        </p>
+      )}
 
       {/* ── Ações em lote ── */}
       <section className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900">
@@ -282,6 +315,11 @@ export default async function FerramentasPage({
               {t("resync")}
             </button>
           </form>
+          <form action={rewriteProductCountries}>
+            <button type="submit" className={btnCls} title={t("rewriteCountriesHint")}>
+              {t("rewriteCountries")}
+            </button>
+          </form>
         </div>
       </section>
 
@@ -296,6 +334,40 @@ export default async function FerramentasPage({
         title={t("conflictsTitle")}
         hint={t("conflictsHint")}
       />
+
+      {/* Desfazer o "Ignorar": sem esta lista, um clique errado esconderia uma
+          duplicata real permanentemente. */}
+      {ignoradas.length > 0 && (
+        <details className="rounded-lg border border-neutral-200 dark:border-neutral-800">
+          <summary className="cursor-pointer px-4 py-3 text-sm text-neutral-600 dark:text-neutral-300">
+            {t("ignoredTitle", { count: ignoradas.length })}
+          </summary>
+          <div className="border-t border-neutral-200 dark:border-neutral-800">
+            <p className="px-4 pt-3 text-xs text-neutral-500 dark:text-neutral-400">
+              {t("ignoredHint")}
+            </p>
+            <ul className="divide-y divide-neutral-200 text-[13px] dark:divide-neutral-800">
+              {ignoradas.map((par) => (
+                <li key={par.id} className="flex items-center justify-between gap-3 px-4 py-2">
+                  <span className="min-w-0">
+                    <span className="font-medium">{par.a!.name}</span>
+                    <span className="text-neutral-500"> ↔ {par.b!.name}</span>
+                  </span>
+                  <form action={unignoreDuplicate}>
+                    <input type="hidden" name="id" value={par.id} />
+                    <button
+                      type="submit"
+                      className="shrink-0 rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+                    >
+                      {t("unignoreButton")}
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
+      )}
 
       {/* ── Regras de/para ── */}
       <section className="space-y-4">

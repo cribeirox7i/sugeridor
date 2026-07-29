@@ -33,7 +33,9 @@ export default function OfferCard({
         </div>
       </ProductCardLink>
 
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      {/* p-3 (não p-4): com 5 cards por linha a 976px cada um tem ~173px, e o
+          padding maior deixava o nome do produto quebrando em 3 linhas. */}
+      <div className="flex flex-1 flex-col gap-2 p-3">
         <div className="flex-1">
           {product.brand && (
             <p className="text-xs uppercase tracking-wide text-neutral-500">{product.brand}</p>

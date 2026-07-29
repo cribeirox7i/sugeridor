@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import Modal from "@/components/admin/Modal";
 import ViewToggle from "@/components/admin/ViewToggle";
 import DeleteButton from "@/components/admin/DeleteButton";
+import ClearableInput from "@/components/admin/ClearableInput";
 import OffersTable from "./OffersTable";
 import { saveOffer, toggleOfferActive, deleteOffer } from "./actions";
 
@@ -108,19 +109,41 @@ export default async function OfertasPage({
           </select>
         </label>
 
+        {/* ClearableInput é client component, mas vive dentro deste <form>
+            renderizado no servidor sem problema: o `name` continua no DOM e a
+            Server Action lê o valor normalmente. */}
         <label className="space-y-1">
           <span className={labelCls}>{t("price")}</span>
-          <input name="price" required inputMode="decimal" placeholder="0,00" className={inputCls} />
+          <ClearableInput
+            name="price"
+            required
+            inputMode="decimal"
+            placeholder="0,00"
+            className={inputCls}
+            clearLabel={tCommon("clear")}
+          />
         </label>
 
         <label className="space-y-1">
           <span className={labelCls}>{t("currency")}</span>
-          <input name="currency" defaultValue="BRL" className={inputCls} />
+          <ClearableInput
+            name="currency"
+            defaultValue="BRL"
+            className={inputCls}
+            clearLabel={tCommon("clear")}
+          />
         </label>
 
         <label className="space-y-1 sm:col-span-2">
           <span className={labelCls}>{t("url")}</span>
-          <input name="url" type="url" required placeholder="https://..." className={inputCls} />
+          <ClearableInput
+            name="url"
+            type="url"
+            required
+            placeholder="https://..."
+            className={inputCls}
+            clearLabel={tCommon("clear")}
+          />
         </label>
       </div>
 

@@ -6,10 +6,21 @@ import { Link } from "@/i18n/navigation";
 
 type StoreLite = { id: string; name: string; logo_url: string | null };
 
-// Carrossel horizontal com as lojas que têm oferta ativa na listagem atual —
-// clicar leva pra "página da loja" (/?loja=<id>, filtros/carrossel somem lá).
-// Mesmo esqueleto de FeaturedDeals.tsx (scroll-snap, sem lib nova).
-export default function StoreCarousel({ stores }: { stores: StoreLite[] }) {
+// Bloco de lojas da barra de ferramentas: pílulas roláveis com logo+nome, mais
+// o atalho "Todas as lojas". Antes era uma `<section>` com título próprio
+// ABAIXO dos filtros; virou parte da barra pra recuperar a faixa vertical que
+// ela ocupava.
+//
+// Continua visível na "página da loja" (`?loja=<id>`), onde funciona como
+// trocador — a loja atual aparece destacada. Só links, nenhum campo de
+// formulário: fica fora do <form> do FilterBar.
+export default function StoreCarousel({
+  stores,
+  currentStoreId,
+}: {
+  stores: StoreLite[];
+  currentStoreId?: string;
+}) {
   const t = useTranslations("home");
   const scrollerRef = useRef<HTMLDivElement>(null);
 
@@ -20,51 +31,72 @@ export default function StoreCarousel({ stores }: { stores: StoreLite[] }) {
   if (stores.length === 0) return null;
 
   return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-        {t("storesTitle")}
-      </h2>
-      <div className="relative">
-        <div
-          ref={scrollerRef}
-          className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 sm:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {stores.map((store) => (
-            <Link
-              key={store.id}
-              href={`/?loja=${store.id}`}
-              className="flex flex-none snap-start items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm hover:border-amber-400 dark:border-neutral-800 dark:bg-neutral-900"
-            >
-              {store.logo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={store.logo_url} alt={store.name} className="h-5 w-5 rounded object-contain" />
-              ) : null}
-              <span className="whitespace-nowrap text-neutral-700 dark:text-neutral-300">
-                {store.name}
-              </span>
-            </Link>
-          ))}
-        </div>
+    <div className="flex min-w-0 flex-col items-end gap-0.5">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="hidden whitespace-nowrap text-xs text-neutral-500 sm:inline">
+          {t("storesTitle")}
+        </span>
 
         <button
           type="button"
           onClick={() => scrollBy(-200)}
           aria-hidden
           tabIndex={-1}
-          className="absolute left-0 top-1/2 hidden -translate-y-1/2 -translate-x-3 rounded-full border border-neutral-300 bg-white p-1.5 shadow sm:block dark:border-neutral-700 dark:bg-neutral-900"
+          className="hidden shrink-0 rounded-full border border-neutral-300 px-1.5 py-0.5 text-neutral-500 hover:bg-neutral-100 sm:block dark:border-neutral-700 dark:hover:bg-neutral-800"
         >
           ‹
         </button>
+
+        <div
+          ref={scrollerRef}
+          className="flex min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {stores.map((store) => {
+            const active = store.id === currentStoreId;
+            return (
+              <Link
+                key={store.id}
+                href={`/?loja=${store.id}`}
+                aria-current={active ? "true" : undefined}
+                className={`flex flex-none snap-start items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm ${
+                  active
+                    ? "border-amber-500 bg-amber-50 dark:border-amber-600 dark:bg-amber-950/40"
+                    : "border-neutral-200 bg-white hover:border-amber-400 dark:border-neutral-800 dark:bg-neutral-900"
+                }`}
+              >
+                {store.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={store.logo_url}
+                    alt=""
+                    className="h-4 w-4 rounded object-contain"
+                  />
+                ) : null}
+                <span className="whitespace-nowrap text-neutral-700 dark:text-neutral-300">
+                  {store.name}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+
         <button
           type="button"
           onClick={() => scrollBy(200)}
           aria-hidden
           tabIndex={-1}
-          className="absolute right-0 top-1/2 hidden -translate-y-1/2 translate-x-3 rounded-full border border-neutral-300 bg-white p-1.5 shadow sm:block dark:border-neutral-700 dark:bg-neutral-900"
+          className="hidden shrink-0 rounded-full border border-neutral-300 px-1.5 py-0.5 text-neutral-500 hover:bg-neutral-100 sm:block dark:border-neutral-700 dark:hover:bg-neutral-800"
         >
           ›
         </button>
       </div>
-    </section>
+
+      <Link
+        href="/lojas"
+        className="whitespace-nowrap text-xs text-amber-700 hover:underline dark:text-amber-500"
+      >
+        {t("allStores")}
+      </Link>
+    </div>
   );
 }

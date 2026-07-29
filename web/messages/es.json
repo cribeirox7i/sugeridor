@@ -16,7 +16,8 @@
     "noOffers": "No se encontraron ofertas.",
     "featuredTitle": "🔥 Ofertas destacadas",
     "storesTitle": "Tiendas",
-    "backToCatalog": "← Volver al catálogo"
+    "backToCatalog": "← Volver al catálogo",
+    "allStores": "Todas las tiendas"
   },
   "filters": {
     "toggle": "Filtros{count, plural, =0 {} other { ({count})}}",
@@ -34,7 +35,7 @@
     "sortPrice": "Precio",
     "sortName": "Nombre",
     "sortCountry": "País",
-    "moreFilters": "Más filtros{count, plural, =0 {} other { ({count})}}",
+    "moreFilters": "Más filtros y orden{count, plural, =0 {} other { ({count})}}",
     "lessFilters": "Menos filtros",
     "filter": "Filtrar",
     "clear": "Limpiar"
@@ -87,7 +88,8 @@
       "include": "Incluir",
       "viewGrid": "Tarjetas",
       "viewList": "Lista",
-      "search": "Buscar"
+      "search": "Buscar",
+      "clear": "Limpiar"
     },
     "login": {
       "title": "Admin — acceso",
@@ -366,7 +368,22 @@
       "inactive": "Inactiva",
       "confirmDeleteRule": "¿Eliminar la regla \"{search}\"?",
       "resync": "Resincronizar identificadores",
-      "resyncResult": "{count, plural, =0 {Ningún identificador necesitó ajuste — el catálogo está sincronizado con la recolección.} =1 {1 identificador resincronizado.} other {# identificadores resincronizados.}} {conflicts, plural, =0 {} =1 {1 caso quedó fuera por ser duplicado — resuélvelo fusionando.} other {# casos quedaron fuera por ser duplicados — resuélvelos fusionando.}}"
+      "resyncResult": "{count, plural, =0 {Ningún identificador necesitó ajuste — el catálogo está sincronizado con la recolección.} =1 {1 identificador resincronizado.} other {# identificadores resincronizados.}} {conflicts, plural, =0 {} =1 {1 caso quedó fuera por ser duplicado — resuélvelo fusionando.} other {# casos quedaron fuera por ser duplicados — resuélvelos fusionando.}}",
+      "ignoreButton": "Ignorar",
+      "ignoreHint": "Marca este par como \"no es duplicado\" y lo quita de la lista para siempre. Nada se borra ni se fusiona — los dos productos siguen separados. Se puede deshacer en la sección de ignorados.",
+      "ignoreSelected": "Ignorar seleccionados{count, plural, =0 {} other { ({count})}}",
+      "ignoredTitle": "{count, plural, =1 {1 duplicado ignorado} other {# duplicados ignorados}}",
+      "ignoredHint": "Pares que marcaste como \"no son duplicados\". Ya no aparecen en las listas de arriba hasta que los vuelvas a mostrar aquí.",
+      "unignoreButton": "Volver a mostrar",
+      "rewriteCountries": "Regrabar países",
+      "rewriteCountriesHint": "Dos reglas, en este orden: (1) en tienda propia, el país de la tienda SOBRESCRIBE el del producto — es lo que corrige a quien cambió de marketplace a propia; (2) el producto sin país recibe el país más común entre productos de la misma marca. No altera el identificador del producto.",
+      "rewriteCountriesResult": "{byStore, plural, =0 {Ningún país regrabado por tienda propia} =1 {1 país regrabado por la tienda propia} other {# países regrabados por las tiendas propias}}. {byBrand, plural, =0 {Ninguno completado por la marca.} =1 {1 completado por la marca.} other {# completados por la marca.}}"
     }
+  },
+  "stores": {
+    "pageTitle": "Todas las tiendas",
+    "pageHint": "{count, plural, =0 {Ninguna tienda tiene ofertas activas ahora.} =1 {1 tienda con ofertas activas.} other {# tiendas con ofertas activas.}}",
+    "empty": "Ninguna tienda tiene ofertas activas en este momento.",
+    "productCount": "{count, plural, =1 {1 producto} other {# productos}}"
   }
 }

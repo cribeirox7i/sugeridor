@@ -162,6 +162,44 @@ export function storesWithActiveOffers(
   return [...new Map(offers.map((o) => [o.store.id, o.store])).values()];
 }
 
+export type StoreWithOfferCount = Pick<Store, "id" | "name" | "logo_url" | "description"> & {
+  // Produtos DISTINTOS com oferta ativa nas categorias públicas — não é a
+  // contagem de ofertas nem o total de produtos cadastrados. É o número que
+  // corresponde ao que a página da loja realmente mostra.
+  productCount: number;
+};
+
+// Vitrine pública de lojas (/lojas). Conta produtos distintos por loja a partir
+// do array de ofertas que a página já buscou (mesmo princípio de
+// `storesWithActiveOffers`), e completa nome/logo/descrição com UMA consulta a
+// `stores` — o array de ofertas só carrega id/name/logo_url da loja.
+//
+// Devolve apenas lojas com contagem > 0, da maior pra menor: numa página
+// pública, loja sem nenhum produto ativo é card que leva a lugar nenhum.
+export async function storesForShowcase(
+  supabase: SupabaseClient,
+  offers: OfferListItem[],
+): Promise<StoreWithOfferCount[]> {
+  const productsByStore = new Map<string, Set<string>>();
+  for (const o of offers) {
+    const set = productsByStore.get(o.store_id);
+    if (set) set.add(o.product_id);
+    else productsByStore.set(o.store_id, new Set([o.product_id]));
+  }
+  if (productsByStore.size === 0) return [];
+
+  const { data, error } = await supabase
+    .from("stores")
+    .select("id, name, logo_url, description")
+    .in("id", [...productsByStore.keys()]);
+  if (error) throw error;
+
+  return ((data ?? []) as Pick<Store, "id" | "name" | "logo_url" | "description">[])
+    .map((s) => ({ ...s, productCount: productsByStore.get(s.id)?.size ?? 0 }))
+    .filter((s) => s.productCount > 0)
+    .sort((a, b) => b.productCount - a.productCount || a.name.localeCompare(b.name, "pt-BR"));
+}
+
 // Linha singleton com a logomarca do site. Se a migration 0004 ainda não
 // rodou (coluna/tabela não existe), retorna null em vez de derrubar a página.
 export async function getSiteSettings(supabase: SupabaseClient): Promise<SiteSettings | null> {

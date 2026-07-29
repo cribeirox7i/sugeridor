@@ -8,6 +8,8 @@ import { normalizeDashes } from "@/lib/text";
 import { prefixBrand, productSlug } from "@/lib/slug";
 import { planReplacements, type ProductForReplace, type Replacement } from "@/lib/replacements";
 import { chooseKeeper, planMerge, type MergeCandidate, type MergeOffer } from "@/lib/merge";
+import { groupPairs } from "@/lib/duplicates";
+import { planCountryRewrite, type ProductForCountry } from "@/lib/countryRules";
 import { patchProducts } from "@/lib/adminBatch";
 
 // O PostgREST corta em 1000 linhas sem avisar; ler paginado é obrigatório
@@ -19,6 +21,26 @@ const PAGE_SIZE = 1000;
 const ID_BATCH = 100;
 
 type SupabaseLike = Awaited<ReturnType<typeof createClient>>;
+
+// As regras de país precisam de `attributes` (que ProductForReplace não traz).
+// Paginado pelo mesmo motivo de sempre: o PostgREST corta em 1000 linhas sem
+// avisar e `products` já passou disso.
+async function fetchProductsForCountry(
+  supabase: SupabaseLike,
+): Promise<ProductForCountry[]> {
+  const all: ProductForCountry[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, brand, attributes")
+      .order("created_at")
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as ProductForCountry[];
+    all.push(...page);
+    if (page.length < PAGE_SIZE) return all;
+  }
+}
 
 async function fetchAllProducts(supabase: SupabaseLike): Promise<ProductForReplace[]> {
   const all: ProductForReplace[] = [];
@@ -148,9 +170,17 @@ export async function applyReplacementsAction(formData: FormData) {
 // marca+nome e é por ele que o scraper reconhece um produto existente.
 // Corrigir sem o slug faz a coleta seguinte criar uma duplicata de cada
 // produto (aconteceu de verdade, ver supabase/scripts/fix-catalog-data.sql).
-export async function rebrandOwnStoreProducts() {
-  const supabase = await createClient();
-
+// produto -> marca/país da loja PRÓPRIA que o vende. Ordem determinística por
+// nome de loja pra o resultado não depender da ordem que o banco devolveu (um
+// produto vendido por duas lojas próprias é caso degenerado — vence a primeira
+// alfabeticamente, sempre a mesma).
+//
+// Compartilhado por `rebrandOwnStoreProducts` (marca/nome/slug) e
+// `rewriteProductCountries` (país): as duas ações precisam exatamente do mesmo
+// mapa, e duplicá-lo faria uma divergir da outra silenciosamente.
+async function ownStoreByProduct(
+  supabase: SupabaseLike,
+): Promise<Map<string, { brand: string; country: string }>> {
   const { data: storesData } = await supabase
     .from("stores")
     .select("id, name, brand_alias, country")
@@ -162,26 +192,30 @@ export async function rebrandOwnStoreProducts() {
     country: string;
   }[];
 
-  const locale = await getLocale();
-  if (stores.length === 0) redirect(`/${locale}/admin/ferramentas?remarcados=0`);
-
-  // produto -> loja própria que o vende. Ordem determinística por nome de loja
-  // pra o resultado não depender da ordem que o banco devolveu.
-  const storeByProduct = new Map<string, { brand: string; country: string }>();
+  const byProduct = new Map<string, { brand: string; country: string }>();
   for (const store of [...stores].sort((a, b) => a.name.localeCompare(b.name))) {
     const { data: offersData } = await supabase
       .from("offers")
       .select("product_id")
       .eq("store_id", store.id);
     for (const o of (offersData ?? []) as { product_id: string }[]) {
-      if (!storeByProduct.has(o.product_id)) {
-        storeByProduct.set(o.product_id, {
+      if (!byProduct.has(o.product_id)) {
+        byProduct.set(o.product_id, {
           brand: store.brand_alias || store.name,
           country: store.country,
         });
       }
     }
   }
+  return byProduct;
+}
+
+export async function rebrandOwnStoreProducts() {
+  const supabase = await createClient();
+  const storeByProduct = await ownStoreByProduct(supabase);
+
+  const locale = await getLocale();
+  if (storeByProduct.size === 0) redirect(`/${locale}/admin/ferramentas?remarcados=0`);
 
   const products = await fetchAllProducts(supabase);
   const changed: { id: string; name: string; brand: string; canonical_slug: string }[] = [];
@@ -273,6 +307,94 @@ export async function resyncProductSlugs() {
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
   redirect(`/${locale}/admin/ferramentas?ressincronizados=${updated}&conflitos=${skipped}`);
+}
+
+// ── Regravar países (duas regras) ─────────────────────────────────
+// Traz pro admin, sob demanda, as duas regras de país que até agora só rodavam
+// durante a coleta (scraper/enrich.py) — o que significava esperar a próxima
+// execução do scraper pra corrigir o catálogo.
+//
+//   A. Loja própria é AUTORIDADE: sobrescreve o país dos produtos dela com o
+//      país da loja. É o caso que motivou o pedido — uma loja mudou de
+//      'marketplace' pra 'propria' e os produtos ficaram com o país da época de
+//      marketplace, errado. Sobrescreve (a versão do scraper só completa o que
+//      falta), igual ao que pipeline.py::_resolve_identity faz na coleta.
+//      Idempotente: não precisa detectar "mudou de tipo", aplicar em todas as
+//      próprias já resolve, e só gera patch quando o valor difere.
+//   B. Completar pela marca: produto SEM país recebe o valor mais comum entre
+//      produtos da mesma marca. Fill-only — é inferência, não autoridade.
+//
+// A antes de B (mesma ordem de run.py): A é autoridade e melhora o dado que B
+// usa como base. Nenhuma das duas toca `canonical_slug` — país não entra na
+// fórmula do slug, então não há o risco de dessincronização que cerca as outras
+// ações desta tela.
+export async function rewriteProductCountries() {
+  const supabase = await createClient();
+  const locale = await getLocale();
+
+  const [storeByProduct, products] = await Promise.all([
+    ownStoreByProduct(supabase),
+    fetchProductsForCountry(supabase),
+  ]);
+
+  const countryByProduct = new Map<string, string>();
+  for (const [productId, store] of storeByProduct) {
+    if (store.country) countryByProduct.set(productId, store.country);
+  }
+
+  const { patches, ownStore, byBrand } = planCountryRewrite(products, countryByProduct);
+
+  // patchProducts monta a linha COMPLETA antes do upsert: `attributes` já vai
+  // mesclado por planCountryRewrite, e patch parcial estouraria os NOT NULL de
+  // products (ver web/src/lib/adminBatch.ts).
+  const { error } = await patchProducts(
+    supabase,
+    patches.map((p) => ({ id: p.id, attributes: p.attributes })),
+  );
+  if (error) redirect(`/${locale}/admin/ferramentas?erro=paises`);
+
+  revalidateAllLocales("/admin/ferramentas");
+  revalidateAllLocales("/admin/produtos");
+  revalidateAllLocales("/");
+  redirect(`/${locale}/admin/ferramentas?paisesLoja=${ownStore}&paisesMarca=${byBrand}`);
+}
+
+// ── Ignorar duplicata (o oposto de mesclar) ───────────────────────
+// Marca os pares como "não são duplicata" e tira o grupo da lista PARA SEMPRE
+// (tabela `ignored_duplicates`, migration 0017) — antes a decisão só existia no
+// estado da tela e os 27 grupos reapareciam a cada recarregamento.
+//
+// Não toca em produto nem em oferta: os dois registros seguem separados, e o
+// coletor continua gravando ponto de histórico só quando o preço muda. É por
+// isso que ignorar é bem mais barato que mesclar em escrita de banco.
+export async function ignoreDuplicateGroups(
+  groups: string[][],
+): Promise<{ ignored: number; error: string | null }> {
+  const rows = groups
+    .flatMap((ids) => groupPairs(ids.filter(Boolean)))
+    .map(([a, b]) => ({ product_a_id: a, product_b_id: b }));
+  if (rows.length === 0) return { ignored: 0, error: null };
+
+  const supabase = await createClient();
+  // `ignoreDuplicates: true` no upsert: reignorar um par já ignorado não é
+  // erro, é no-op — o unique (a,b) da tabela é justamente o que garante isso.
+  const { error } = await supabase
+    .from("ignored_duplicates")
+    .upsert(rows, { onConflict: "product_a_id,product_b_id", ignoreDuplicates: true });
+  if (error) return { ignored: 0, error: error.message };
+
+  revalidateAllLocales("/admin/ferramentas");
+  return { ignored: groups.length, error: null };
+}
+
+// Volta a exibir um par ignorado. Existe porque ignorar é permanente: sem o
+// desfazer, um clique errado esconderia uma duplicata real pra sempre.
+export async function unignoreDuplicate(formData: FormData) {
+  const id = formData.get("id") as string;
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("ignored_duplicates").delete().eq("id", id);
+  revalidateAllLocales("/admin/ferramentas");
 }
 
 // ── Mesclar produtos duplicados ───────────────────────────────────

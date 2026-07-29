@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { PLATFORMS } from "@/lib/platforms";
 import { STORE_COUNTRIES } from "@/lib/countries";
+import ClearableInput from "@/components/admin/ClearableInput";
 import TxtFieldDetector from "./TxtFieldDetector";
 
 // Dono de TODOS os campos da loja, porque o botão "Detectar" escreve em vários
@@ -48,6 +49,7 @@ export default function StoreForm({
   globalExpirationDays: number;
 }) {
   const t = useTranslations("admin.stores");
+  const tCommon = useTranslations("admin.common");
   const [name, setName] = useState(defaultName);
   const [siteUrl, setSiteUrl] = useState(defaultSiteUrl);
   const [platform, setPlatform] = useState(defaultPlatform);
@@ -118,23 +120,25 @@ export default function StoreForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1">
             <span className={labelCls}>{t("name")}</span>
-            <input
+            <ClearableInput
               name="name"
               required
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={setName}
               className={inputCls}
+              clearLabel={tCommon("clear")}
             />
           </label>
 
           <label className="space-y-1">
             <span className={labelCls}>{t("brandAlias")}</span>
-            <input
+            <ClearableInput
               name="brand_alias"
               value={brandAlias}
-              onChange={(e) => setBrandAlias(e.target.value)}
+              onChange={setBrandAlias}
               placeholder={name || t("brandAliasPlaceholder")}
               className={inputCls}
+              clearLabel={tCommon("clear")}
             />
             <span className="text-xs text-neutral-500 dark:text-neutral-600">
               {t("brandAliasHint")}
@@ -170,12 +174,13 @@ export default function StoreForm({
 
           <label className="space-y-1">
             <span className={labelCls}>{t("expirationDays")}</span>
-            <input
+            <ClearableInput
               name="offer_expiration_days"
               inputMode="numeric"
               defaultValue={defaultExpirationDays}
               placeholder={t("expirationPlaceholder", { days: globalExpirationDays })}
               className={inputCls}
+              clearLabel={tCommon("clear")}
             />
             <span className="text-xs text-neutral-500 dark:text-neutral-600">
               {t("expirationHint")}
@@ -192,13 +197,18 @@ export default function StoreForm({
         <label className="block space-y-1">
           <span className={labelCls}>{t("listingUrl")}</span>
           <div className="flex gap-2">
-            <input
+            {/* wrapperClassName: o wrapper do ✕ é o flex item aqui, então é
+                ele que precisa do flex-1 (senão encolhe e o botão "Detectar"
+                fica colado no campo). */}
+            <ClearableInput
               name="site_url"
               type="url"
               placeholder="https://loja.com/cervejas?pagina=1"
               value={siteUrl}
-              onChange={(e) => setSiteUrl(e.target.value)}
+              onChange={setSiteUrl}
               className={inputCls}
+              wrapperClassName="min-w-0 flex-1"
+              clearLabel={tCommon("clear")}
             />
             <button
               type="button"
@@ -257,24 +267,27 @@ export default function StoreForm({
         <div className="space-y-4 border-t border-neutral-200 p-4 dark:border-neutral-800">
           <label className="block space-y-1">
             <span className={labelCls}>{t("logo")}</span>
-            <input
+            <ClearableInput
               name="logo_url"
               type="url"
               placeholder="https://..."
               value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
+              onChange={setLogoUrl}
               className={inputCls}
+              clearLabel={tCommon("clear")}
             />
           </label>
 
           <label className="block space-y-1">
             <span className={labelCls}>{t("description")}</span>
-            <textarea
+            <ClearableInput
+              multiline
               name="description"
               rows={3}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={setDescription}
               className={inputCls}
+              clearLabel={tCommon("clear")}
             />
           </label>
 
@@ -283,13 +296,15 @@ export default function StoreForm({
               <span className={labelCls}>
                 {t("configField")} ({selected.label})
               </span>
-              <textarea
+              <ClearableInput
+                multiline
                 name="config"
                 rows={6}
                 value={config}
-                onChange={(e) => setConfig(e.target.value)}
+                onChange={setConfig}
                 placeholder={selected.configExample}
                 className={`${inputCls} font-mono text-xs`}
+                clearLabel={tCommon("clear")}
               />
               <span className="text-xs text-neutral-500 dark:text-neutral-600">{selected.hint}</span>
             </label>
