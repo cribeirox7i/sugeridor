@@ -31,8 +31,14 @@ export default function StoreCarousel({
   if (stores.length === 0) return null;
 
   return (
-    <div className="flex min-w-0 flex-col items-end gap-0.5">
-      <div className="flex min-w-0 items-center gap-1.5">
+    // Largura DEFINIDA no desktop (`lg:w-[340px] lg:shrink-0`) em vez de
+    // largura de conteúdo: é isso que impede as pílulas somadas (1292px com 9
+    // lojas, e cresce a cada loja nova) de esmagarem a coluna de filtros ao
+    // lado. Rolar horizontalmente dentro dos 340px é o comportamento
+    // pretendido. `min-w-0` é o que deixa o scroller de fato rolar em vez de
+    // esticar; `w-full` vale no mobile, onde o flex da barra é coluna.
+    <div className="flex w-full min-w-0 flex-col items-end gap-0.5 lg:w-[340px] lg:shrink-0">
+      <div className="flex w-full min-w-0 items-center gap-1.5">
         <span className="hidden whitespace-nowrap text-xs text-neutral-500 sm:inline">
           {t("storesTitle")}
         </span>

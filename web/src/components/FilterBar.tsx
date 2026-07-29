@@ -114,9 +114,13 @@ export default function FilterBar({ estilos, paises, marcas, stores, hideStore, 
         aria-expanded={showMore}
         aria-label={showMore ? t("lessFilters") : t("moreFilters", { count: moreFiltersCount })}
         title={t("moreFilters", { count: moreFiltersCount })}
-        className="flex items-center justify-center gap-1.5 rounded-full border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+        className="flex shrink-0 items-center justify-center gap-1.5 rounded-full border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
       >
         <span aria-hidden>⚙</span>
+        {/* Texto visível a partir de xl: um botão só com engrenagem não diz o
+            que faz. Abaixo disso fica ícone + badge, com o rótulo completo no
+            title/aria-label. */}
+        <span className="hidden whitespace-nowrap xl:inline">{t("moreFiltersShort")}</span>
         <span
           aria-hidden
           className={`inline-block transition-transform ${showMore ? "rotate-180" : ""}`}

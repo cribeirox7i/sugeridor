@@ -160,8 +160,17 @@ export default async function Home({
           numa faixa só. Aparece nos dois modos — na página da loja o
           `hideStore` tira apenas o select de loja. */}
       <div className="shrink-0 border-b border-neutral-200 py-3 dark:border-neutral-800">
-        <div className={`${PUBLIC_CONTAINER} flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between`}>
-          <div className="min-w-0 flex-1">
+        {/* Divisão de espaço à prova das duas quebras que já aconteceram aqui:
+            o carrossel tem largura DEFINIDA (rola dentro dela, então caber
+            menos só mostra menos pílulas de uma vez) e a coluna de filtros
+            cresce no que resta, com um piso.
+            - sem o piso, o conteúdo intrínseco do carrossel (1292px com 9
+              lojas) esmagava a coluna até largura ZERO e a busca desaparecia;
+            - sem largura definida no carrossel, `shrink-0` na coluna fazia a
+              largura dela virar max-content — e ao abrir "Mais filtros" a
+              caixa de campos (1417px) vazava a faixa inteira. */}
+        <div className={`${PUBLIC_CONTAINER} flex flex-col gap-x-4 gap-y-3 lg:flex-row lg:items-start`}>
+          <div className="lg:min-w-[520px] lg:flex-1">
             <FiltersAccordion activeCount={activeFilterCount}>
               <FilterBar
                 estilos={estilos}
