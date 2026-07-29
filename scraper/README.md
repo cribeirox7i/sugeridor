@@ -21,11 +21,29 @@ Plataformas suportadas:
 | `tray` | Cascata: API `/web_api/products` → JSON embutido → fallback HTML |
 | `jsonld` | Lê `<script type="application/ld+json">` (schema.org/Product) na página de produto |
 | `html` | Seletores CSS configuráveis, por container de produto |
-| `txt` | Busca posicional (`find`) configurável — último recurso pra sites sem estrutura |
+| `txt` | Busca posicional (`find`) configurável — último recurso pra sites sem estrutura. **Não se escreve o config à mão**: o formulário de loja tem detecção automática por produto de exemplo e preenchimento manual das tags, os dois com teste contra a página real. Ver [docs/04-conectores-ingestao.md](../docs/04-conectores-ingestao.md) |
 
 O formato de `config` de cada plataforma está documentado no docstring do
 módulo correspondente (`scraper/platforms/<nome>.py`) e replicado como dica no
 admin (`web/src/lib/platforms.ts` — manter as duas em sincronia).
+
+## Disponibilidade: produto esgotado sai das ofertas
+
+Cada coletor preenche `Candidate.available`, que o `pipeline.py` mapeia direto
+para `offers.active` — então um produto marcado como esgotado na loja sai do site
+**na mesma coleta**, sem esperar os 45 dias da expiração por `last_seen_at`.
+
+`extract.py::parse_available` normaliza os formatos incompatíveis entre
+plataformas (tabela por plataforma em
+[docs/04-conectores-ingestao.md](../docs/04-conectores-ingestao.md)). O caso que
+justifica a função existir: **o Tray devolve `available` como a STRING `"0"`**, e
+`"0"` é *truthy* em Python — testar com `bool()` marcaria como disponível
+justamente o que está esgotado. Sem sinal reconhecível a função assume
+disponível, para não esconder catálogo por um campo que a loja não publica.
+
+Oferta indisponível também **não gera ponto em `price_history`**: o esgotado
+segue com preço na vitrine, e esse ponto sujaria a média que alimenta o selo
+"-X%".
 
 ## Como funciona
 
@@ -52,6 +70,11 @@ admin (`web/src/lib/platforms.ts` — manter as duas em sincronia).
    - Só então o slug é calculado (`product_slug`): se o nome já contém a marca,
      deriva só do nome; senão, marca + nome. A ordem importa — o slug deriva de
      marca+nome, então resolver a identidade depois deixaria a chave errada.
+   - O nome também passa por `clean_product_name`, que separa a **medida** do
+     número ("Urweisse500ml" → "Urweisse 500 ml", unidade em forma canônica) —
+     são dois cortes, palavra↔número e número↔unidade. Sem o primeiro,
+     "IPA355ml" é uma palavra só e o Title Case a estragava ("Ipa355ml").
+     Espelhado em `web/src/lib/text.ts::separateUnits`.
    - `category` (cervejas/kit/copo/souvenirs/eventos) é classificada por
      palavra-chave só na criação (`categorize.py`, palavras vindas da tabela
      `category_keywords`), usando o nome ORIGINAL da fonte — o prefixo de marca
@@ -69,9 +92,16 @@ admin (`web/src/lib/platforms.ts` — manter as duas em sincronia).
    catálogo inteiro (não faz sentido por-loja): desativa ofertas não vistas há
    mais de `stores.offer_expiration_days` (ou o global de `site_settings`, se a
    loja não tiver prazo próprio); pra lojas `store_type = 'propria'`, preenche
-   marca/país ausente com o nome/país da própria loja; preenche país ausente
-   pela marca mais comum entre produtos da mesma marca. Sempre só completa o
-   que falta, nunca sobrescreve dado já gravado.
+   marca/país ausente com o **apelido** (`brand_alias`, ou o nome) e o país da
+   própria loja; preenche país ausente pela marca mais comum entre produtos da
+   mesma marca. Sempre só completa o que falta, nunca sobrescreve dado já
+   gravado — a versão que SOBRESCREVE está no admin, no botão "Regravar
+   países" de Ferramentas.
+
+   Usar o apelido aqui não é detalhe: usar `name` direto contradizia o
+   `pipeline.py` (que usa `brand_alias or name`) a cada coleta numa loja com
+   apelido, e `brand` **entra no slug** — a marca ficava oscilando entre as
+   duas formas.
 
    Com sharding, isso NÃO roda nos shards: é um job separado
    (`--enrich-only`) que depende de todos eles, porque rodá-lo em N execuções

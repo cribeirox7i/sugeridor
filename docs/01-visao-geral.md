@@ -37,7 +37,14 @@ por links de afiliado.
   juntar a mesma cerveja vendida em lojas diferentes sem juntar cervejas diferentes de mesmo nome.
 - **Curável**: o dado vem torto das lojas (marca como razão social, prefixo órfão no nome, volume
   emendado), então o admin tem ferramentas para corrigir em lote sem mudar código — palavras-chave de
-  categoria, regras de/para e mesclagem de duplicados. Ver [05-roadmap.md](05-roadmap.md).
+  categoria, regras de/para aplicáveis uma a uma, regravar países, e duplicados que se resolvem por
+  mesclagem **ou** por "ignorar" quando não são duplicata de verdade. Ver
+  [05-roadmap.md](05-roadmap.md).
+- **Confiável no que mostra**: uma oferta listada precisa ser comprável. Produto marcado como
+  esgotado na loja sai do catálogo na mesma coleta, e preço inválido nunca chega ao banco — o
+  contrário (anunciar preço de algo indisponível, ou preço congelado de um registro abandonado)
+  destrói a razão de existir de um agregador. Ver
+  [04-conectores-ingestao.md](04-conectores-ingestao.md).
 
 ## Documentos relacionados
 

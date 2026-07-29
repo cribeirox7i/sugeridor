@@ -22,11 +22,15 @@ Catálogo canônico — um produto pode ter várias ofertas (em lojas diferentes
 ```sql
 id            uuid pk
 product_type_id uuid fk -> product_types
-name          text            -- ex: "Dogma IPA" — o nome é MARCA + DESCRITIVO. "IPA" sozinho não
-                                -- identifica produto, como "Fanta Laranja" não é só "Laranja". Em
-                                -- loja 'propria' o scraper prefixa a marca quando ela não está no
+name          text            -- ex: "Dogma IPA 473 ml" — o nome é MARCA + DESCRITIVO. "IPA" sozinho
+                                -- não identifica produto, como "Fanta Laranja" não é só "Laranja".
+                                -- Em loja 'propria' o scraper prefixa a marca quando ela não está no
                                 -- nome. Gravado em Title Case (artigos minúsculos, siglas de estilo
-                                -- como IPA/NEIPA em maiúscula) — ver scraper/normalize.py.
+                                -- como IPA/NEIPA em maiúscula) e com a MEDIDA separada do número
+                                -- ("Urweisse500ml" → "Urweisse 500 ml"), unidade em forma canônica
+                                -- (ml/cl/dl/kg/g/oz minúsculos, litro como 'L') — ver
+                                -- scraper/normalize.py::separate_units, espelhado em
+                                -- web/src/lib/text.ts, e o backfill da migration 0016.
 brand         text             -- ex: "Dogma". Em loja 'propria' é sempre o apelido da loja (ou o
                                 -- nome dela); em marketplace vem do vendor da fonte e é
                                 -- inconsistente (razão social, distribuidor, placeholder).
@@ -94,8 +98,11 @@ currency      text default 'BRL'
 url            text            -- link original da página de venda
 source_type   text             -- 'scrape' | 'email' | 'whatsapp_ocr' | 'manual'
 source_ref    uuid nullable fk -> raw_captures
-active        boolean default true  -- desativada automaticamente pelo scraper se last_seen_at
-                                     -- passar de site_settings.offer_expiration_days sem ser vista
+active        boolean default true  -- false em dois casos: (a) o coletor viu o produto ESGOTADO na
+                                     -- loja (`Candidate.available` → aqui, imediatamente, na mesma
+                                     -- coleta — ver 04-conectores-ingestao.md); (b) last_seen_at
+                                     -- passou de stores.offer_expiration_days (ou o global de
+                                     -- site_settings) sem a oferta ser vista
 last_seen_at  timestamptz      -- última vez que essa oferta foi confirmada disponível. Atualizado
                                  -- a CADA coleta (é o que a expiração usa), mesmo quando o preço
                                  -- não muda e nenhum price_history é gravado
@@ -125,7 +132,9 @@ check (price > 0)  -- mesmo motivo do constraint em offers (migration 0010)
 ```
 Índice em `(offer_id, captured_at desc)`.
 
-**Um ponto é gravado só quando o preço MUDA** (ou na primeira vez que a oferta é vista). Gravar a
+**Um ponto é gravado só quando o preço MUDA** (ou na primeira vez que a oferta é vista) **e só para
+oferta disponível** — produto esgotado costuma seguir com o preço na vitrine, e gravar esse ponto
+sujaria a média que alimenta o selo "-X%". Gravar a
 cada coleta fazia a tabela crescer por tempo em vez de por informação — a projeção com 150 lojas a
 1 coleta/dia dava ~4,9 milhões de linhas/ano, quase tudo repetido — e a repetição ainda distorcia a
 leitura: a média do histórico anterior (base do selo "-X%") ficava diluída por dezenas de pontos
@@ -216,6 +225,34 @@ Paulaner…" (58 produtos), e a mesma cervejaria aparece com marcas diferentes e
 ("PAULANER BRAUEREI GRUPPE GMBH & CO. KGAA" vs "Paulaner"), o que impedia as ofertas de agregarem.
 Aplicar recalcula o slug; onde dois produtos convergem, o conflito é **listado** para o usuário
 mesclar caso a caso, nunca mesclado sozinho.
+
+### `ignored_duplicates`
+Pares de produtos que o admin marcou como **"não são duplicata"**, em `/admin/ferramentas`
+(migration 0017).
+```sql
+id            uuid pk
+product_a_id  uuid fk -> products on delete cascade
+product_b_id  uuid fk -> products on delete cascade
+created_at    timestamptz
+check (product_a_id < product_b_id)  -- par CANÔNICO
+unique (product_a_id, product_b_id)
+```
+Existe porque a tela detecta duplicatas (mesmo nome com identificador diferente, ou nomes que
+colidiriam depois das regras de/para) e antes a única saída era **mesclar** — a decisão de ignorar
+vivia só no estado da tela e os 27 grupos reapareciam a cada recarregamento.
+
+Três detalhes que importam:
+- **O `check (a < b)` mais a ordenação dos ids no código** é o que faz o `unique` realmente
+  deduplicar. Sem isso o mesmo par entraria duas vezes, invertido.
+- **`on delete cascade`**: se um dos produtos for apagado depois (mesclado por outro caminho), a
+  linha de ignorados desaparece sozinha.
+- **Um grupo só sai da tela quando TODOS os seus pares estão ignorados**
+  (`web/src/lib/duplicates.ts::isGroupIgnored`). Num grupo de 3+, ignorar A-B não pode esconder a
+  duplicata A-C.
+
+Ignorar também é mais barato que mesclar em escrita: mesclar move ofertas, apaga produto e mexe em
+várias linhas; ignorar grava uma. Os dois produtos seguem separados e o coletor continua gravando
+ponto de histórico apenas quando o preço muda — nenhuma escrita a mais por causa disso.
 
 ### `site_settings`
 Linha única (singleton, `id = 1`) com configurações globais do site.

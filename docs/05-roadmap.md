@@ -129,6 +129,68 @@ produto** e **o que impede o catálogo de crescer**.
   até a migration manual rodar.
 - **"Re-run jobs" do GitHub Actions reusa o commit antigo** — nunca serve para testar um fix.
 
+## Curadoria em lote, medida no nome e disponibilidade (2026-07-28/29) ✅ concluída
+
+Quatro levas seguidas, todas motivadas por uso real do admin e do site no celular.
+
+- **Medida separada do número no nome** (migration `0016` + normalizador espelhado): eram 901 de
+  1497 produtos com a unidade colada ("Erdinger Urweisse500ml"). São **dois cortes** —
+  palavra↔número e número↔unidade — e o segundo só apareceu ao testar: sem separar a palavra,
+  "IPA355ml" é uma palavra só e o Title Case a estragava ("Ipa355ml"). Uma migration sozinha não
+  bastaria: o slug deriva do nome, então sem o normalizador a coleta seguinte não reconheceria 901
+  produtos e duplicaria todos.
+- **Mesclar duplicatas em lote**: eram 219 pares para confirmar um a um. A ação passou a receber
+  **grupos** de ids, não pares — um produto pode estar duplicado 3+ vezes, e resolver por pares
+  independentes falha no segundo (que aponta para um produto que o primeiro já apagou).
+- **Ignorar duplicata** (migration `0017`, `ignored_duplicates`): nem toda coincidência é duplicata,
+  e antes a decisão de ignorar vivia só no estado da tela. Ver 03-modelo-dados.md para as três
+  regras que importam (par canônico, cascade, e "grupo só sai quando todos os pares estão
+  ignorados").
+- **Aplicar de/para POR REGRA**, não em bloco. O botão único parecia quebrado e não estava: com as
+  quatro regras ativas do usuário, o plano combinado dava **0 aplicáveis e 260 colisões** — todo
+  nome que mudaria virava duplicata de outro, então não havia nada seguro a gravar. Isoladas, as
+  mesmas regras aplicam (separar volume rendia 56 produtos). A tela passou a mostrar "N aplicáveis
+  agora, M são duplicatas", que era a distinção que faltava.
+- **Botão "Regravar países"** com as duas regras que só existiam na coleta: loja própria
+  **sobrescreve** o país dos produtos dela (é o caso "mudou de marketplace para própria"), e produto
+  sem país recebe o mais comum da mesma marca (fill-only). É a única ação de curadoria da tela sem
+  risco de dessincronizar o catálogo — país não entra na fórmula do slug.
+- **Produtos sem marca/imagem no site: quarta ocorrência da mesma classe de bug.** Quando o coletor
+  Tray passou a gravar `brand`, a marca entrou no slug (ela entra quando o nome não a contém) e 14
+  produtos ficaram órfãos, com oferta **ativa da mesma loja** nos dois registros — o unique é
+  `(product_id, store_id)`, nada no banco impede. O órfão ficava com preço congelado (R$ 29,95 vs
+  R$ 25 real). Lição a somar à regra do slug: **não é só mudar a FÓRMULA que dessincroniza — passar
+  a POPULAR um campo que entra nela tem o mesmo efeito.**
+- **Reorganização da home** conforme esboço do usuário: barra de ferramentas única (busca + país +
+  "mais filtros e ordenação" + carrossel de lojas + "Todas as lojas"), área útil de 976px com 5
+  cards por linha, página da loja usando a mesma barra, e a página pública nova **`/lojas`**. Ver
+  02-arquitetura.md, inclusive as duas armadilhas de layout que essa barra produziu.
+- **Coletor TXT deixou de exigir JSON à mão**: detecção automática por produto de exemplo (ou pelo
+  último produto já coletado da loja) **e** preenchimento manual das tags, os dois com teste contra
+  a página real. Ver 04-conectores-ingestao.md, em especial as duas armadilhas do parser (ordem dos
+  campos e tag no meio do início).
+- **Produto esgotado sai das ofertas na mesma coleta** — `Candidate.available` já existia e o
+  pipeline já o mapeava para `offers.active`; os coletores é que nunca preenchiam.
+- Ajustes de admin: modal só fecha no ✕, botão de limpar nos campos de texto, e o modo Cartões
+  sobrevive ao "Incluir".
+- Migrations `0016` e `0017`.
+
+### Aprendizados desta leva
+
+- **O teste automatizado pagou por si três vezes**, sempre pegando bug ANTES de ir para produção:
+  "Indisponível" caindo no default por causa do acento; `"10"` casando com `"0"` numa comparação por
+  sufixo e virando esgotado; e a armadilha da tag no meio do início, no modo manual do TXT.
+- **Campo booleano de API pode ser a string `"0"`**, que é *truthy* em Python. O Tray faz isso — e é
+  a mesma família do bug de link/imagem virem como objeto naquela API.
+- **`setState` não serve para alterar o que um `<form>` nativo vai enviar**: o submit serializa o
+  DOM antes do React re-renderizar. Precisa de `ref`.
+- **Campo de filtro que existe no modo A e não no modo B tem que ir por campo escondido.** Ao fazer
+  a página da loja usar a mesma barra, o `hideStore` removeu o select de loja — e qualquer
+  submissão (buscar, filtrar, ordenar) passou a perder o `?loja=` e jogar o usuário no catálogo
+  geral.
+- **Layout validado com o volume de hoje quebra com o de amanhã**: a barra foi conferida com 7 lojas
+  e quebrou em 9. Testar acima do volume atual, não com o que está no banco.
+
 ## Fase 4 — E-mail ⏸️ pausada
 - Caixa dedicada + credenciais IMAP.
 - Cron de leitura + normalizador (Claude API) aplicado a e-mails com múltiplas ofertas por
@@ -162,6 +224,18 @@ produto** e **o que impede o catálogo de crescer**.
   desmarca da coleta.
 - **Sharding com 4 shards** dá conta de ~50 lojas; a 100+ subir a lista `shard:` e
   `SCRAPER_SHARD_TOTAL` juntos (10 ou 12).
+- **País está ausente em ~700 de 1319 produtos**, e a regra "completar pela marca" não tem efeito
+  hoje: das 108 marcas envolvidas, nenhuma tem um único produto irmão com país preenchido, então não
+  há de onde inferir. Não é bug — é fill-only por desenho. Ganha utilidade quando o coletor ou
+  curadoria manual preencher país em pelo menos 1 produto por marca. É também o que hoje deixa o
+  filtro de país mais pobre do que poderia.
+- **O coletor `txt` nunca rodou contra uma loja real** — foi validado com fixtures sintéticas e com
+  paridade TS↔Python. Ao configurar a primeira loja própria com ele, conferir a pré-visualização com
+  atenção antes de salvar e rodar uma coleta de teste depois.
+- **Detecção de esgotado não cobre `html` e `txt`** (não há sinal estruturado nessas plataformas).
+  Nelas, produto esgotado só sai por expiração de `last_seen_at`.
+- **`npm run lint` acusa 1 erro pré-existente** em `web/src/components/ThemeToggle.tsx`
+  (`react-hooks/set-state-in-effect`), não relacionado às levas recentes.
 
 ## Fora do escopo por enquanto (mencionar mas não construir)
 - Integração de fato com programas de afiliados (estrutura já existe, ativar quando entrar em

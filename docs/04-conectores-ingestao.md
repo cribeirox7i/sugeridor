@@ -76,6 +76,31 @@ não é como ficou implementado — a versão real, mais simples, não precisou 
 - **Preço inválido nunca é gravado**: candidato com preço `<= 0` é descartado antes de tocar no
   banco; o próprio banco também rejeita via `check (price > 0)` em `offers`/`price_history`
   (defesa em profundidade, não só a aplicação).
+- **Produto ESGOTADO sai das ofertas na mesma coleta.** `Candidate.available` é mapeado direto para
+  `offers.active`, então não se espera a expiração por `last_seen_at` (que levaria 45 dias). Cada
+  plataforma publica isso de um jeito diferente, e `scraper/extract.py::parse_available` normaliza:
+
+  | plataforma | sinal |
+  |---|---|
+  | `shopify` | `any(v.available)` entre as variantes — variante é tamanho, então lata esgotada + garrafa em estoque ainda é produto comprável. Só o endpoint de **listagem** traz o campo; o de produto único (`/products/<handle>.json`) devolve `null` |
+  | `vtex` | `commertialOffer.AvailableQuantity > 0`, com `IsAvailable` como reserva |
+  | `tray` | `available` — **é a STRING `"0"`/`"1"`** |
+  | `jsonld` | `offers.availability` do schema.org (`InStock`/`OutOfStock`/`SoldOut`) |
+  | `html`, `txt` | sem sinal estruturado — não implementado |
+
+  **A armadilha do Tray:** `available` vem como a string `"0"`, que é *truthy* em Python — um
+  `bool(value)` marcaria como disponível justamente o que está esgotado (9 de 30 produtos numa
+  página real). É a mesma família do bug de link/imagem virem como objeto em vez de string nessa
+  API. E `availability` não serve de reserva ali: aparece `"Imediata"` em produto com
+  `available="0"`.
+
+  Sem sinal reconhecível, `parse_available` assume **disponível** — melhor mostrar a oferta e deixar
+  a expiração cuidar do que esconder catálogo por um campo que a loja não publica.
+- **Medida separada do número no nome**: `separate_units` (em `clean_product_name`, portanto em todo
+  coletor) transforma "Erdinger Urweisse500ml" em "Erdinger Urweisse 500 ml" — dois cortes,
+  palavra↔número e número↔unidade. Sem o primeiro, "IPA355ml" é uma palavra só e o Title Case a
+  estragava ("Ipa355ml"). Espelhado em `web/src/lib/text.ts::separateUnits`; mudar de um lado só
+  dessincroniza o slug (ver o aviso em 03-modelo-dados.md).
 - **Histórico só quando o preço muda**: `price_history` recebe ponto apenas se o preço difere do
   gravado (ou é a primeira vez que a oferta é vista). `offers.last_seen_at` continua sendo
   atualizado a cada coleta, então a expiração não é afetada. Ver 03-modelo-dados.md pro porquê.
@@ -92,6 +117,42 @@ não é como ficou implementado — a versão real, mais simples, não precisou 
 - Erros (de rede, parsing, ou um site bloqueando o IP do runner do GitHub Actions — acontece,
   ver [06-riscos-e-legal.md](06-riscos-e-legal.md)) vão pra `ingestion_jobs.error_message`, por
   loja — uma loja falhando não derruba as outras.
+
+### Configurar a plataforma `txt` sem escrever JSON à mão
+
+`txt` é o último recurso: busca posicional por delimitadores, para loja de formato próprio sem API
+nem estrutura CSS aproveitável (comum em cervejaria pequena). O `config.fields` é uma lista de
+`{tag, ini, fim, tipo}` — `tipo` em `NOM`/`PRC`/`IMG`/`URL`/`MARCA`/`PAIS`/`ESTILO`.
+
+Escrever isso à mão exige ler o HTML fonte, então o formulário de loja tem um painel com **duas
+abas** quando a plataforma é `txt`:
+
+- **Detectar automaticamente** — o admin dá um produto de exemplo (nome, preço, e opcionalmente
+  marca/país/estilo/URLs) e `web/src/lib/detectTxtFields.ts` deriva os delimitadores. Sem nenhum
+  exemplo informado, o sistema busca a **oferta ativa mais recente daquela loja** no banco e usa o
+  produto já coletado — em loja própria tenta o nome como está gravado e, se não achar na página,
+  de novo sem o prefixo de marca (o pipeline prefixa na gravação; o texto cru do site não tem).
+- **Preencher tags manualmente** — uma linha por campo com **Início** e **Fim** (obrigatórios) e
+  **Tag** (opcional), reordenáveis. Existe porque a detecção automática não acerta em todo site.
+
+Nos dois casos há um **teste contra a página real** antes de salvar
+(`web/src/lib/parseTxtConfig.ts`, porte do loop de `txt.py`), mostrando quantos produtos foram
+reconhecidos e uma prévia. Dois erros que o teste existe para expor:
+
+1. **A ORDEM dos campos tem que ser a do HTML.** O parser só anda para frente: cada campo busca a
+   partir de onde o anterior parou. Listar na ordem lógica (nome, preço, marca…) quando o card
+   exibe "imagem, nome, marca, país, estilo, preço, link" faz o parser, ao processar o preço, já ter
+   passado de marca/país/estilo — e encontrá-los no **produto seguinte**.
+2. **A Tag não pode estar no MEIO do Início.** O parser procura o `ini` *a partir da posição da
+   `tag`*. Com `tag='class="nome"'` e `ini='<h3 class="nome">'` — combinação totalmente natural de
+   digitar — a busca começa depois da tag e acha a ocorrência do produto seguinte, embaralhando os
+   campos **sem erro nenhum**. Por isso a tag é opcional (em branco usa o próprio `ini`, que é o que
+   a detecção automática já faz nos campos não-âncora) e a tela avisa quando detecta esse padrão.
+   Só a **primeira** linha precisa de tag de verdade: é a âncora que marca onde cada produto começa.
+
+A pré-visualização também bloqueia um caso específico: **todos os preços iguais ao do exemplo**,
+sintoma de delimitador de preço grudado no dígito daquele produto. O preço ficaria travado para
+sempre, e o `check (price > 0)` não pega isso — o valor É positivo, só está sempre errado.
 
 ## 2. E-mail
 

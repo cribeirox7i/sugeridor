@@ -132,8 +132,9 @@ Quando fizer sentido automatizar, basta adicionar um gatilho `schedule:` ao mesm
 
 ## Telas do admin (organização atual)
 
-Seis itens no menu. A organização já mudou duas vezes: telas que eram só um formulário foram
-absorvidas por onde o assunto pertence, em vez de virarem abas próprias.
+Sete itens no menu (Início, Lojas, Produtos, Ofertas, Classificação, Ferramentas, Config). A
+organização já mudou duas vezes: telas que eram só um formulário foram absorvidas por onde o assunto
+pertence, em vez de virarem abas próprias.
 
 | Tela | O que tem |
 |---|---|
@@ -142,10 +143,10 @@ absorvidas por onde o assunto pertence, em vez de virarem abas próprias.
 | **Produtos** | CRUD + normalizar nomes |
 | **Ofertas** | CRUD + filtro por loja/data + seleção e exclusão em lote |
 | **Classificação** | Palavras-chave de `category` por categoria + reclassificar existentes |
-| **Ferramentas** | Ações de curadoria em lote (normalizar nomes, reclassificar, regravar marca e nome das lojas próprias, ressincronizar identificadores, aplicar de/para) + CRUD das regras **de/para** com lista de duplicados e mesclagem manual |
+| **Ferramentas** | Ações de curadoria em lote (normalizar nomes, reclassificar, regravar marca e nome das lojas próprias, ressincronizar identificadores, **regravar países**) · regras **de/para** com **aplicar POR REGRA** · duas listas de duplicados (por nome e as que as substituições criariam) com **mesclar/ignorar em lote** e desfazer dos ignorados |
 | **Config** | Expiração global de ofertas · alertas de queda · **logomarca** (absorveu a antiga tela Logomarca) |
 
-Duas convenções que se repetem e vale seguir ao criar tela nova:
+Convenções que se repetem e vale seguir ao criar tela nova:
 
 - **Ação de escrita em lote é chamada direto do client** (não por `<form action>`) quando precisa
   devolver `{ error }` sem navegar — o padrão nasceu em `OffersTable` e se repete em `StoresTable` e
@@ -153,6 +154,39 @@ Duas convenções que se repetem e vale seguir ao criar tela nova:
   mudar e exibiam sucesso sem ter gravado nada.
 - **Ação de curadoria é idempotente e informa quantas linhas mudaram de fato**, não quantas
   pretendia mudar.
+- **Ação em lote devolve QUAIS itens deram certo, não só o total** — sucesso parcial é o caso comum
+  (uma oferta com disparo de alerta vinculado barra a exclusão daquele grupo e não afeta os outros),
+  e sem os índices a tela só poderia adivinhar o que marcar como resolvido.
+- **O estado da lista (modo cartões/lista + busca) tem que sobreviver ao formulário.** Os links de
+  incluir/editar/cancelar, o fechar do modal **e os redirects pós-salvar** passam por
+  `web/src/lib/adminNav.ts`. As Server Actions não veem a URL de origem, então recebem esses
+  parâmetros por campo escondido — sem essa parte, salvar devolvia o usuário pro modo Lista.
+- **Modal de cadastro/edição não fecha por clique fora** (`Modal.tsx`, `dismissOnBackdrop` com
+  default `false`): perder o formulário digitado por um clique acidental era o comportamento
+  anterior. Só o popup público de produto passa `true` — ali é uma espiada e não há nada a perder.
+  Escape continua fechando em todos.
+
+## Páginas públicas
+
+| Rota | O que é |
+|---|---|
+| `/` | Catálogo. Barra de ferramentas fixa (busca + país + "mais filtros e ordenação" + carrossel de lojas + "Todas as lojas"), grid de 5 cards por linha no desktop, destaques de queda |
+| `/?loja=<id>` | "Página da loja": mesma barra (sem o select de loja), cabeçalho com logo à esquerda e nome/descrição à direita |
+| `/lojas` | Vitrine das lojas com oferta ativa — nome, logo, descrição e quantos produtos, em cartões ou lista. É a versão só-leitura da lista de lojas do admin, sem nada de gestão |
+| `/produto/[slug]` | Produto com histórico de preço e ofertas por loja (o mesmo conteúdo aparece como popup na home) |
+| `/sobre`, `/termos` | Institucionais |
+
+A largura da área útil (976px) vive numa constante só, `web/src/lib/layout.ts::PUBLIC_CONTAINER` —
+eram quatro literais espalhados (header, barra, conteúdo e Footer) e o desalinhamento do rodapé com
+o grid já aconteceu por causa disso.
+
+Duas armadilhas de layout que essa barra já produziu, e que valem para qualquer divisão de espaço
+horizontal aqui: **quem rola é que deve ser flexível** (o carrossel tem largura definida e a coluna
+de filtros cresce no que resta, com piso — o contrário esmagou a busca até largura zero quando as
+lojas passaram de 9), e **`shrink-0` faz a largura virar `max-content`**, então um bloco recolhível
+dentro dele vaza a faixa toda quando abre. E o caso do mobile: um campo `flex-1 min-w-0` disputando
+linha com irmãos rígidos é comprimido a poucos pixels — no mobile a busca ocupa a linha inteira e os
+demais descem por `flex-wrap`.
 
 ## Preparando o terreno pra afiliados (sem implementar ainda)
 
