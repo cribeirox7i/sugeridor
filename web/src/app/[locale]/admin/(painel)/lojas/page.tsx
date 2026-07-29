@@ -6,6 +6,7 @@ import Modal from "@/components/admin/Modal";
 import DeleteButton from "@/components/admin/DeleteButton";
 import ViewToggle from "@/components/admin/ViewToggle";
 import SearchBox from "@/components/admin/SearchBox";
+import { adminUrl } from "@/lib/adminNav";
 import { saveStore, deleteStore } from "./actions";
 import StoreForm from "./StoreForm";
 import StoresTable from "./StoresTable";
@@ -72,10 +73,20 @@ export default async function LojasPage({
     getTranslations("admin.common"),
   ]);
 
+  // Estado da lista (modo cartões/lista + busca) que precisa sobreviver a abrir
+  // e fechar o formulário — sem isso, incluir uma loja no modo Cartões devolvia
+  // o usuário pro modo Lista.
+  const listParams = { view, q };
+  const listUrl = adminUrl("/admin/lojas", listParams);
+
   const form = (
     <form action={saveStore} className="space-y-4">
       <h2 className="font-medium">{editing ? t("editTitle") : t("newTitle")}</h2>
       {editing && <input type="hidden" name="id" value={editing.id} />}
+      {/* A Server Action não vê a URL de origem: o estado da lista vai por
+          campo escondido pra o redirect pós-salvar voltar pro mesmo modo. */}
+      {view && <input type="hidden" name="view" value={view} />}
+      {q && <input type="hidden" name="q" value={q} />}
 
       <StoreForm
         storeId={editing?.id}
@@ -106,7 +117,7 @@ export default async function LojasPage({
           {editing ? t("save") : t("add")}
         </button>
         <Link
-          href="/admin/lojas"
+          href={listUrl}
           className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           {t("cancel")}
@@ -120,7 +131,7 @@ export default async function LojasPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">{t("title")}</h1>
         <Link
-          href="/admin/lojas?new=1"
+          href={adminUrl("/admin/lojas", listParams, { new: "1" })}
           className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
         >
           + {tCommon("include")}
@@ -148,7 +159,7 @@ export default async function LojasPage({
         </p>
       )}
 
-      {showForm && <Modal closeHref="/admin/lojas">{form}</Modal>}
+      {showForm && <Modal closeHref={listUrl}>{form}</Modal>}
 
       {stores.length === 0 ? (
         <p className="rounded-lg border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-800">
@@ -195,7 +206,7 @@ export default async function LojasPage({
               <div className="mt-auto flex flex-wrap gap-2 pt-2">
                 <DetectPlatformCardButton storeId={s.id} siteUrl={s.site_url} />
                 <Link
-                  href={`/admin/lojas?edit=${s.id}`}
+                  href={adminUrl("/admin/lojas", listParams, { edit: s.id })}
                   className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                 >
                   {t("edit")}

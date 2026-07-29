@@ -13,7 +13,7 @@ config (opcional):
 import re
 
 from ..config import DEFAULT_MAX_ITEMS_PER_STORE
-from ..extract import absolute_url
+from ..extract import absolute_url, parse_available
 from ..http import fetch_json
 from ..models import Candidate, StoreRecord
 from ..normalize import clean_product_name, parse_volume_ml
@@ -47,6 +47,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
             break
 
         for item in data:
+            offer = None
             try:
                 offer = item["items"][0]["sellers"][0]["commertialOffer"]
                 price = parse_price(offer.get("Price"))
@@ -54,6 +55,16 @@ def collect(store: StoreRecord) -> list[Candidate]:
                 price = None
             if price is None:
                 continue
+
+            # `AvailableQuantity` é o sinal primário do VTEX (0 = esgotado);
+            # `IsAvailable` é o reserva pra quando a loja não expõe a
+            # quantidade. Sem nenhum dos dois, `parse_available` assume
+            # disponível.
+            quantity = (offer or {}).get("AvailableQuantity")
+            if isinstance(quantity, (int, float)):
+                available = quantity > 0
+            else:
+                available = parse_available((offer or {}).get("IsAvailable"))
 
             image_url = None
             try:
@@ -77,6 +88,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
                     price=price,
                     url=product_url or store.site_url,
                     image_url=absolute_url(store.site_url, image_url),
+                    available=available,
                     attributes=attributes,
                 )
             )

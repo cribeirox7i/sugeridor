@@ -5,6 +5,7 @@ import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateAllLocales } from "@/lib/revalidate";
 import { normalizeDashes } from "@/lib/text";
+import { adminUrlFromForm } from "@/lib/adminNav";
 
 export async function saveStore(formData: FormData) {
   const id = (formData.get("id") as string) || null;
@@ -41,8 +42,12 @@ export async function saveStore(formData: FormData) {
       // silenciosamente (foi exatamente esse tipo de erro silencioso que
       // atrapalhou o primeiro teste de coleta).
       const locale = await getLocale();
-      const qs = id ? `?edit=${id}&error=config-invalido` : `?error=config-invalido`;
-      redirect(`/${locale}/admin/lojas${qs}`);
+      redirect(
+        adminUrlFromForm(`/${locale}/admin/lojas`, formData, {
+          ...(id ? { edit: id } : {}),
+          error: "config-invalido",
+        }),
+      );
     }
   }
 
@@ -63,14 +68,20 @@ export async function saveStore(formData: FormData) {
     // ignorado em silêncio e o modal só reabria vazio, parecendo "não fez
     // nada" (foi exatamente isso que gerou lojas duplicadas: o usuário
     // clicava de novo achando que não tinha salvo).
-    const qs = id ? `?edit=${id}&error=save-failed` : `?new=1&error=save-failed`;
-    redirect(`/${locale}/admin/lojas${qs}`);
+    redirect(
+      adminUrlFromForm(`/${locale}/admin/lojas`, formData, {
+        ...(id ? { edit: id } : { new: "1" }),
+        error: "save-failed",
+      }),
+    );
   }
 
   revalidateAllLocales("/admin/lojas");
-  // Sucesso: fecha o modal (volta pra lista limpa) em vez de deixar o form
-  // reaberto vazio — é esse retorno visual que faltava.
-  redirect(`/${locale}/admin/lojas`);
+  // Sucesso: fecha o modal (volta pra lista) em vez de deixar o form reaberto
+  // vazio — é esse retorno visual que faltava. `adminUrlFromForm` preserva o
+  // modo cartões/lista e a busca, senão salvar jogava o usuário de volta pro
+  // modo Lista.
+  redirect(adminUrlFromForm(`/${locale}/admin/lojas`, formData));
 }
 
 // Usado pelo botão "Detectar" direto na grid (sem abrir o modal de edição) —

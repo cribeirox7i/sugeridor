@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateAllLocales } from "@/lib/revalidate";
+import { adminUrlFromForm } from "@/lib/adminNav";
 
 export async function saveOffer(formData: FormData) {
   const product_id = formData.get("product_id") as string;
@@ -48,7 +49,9 @@ export async function saveOffer(formData: FormData) {
   if (error || !offer) {
     // Mesmo motivo do fix em lojas/produtos: sem checar isso, o modal
     // reabria vazio parecendo "não fez nada" e o usuário clicava de novo.
-    redirect(`/${locale}/admin/ofertas?new=1&error=save-failed`);
+    redirect(
+      adminUrlFromForm(`/${locale}/admin/ofertas`, formData, { new: "1", error: "save-failed" }),
+    );
   }
 
   // Cada preço registrado vira um ponto no histórico.
@@ -56,7 +59,8 @@ export async function saveOffer(formData: FormData) {
 
   revalidateAllLocales("/admin/ofertas");
   revalidateAllLocales("/");
-  redirect(`/${locale}/admin/ofertas`);
+  // Preserva o modo cartões/lista e a busca (ver lib/adminNav.ts).
+  redirect(adminUrlFromForm(`/${locale}/admin/ofertas`, formData));
 }
 
 export async function toggleOfferActive(formData: FormData) {

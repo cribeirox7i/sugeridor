@@ -11,7 +11,7 @@ import re
 from bs4 import BeautifulSoup
 
 from ..config import DEFAULT_MAX_ITEMS_PER_STORE
-from ..extract import absolute_url
+from ..extract import absolute_url, parse_available
 from ..http import fetch, fetch_json
 from ..models import Candidate, StoreRecord
 from ..normalize import clean_product_name, parse_volume_ml
@@ -91,6 +91,11 @@ def _from_web_api(base_url: str, max_items: int) -> list[Candidate]:
             vol = parse_volume_ml(name)
             if vol:
                 attributes["volume_ml"] = vol
+            # `available` do Tray é a STRING "0"/"1" — e `"0"` é truthy em
+            # Python, então testar com `bool()` marcaria o esgotado como
+            # disponível (9 de 30 produtos numa página real). `availability`
+            # NÃO serve de reserva: aparece "Imediata" em produto com
+            # available="0".
             out.append(
                 Candidate(
                     product_name=name,
@@ -98,6 +103,7 @@ def _from_web_api(base_url: str, max_items: int) -> list[Candidate]:
                     price=price,
                     url=absolute_url(base_url, _tray_link(p.get("url"))) or base_url,
                     image_url=absolute_url(base_url, _tray_image(p)),
+                    available=parse_available(p.get("available")),
                     attributes=attributes,
                 )
             )

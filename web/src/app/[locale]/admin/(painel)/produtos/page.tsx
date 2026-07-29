@@ -5,6 +5,7 @@ import type { Product, ProductType } from "@/lib/types";
 import Modal from "@/components/admin/Modal";
 import DeleteButton from "@/components/admin/DeleteButton";
 import ViewToggle from "@/components/admin/ViewToggle";
+import { adminUrl } from "@/lib/adminNav";
 import SearchBox from "@/components/admin/SearchBox";
 import ProductForm from "./ProductForm";
 import { deleteProduct, normalizeExistingProductNames } from "./actions";
@@ -73,12 +74,16 @@ export default async function ProdutosPage({
     );
   }
 
+  // Preserva modo cartões/lista + busca ao abrir/fechar o formulário.
+  const listParams = { view, q };
+  const listUrl = adminUrl("/admin/produtos", listParams);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">{t("title")}</h1>
         <Link
-          href="/admin/produtos?new=1"
+          href={adminUrl("/admin/produtos", listParams, { new: "1" })}
           className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
         >
           + {tCommon("include")}
@@ -125,8 +130,8 @@ export default async function ProdutosPage({
       )}
 
       {showForm && (
-        <Modal closeHref="/admin/produtos">
-          <ProductForm productTypes={productTypes} editing={editing} />
+        <Modal closeHref={listUrl}>
+          <ProductForm productTypes={productTypes} editing={editing} cancelHref={listUrl} view={view} q={q} />
         </Modal>
       )}
 
@@ -160,7 +165,7 @@ export default async function ProdutosPage({
                   <td className="px-4 py-2 text-right">
                     <div className="flex justify-end gap-2">
                       <Link
-                        href={`/admin/produtos?edit=${p.id}`}
+                        href={adminUrl("/admin/produtos", listParams, { edit: p.id })}
                         className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                       >
                         {t("edit")}
@@ -204,7 +209,7 @@ export default async function ProdutosPage({
                 </p>
                 <div className="mt-auto flex gap-2 pt-2">
                   <Link
-                    href={`/admin/produtos?edit=${p.id}`}
+                    href={adminUrl("/admin/produtos", listParams, { edit: p.id })}
                     className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                   >
                     {t("edit")}

@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import Modal from "@/components/admin/Modal";
 import ViewToggle from "@/components/admin/ViewToggle";
+import { adminUrl } from "@/lib/adminNav";
 import DeleteButton from "@/components/admin/DeleteButton";
 import ClearableInput from "@/components/admin/ClearableInput";
 import OffersTable from "./OffersTable";
@@ -81,10 +82,18 @@ export default async function OfertasPage({
   const showForm = isNew === "1" && !missingPrereq;
   const isList = view !== "grid";
 
+  // Preserva modo cartões/lista + busca ao abrir/fechar o formulário.
+  const listParams = { view, q };
+  const listUrl = adminUrl("/admin/ofertas", listParams);
+
   const form = (
     <form action={saveOffer} className="space-y-4">
       <h2 className="font-medium">{t("newTitle")}</h2>
       <p className="text-xs text-neutral-500">{t("hint")}</p>
+      {/* A Server Action não vê a URL de origem: o estado da lista vai por
+          campo escondido pra o redirect pós-salvar voltar pro mesmo modo. */}
+      {view && <input type="hidden" name="view" value={view} />}
+      {q && <input type="hidden" name="q" value={q} />}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="space-y-1">
@@ -155,7 +164,7 @@ export default async function OfertasPage({
           {t("save")}
         </button>
         <Link
-          href="/admin/ofertas"
+          href={listUrl}
           className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           {t("cancel")}
@@ -170,7 +179,7 @@ export default async function OfertasPage({
         <h1 className="text-xl font-semibold">{t("title")}</h1>
         {!missingPrereq && (
           <Link
-            href="/admin/ofertas?new=1"
+            href={adminUrl("/admin/ofertas", listParams, { new: "1" })}
             className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
           >
             + {tCommon("include")}
@@ -215,7 +224,8 @@ export default async function OfertasPage({
             </button>
             {(q || loja || dataFiltro) && (
               <Link
-                href="/admin/ofertas"
+                // zera busca/loja/data, mas o modo de exibição fica
+                href={adminUrl("/admin/ofertas", { view })}
                 className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
               >
                 {t("clearFilters")}
@@ -242,7 +252,7 @@ export default async function OfertasPage({
         </p>
       )}
 
-      {showForm && <Modal closeHref="/admin/ofertas">{form}</Modal>}
+      {showForm && <Modal closeHref={listUrl}>{form}</Modal>}
 
       {offers.length === 0 ? (
         <p className="rounded-lg border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-800">

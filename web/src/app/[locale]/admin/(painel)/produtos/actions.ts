@@ -7,6 +7,7 @@ import { productSlug, slugify } from "@/lib/slug";
 import { revalidateAllLocales } from "@/lib/revalidate";
 import { normalizeDashes, separateUnits, titleCaseProductName } from "@/lib/text";
 import { patchProducts } from "@/lib/adminBatch";
+import { adminUrlFromForm } from "@/lib/adminNav";
 import type { AttributeSchema, ProductType } from "@/lib/types";
 
 export async function saveProduct(formData: FormData) {
@@ -67,13 +68,18 @@ export async function saveProduct(formData: FormData) {
   if (error) {
     // Mesmo motivo do fix em lojas: sem checar isso, o modal reabria vazio
     // parecendo "não fez nada" e o usuário clicava de novo, duplicando.
-    const qs = id ? `?edit=${id}&error=save-failed` : `?new=1&error=save-failed`;
-    redirect(`/${locale}/admin/produtos${qs}`);
+    redirect(
+      adminUrlFromForm(`/${locale}/admin/produtos`, formData, {
+        ...(id ? { edit: id } : { new: "1" }),
+        error: "save-failed",
+      }),
+    );
   }
 
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
-  redirect(`/${locale}/admin/produtos`);
+  // Preserva o modo cartões/lista e a busca (ver lib/adminNav.ts).
+  redirect(adminUrlFromForm(`/${locale}/admin/produtos`, formData));
 }
 
 export async function deleteProduct(formData: FormData) {

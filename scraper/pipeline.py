@@ -214,7 +214,13 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
                 "updated_at": now,
             }
         )
-        price_by_product[row["id"]] = p["cand"].price
+        # Só entra no mapa de histórico quem está DISPONÍVEL. Um produto
+        # esgotado costuma seguir com o preço na vitrine, e gravar esse ponto
+        # sujaria a média do histórico anterior — que é justamente a base do
+        # selo "-X%". A oferta em si continua sendo gravada (com active=false),
+        # então o histórico já coletado não se perde.
+        if p["cand"].available:
+            price_by_product[row["id"]] = p["cand"].price
 
     if not offer_rows:
         return len(to_create)

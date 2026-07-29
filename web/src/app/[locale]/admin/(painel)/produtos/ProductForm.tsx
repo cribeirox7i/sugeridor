@@ -10,9 +10,17 @@ import { saveProduct } from "./actions";
 export default function ProductForm({
   productTypes,
   editing,
+  cancelHref = "/admin/produtos",
+  view,
+  q,
 }: {
   productTypes: ProductType[];
   editing?: Product;
+  // Preservam o modo cartões/lista e a busca ao cancelar e depois de salvar —
+  // sem isso, incluir um produto no modo Cartões devolvia pro modo Lista.
+  cancelHref?: string;
+  view?: string;
+  q?: string;
 }) {
   const t = useTranslations("admin.products");
   const tAttr = useTranslations("attributes");
@@ -31,6 +39,9 @@ export default function ProductForm({
     <form action={saveProduct} className="space-y-4">
       <h2 className="font-medium">{editing ? t("editTitle") : t("newTitle")}</h2>
       {editing && <input type="hidden" name="id" value={editing.id} />}
+      {/* A Server Action não vê a URL de origem. */}
+      {view && <input type="hidden" name="view" value={view} />}
+      {q && <input type="hidden" name="q" value={q} />}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="space-y-1">
@@ -138,7 +149,7 @@ export default function ProductForm({
           {editing ? t("save") : t("add")}
         </button>
         <Link
-          href="/admin/produtos"
+          href={cancelHref}
           className="rounded border border-neutral-300 px-4 py-2 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
         >
           {t("cancel")}

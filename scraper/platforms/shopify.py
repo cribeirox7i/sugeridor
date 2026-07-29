@@ -14,7 +14,7 @@ config (opcional): { "max_pages": 50, "max_items": 200 }
 import re
 
 from ..config import DEFAULT_MAX_ITEMS_PER_STORE
-from ..extract import absolute_url
+from ..extract import absolute_url, parse_available
 from ..http import fetch_json
 from ..models import Candidate, StoreRecord
 from ..normalize import clean_product_name, parse_volume_ml
@@ -84,6 +84,17 @@ def collect(store: StoreRecord) -> list[Candidate]:
             if vol:
                 attributes["volume_ml"] = vol
 
+            # Esgotado = NENHUMA variante disponível. `any` e não `all` porque
+            # variante é tamanho/embalagem: com a lata esgotada e a garrafa em
+            # estoque o produto continua comprável.
+            #
+            # Só o endpoint de LISTAGEM (o que este coletor usa) traz
+            # `available` preenchido; o de produto único
+            # (/products/<handle>.json) devolve null, e nesse caso
+            # `parse_available` assume disponível em vez de esconder o
+            # catálogo por um campo que a fonte não publica.
+            available = any(parse_available(v.get("available")) for v in variants)
+
             handle = p.get("handle", "")
             candidates.append(
                 Candidate(
@@ -92,6 +103,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
                     price=price,
                     url=f"{domain}/products/{handle}",
                     image_url=absolute_url(domain, image_url),
+                    available=available,
                     attributes=attributes,
                 )
             )

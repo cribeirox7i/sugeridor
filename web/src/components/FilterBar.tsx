@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 
 type Props = {
   estilos: string[];
@@ -38,19 +37,23 @@ type Props = {
 export default function FilterBar({ estilos, paises, marcas, stores, hideStore, current }: Props) {
   const t = useTranslations("filters");
   const [showMore, setShowMore] = useState(false);
+  // Campo de busca controlado: o botão ao lado precisa saber se o texto na tela
+  // ainda é o mesmo da busca já aplicada (ver `buscaAplicada` abaixo).
+  const [q, setQ] = useState(current.q ?? "");
+  // Ref porque o ✕ precisa esvaziar o campo ANTES do submit nativo: `setQ("")`
+  // é assíncrono, o React ainda não re-renderizou quando o navegador serializa
+  // o formulário, e a busca voltava com o texto antigo.
+  const inputRef = useRef<HTMLInputElement>(null);
   const inputCls =
     "rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
-  const hasFilters =
-    current.estilo ||
-    current.pais ||
-    current.storeId ||
-    current.brand ||
-    current.precoMin ||
-    current.precoMax ||
-    current.q ||
-    current.ordenar;
 
-  // Conta o que está ativo DENTRO da caixa recolhida — é o número no badge, e
+  // Um botão só, com dois papéis: LUPA enquanto há algo novo pra buscar, ✕
+  // quando o que está no campo é exatamente a busca que já está valendo.
+  // Assim o mesmo espaço serve pra aplicar e pra limpar, e não sobra um
+  // "Limpar" solto na barra — que na página da loja aparecia SEMPRE (o
+  // filtro de loja conta como filtro ativo) e, pior, apontava pra "/",
+  // tirando o usuário da loja em que ele estava.
+  const buscaAplicada = Boolean(current.q) && q === current.q;
   // serve pra avisar que existe filtro valendo mesmo com a caixa fechada.
   // `ordenar` só conta quando difere do padrão (preço), senão o badge nasceria
   // com 1 em toda visita.
@@ -69,26 +72,59 @@ export default function FilterBar({ estilos, paises, marcas, stores, hideStore, 
 
   return (
     <form method="get" className="flex flex-wrap items-center gap-2">
-      {/* Busca com a lupa acoplada, como um campo só. */}
+      {/* Na página da loja o select de loja não existe (hideStore), então sem
+          este campo escondido QUALQUER submissão da barra — buscar, filtrar,
+          ordenar — perdia o `?loja=` e jogava o usuário de volta pro catálogo
+          geral. */}
+      {hideStore && current.storeId && (
+        <input type="hidden" name="loja" value={current.storeId} />
+      )}
+
+      {/* Busca com o botão acoplado, como um campo só. */}
       <div className="flex min-w-0 flex-1 items-center sm:flex-none">
         <label className="sr-only" htmlFor="filtro-busca">
           {t("search")}
         </label>
         <input
+          ref={inputRef}
           id="filtro-busca"
-          type="search"
+          // `type="text"` e não `"search"`: o ✕ nativo do WebKit apareceria
+          // junto do nosso, dois botões de limpar no mesmo campo.
+          type="text"
           name="q"
-          defaultValue={current.q ?? ""}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
           placeholder={t("searchPlaceholder")}
           className={`${inputCls} w-full rounded-r-none sm:w-44`}
         />
-        <button
-          type="submit"
-          aria-label={t("filter")}
-          className="rounded rounded-l-none border border-amber-600 bg-amber-600 px-2.5 py-1.5 text-sm text-white hover:bg-amber-500 dark:text-neutral-950"
-        >
-          <span aria-hidden>⌕</span>
-        </button>
+        {buscaAplicada ? (
+          // Limpar = submeter com o campo vazio, e não navegar pra "/": assim
+          // os outros filtros (e a loja atual, na página da loja) continuam
+          // valendo. O `q=` vazio é tratado como ausente na página.
+          <button
+            type="submit"
+            onClick={() => {
+              // Direto no DOM, não só no estado: é este valor que o submit
+              // nativo (que acontece logo depois deste handler) serializa.
+              if (inputRef.current) inputRef.current.value = "";
+              setQ("");
+            }}
+            aria-label={t("clear")}
+            title={t("clear")}
+            className="rounded rounded-l-none border border-amber-600 bg-amber-600 px-2.5 py-1.5 text-sm text-white hover:bg-amber-500 dark:text-neutral-950"
+          >
+            <span aria-hidden>✕</span>
+          </button>
+        ) : (
+          <button
+            type="submit"
+            aria-label={t("filter")}
+            title={t("filter")}
+            className="rounded rounded-l-none border border-amber-600 bg-amber-600 px-2.5 py-1.5 text-sm text-white hover:bg-amber-500 dark:text-neutral-950"
+          >
+            <span aria-hidden>⌕</span>
+          </button>
+        )}
       </div>
 
       <label className="flex items-center gap-1.5">
@@ -133,15 +169,6 @@ export default function FilterBar({ estilos, paises, marcas, stores, hideStore, 
           </span>
         )}
       </button>
-
-      {hasFilters && (
-        <Link
-          href="/"
-          className="whitespace-nowrap rounded border border-neutral-300 px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
-        >
-          {t("clear")}
-        </Link>
-      )}
 
       {/* Caixa recolhível: bloco próprio com borda/fundo, sempre em toda a
           largura e ABAIXO da linha principal (nunca como sibling solto no meio
