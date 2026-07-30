@@ -98,11 +98,17 @@ currency      text default 'BRL'
 url            text            -- link original da página de venda
 source_type   text             -- 'scrape' | 'email' | 'whatsapp_ocr' | 'manual'
 source_ref    uuid nullable fk -> raw_captures
-active        boolean default true  -- false em dois casos: (a) o coletor viu o produto ESGOTADO na
-                                     -- loja (`Candidate.available` → aqui, imediatamente, na mesma
-                                     -- coleta — ver 04-conectores-ingestao.md); (b) last_seen_at
-                                     -- passou de stores.offer_expiration_days (ou o global de
-                                     -- site_settings) sem a oferta ser vista
+active        boolean default true  -- false em TRÊS casos (ver 04-conectores-ingestao.md):
+                                     -- (a) o coletor viu o produto marcado como ESGOTADO na
+                                     --     listagem (`Candidate.available`);
+                                     -- (b) o produto DESAPARECEU da listagem da loja e a listagem
+                                     --     coletada era completa — o caminho mais comum numa loja
+                                     --     Shopify, e o que a expiração levava 45 dias pra pegar;
+                                     -- (c) last_seen_at passou de stores.offer_expiration_days (ou
+                                     --     o global de site_settings) — rede de segurança pra loja
+                                     --     que parou de ser coletada.
+                                     -- Desativar é REVERSÍVEL: a coleta seguinte que enxergar o
+                                     -- produto grava true de novo no upsert.
 last_seen_at  timestamptz      -- última vez que essa oferta foi confirmada disponível. Atualizado
                                  -- a CADA coleta (é o que a expiração usa), mesmo quando o preço
                                  -- não muda e nenhum price_history é gravado

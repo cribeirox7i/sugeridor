@@ -18,7 +18,14 @@ import sys
 import traceback
 
 from . import categorize, db, enrich, pipeline
-from .config import MAX_WORKERS, SHARD_INDEX, SHARD_TOTAL, STORE_IDS, require_config
+from .config import (
+    DEFAULT_MAX_ITEMS_PER_STORE,
+    MAX_WORKERS,
+    SHARD_INDEX,
+    SHARD_TOTAL,
+    STORE_IDS,
+    require_config,
+)
 from .models import StoreRecord
 from .platforms import get_collector
 
@@ -47,7 +54,30 @@ def _process_store(row: dict) -> bool:
     job_id = pipeline.start_job(store.id)
     try:
         candidates = collector(store)
-        new_count = pipeline.process_candidates(candidates, store)
+
+        # A listagem da loja é a fonte da verdade sobre o que ela vende AGORA:
+        # o que não aparece nela deve sair do site. Mas só dá pra concluir isso
+        # de uma listagem COMPLETA — daí as duas condições abaixo.
+        #
+        #  * teto de itens atingido: o coletor parou no meio do catálogo
+        #    (`max_items`), então "não apareceu" não quer dizer nada. A Nono Bier
+        #    tem 988 produtos e o teto é 200.
+        #  * zero candidatos: quase nunca significa loja vazia — significa
+        #    config errada, 403, ou site fora. Varrer aqui apagaria a loja
+        #    inteira do site.
+        #
+        # Limitação conhecida: um erro numa página do meio da paginação é
+        # capturado dentro do coletor (de propósito — não joga fora o que já foi
+        # coletado) e não chega aqui, então uma listagem truncada por 403 pode
+        # passar por completa. Desativar não é destrutivo — a coleta seguinte
+        # que enxergar o produto reativa a oferta — mas é o motivo de isto ser
+        # conservador.
+        max_items = int((store.config or {}).get("max_items", DEFAULT_MAX_ITEMS_PER_STORE))
+        listing_complete = 0 < len(candidates) < max_items
+
+        new_count = pipeline.process_candidates(
+            candidates, store, listing_complete=listing_complete
+        )
         pipeline.finish_job(job_id, status="success", found=len(candidates), new=new_count)
         print(f"[{store.name}] OK — {len(candidates)} ofertas ({new_count} produtos novos).")
         return False

@@ -95,7 +95,23 @@ não é como ficou implementado — a versão real, mais simples, não precisou 
   `available="0"`.
 
   Sem sinal reconhecível, `parse_available` assume **disponível** — melhor mostrar a oferta e deixar
-  a expiração cuidar do que esconder catálogo por um campo que a loja não publica.
+  os outros dois caminhos abaixo cuidarem do que esconder catálogo por um campo que a loja não
+  publica.
+- **Produto que DESAPARECEU da listagem também sai** (`pipeline._deactivate_unlisted`). É o caminho
+  mais importante e o que faltava: numa loja Shopify o jeito mais comum de sair de estoque é o
+  produto sair da coleção, e aí o coletor nunca avalia `available`. Medido antes do fix: **140 das
+  188 ofertas ativas da Dogma** não estavam mais na coleção dela, uma delas com ~42 dias de vida
+  pela frente até a expiração.
+
+  A varredura só roda com **listagem completa**, e duas travas definem isso: teto de itens atingido
+  (o coletor parou no meio do catálogo — a Nono Bier tem 988 produtos e o teto é 200) e zero
+  candidatos (quase nunca é loja vazia; é config errada, 403 ou site fora — varrer apagaria a loja
+  inteira). Limitação: erro numa página do meio é capturado dentro do coletor e não chega ao
+  `run.py`, então uma listagem truncada por 403 pode passar por completa. **Desativar é reversível**
+  — a coleta seguinte que enxergar o produto reativa a oferta e nada de histórico se perde —, então
+  o erro tolerável é esconder uma oferta que existe em vez de mostrar uma que não existe mais.
+- A **expiração por `last_seen_at`** (em `enrich.py`, `stores.offer_expiration_days`, padrão 45 dias)
+  continua existindo como rede de segurança para a loja que parou de ser coletada por completo.
 - **Medida separada do número no nome**: `separate_units` (em `clean_product_name`, portanto em todo
   coletor) transforma "Erdinger Urweisse500ml" em "Erdinger Urweisse 500 ml" — dois cortes,
   palavra↔número e número↔unidade. Sem o primeiro, "IPA355ml" é uma palavra só e o Title Case a

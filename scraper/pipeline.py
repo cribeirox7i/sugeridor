@@ -23,6 +23,11 @@ _type_cache_lock = threading.Lock()
 # cautela de web/src/lib/queries.ts).
 _SLUG_LOOKUP_BATCH = 50
 
+# Ids de oferta por request no update em lote. Mesma cautela do lote de slugs:
+# uma cláusula `in.(...)` com centenas de UUIDs gera URL que estoura limite de
+# header (o mesmo cuidado que enrich.expire_stale_offers já tomava).
+_OFFER_ID_BATCH = 100
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -73,14 +78,22 @@ def _resolve_identity(cand: Candidate, store: StoreRecord) -> tuple[str, str | N
     return name, brand, attributes
 
 
-def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
+def process_candidates(
+    candidates: list[Candidate], store: StoreRecord, *, listing_complete: bool = False
+) -> int:
     """Grava todos os candidatos de uma loja. Retorna quantos produtos novos
     foram criados.
 
     Preço <= 0 normalmente significa item sem preço de verdade (fora de
     estoque, erro de parsing, placeholder do site) — não vale nem produto nem
     oferta nem ponto de histórico, então descarta o candidato antes de tocar
-    no banco."""
+    no banco.
+
+    `listing_complete`: a listagem coletada representa TODO o catálogo atual da
+    loja (ver a checagem em run.py). Quando é o caso, as ofertas ativas desta
+    loja que não apareceram na listagem são desativadas — a listagem é a fonte
+    da verdade sobre o que a loja vende agora. Padrão `False` por segurança:
+    quem não souber afirmar isso não varre nada."""
     prepared: list[dict] = []
     seen_slugs: set[str] = set()
 
@@ -293,7 +306,52 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
         f"de {len(offers)} oferta(s) (só o que mudou de preço)."
     )
 
+    if listing_complete:
+        _deactivate_unlisted(store, {r["product_id"] for r in offer_rows})
+
     return created_count
+
+
+def _deactivate_unlisted(store: StoreRecord, seen_product_ids: set[str]) -> int:
+    """Desativa as ofertas ATIVAS desta loja que não apareceram na listagem.
+
+    Por que isto é necessário, mesmo com `Candidate.available` e com a expiração
+    por `last_seen_at`: numa loja Shopify o jeito mais comum de um produto sair
+    de estoque é **desaparecer da coleção**, não aparecer nela com
+    `available: false`. Nesse caso o coletor nunca chega a avaliar a
+    disponibilidade — a oferta só sairia pela expiração, que é de 45 dias por
+    padrão. Medido: 140 das 188 ofertas ativas da Dogma no site não estavam mais
+    na coleção dela, uma delas parada havia 3 dias e com ~42 dias de vida pela
+    frente.
+
+    Desativar é reversível: a coleta seguinte que enxergar o produto grava
+    `active = true` de novo no upsert da oferta. Por isso o erro tolerável aqui é
+    esconder uma oferta que existe (ela volta) e não mostrar uma que não existe
+    mais — o que, num agregador de ofertas, destrói a confiança.
+
+    Nunca apaga histórico nem a oferta: só marca `active = false`, igual a
+    `enrich.expire_stale_offers`."""
+    active = db.select(
+        "offers",
+        {"store_id": f"eq.{store.id}", "active": "is.true", "select": "id,product_id"},
+    )
+    stale = [o["id"] for o in active if o["product_id"] not in seen_product_ids]
+    if not stale:
+        return 0
+
+    now = _now()
+    for i in range(0, len(stale), _OFFER_ID_BATCH):
+        batch = stale[i : i + _OFFER_ID_BATCH]
+        db.update(
+            "offers",
+            {"id": f"in.({','.join(batch)})"},
+            {"active": False, "updated_at": now},
+        )
+    print(
+        f"[{store.name}] {len(stale)} oferta(s) desativada(s): não estão mais na "
+        f"listagem da loja."
+    )
+    return len(stale)
 
 
 # ── ingestion_jobs ────────────────────────────────────────────────

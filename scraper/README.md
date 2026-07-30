@@ -29,6 +29,39 @@ admin (`web/src/lib/platforms.ts` — manter as duas em sincronia).
 
 ## Disponibilidade: produto esgotado sai das ofertas
 
+Há **três** caminhos para uma oferta sair do site, e os três são necessários —
+cada um cobre uma forma diferente de o produto deixar de estar à venda:
+
+| caminho | quando | prazo |
+|---|---|---|
+| `Candidate.available` → `offers.active` | o produto aparece na listagem marcado como esgotado | mesma coleta |
+| **Varredura do não-listado** (`_deactivate_unlisted`) | o produto **desapareceu da listagem** | mesma coleta |
+| Expiração por `last_seen_at` (`enrich.py`) | a loja não é coletada há muito tempo (config quebrada, site fora) | `stores.offer_expiration_days`, padrão 45 dias |
+
+O segundo caminho é o mais importante na prática e faltava: **numa loja Shopify o
+jeito mais comum de um produto sair de estoque é desaparecer da coleção**, não
+aparecer nela com `available: false`. Nesse caso o coletor nunca chega a avaliar a
+disponibilidade. Medido antes do fix: **140 das 188 ofertas ativas da Dogma** no
+site não estavam mais na coleção dela, e uma delas tinha ~42 dias de vida pela
+frente até a expiração.
+
+A varredura só roda com **listagem completa** (`listing_complete` em run.py), e
+duas travas definem isso:
+
+- **teto de itens atingido** — o coletor parou no meio do catálogo (`max_items`),
+  então "não apareceu" não significa nada. A Nono Bier tem 988 produtos e o teto
+  é 200;
+- **zero candidatos** — quase nunca é loja vazia; é config errada, 403 ou site
+  fora. Varrer apagaria a loja inteira do site.
+
+Limitação conhecida: um erro numa página do meio da paginação é capturado dentro
+do coletor (de propósito, para não descartar o que já foi coletado) e não chega ao
+`run.py`, então uma listagem truncada por 403 pode passar por completa.
+**Desativar não é destrutivo** — o upsert da coleta seguinte que enxergar o
+produto grava `active = true` de novo, e nada de histórico se perde. É por isso que
+o erro tolerável aqui é esconder uma oferta que existe (ela volta) em vez de
+mostrar uma que não existe mais, que é o que destrói a confiança num agregador.
+
 Cada coletor preenche `Candidate.available`, que o `pipeline.py` mapeia direto
 para `offers.active` — então um produto marcado como esgotado na loja sai do site
 **na mesma coleta**, sem esperar os 45 dias da expiração por `last_seen_at`.
