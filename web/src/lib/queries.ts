@@ -109,6 +109,36 @@ export function filterOffers(offers: OfferListItem[], filters: OfferFilters): Of
   });
 }
 
+// Um card por PRODUTO, não por oferta — evita mostrar o mesmo produto duas
+// vezes só porque duas lojas o vendem, que é justamente o efeito ESPERADO da
+// mesclagem de duplicatas funcionando (ver docs/04-conectores-ingestao.md).
+// Escolhe a oferta de MENOR preço como representante do card, independente da
+// posição de cada oferta na lista de entrada — não dá pra assumir "a primeira
+// que aparece é a mais barata" quando `sort` é 'nome'/'pais' (mistura ofertas
+// do mesmo produto fora de ordem de preço). A ORDEM dos produtos no resultado
+// preserva a ordem de primeira aparição da entrada, que já reflete `sort`.
+//
+// NÃO se aplica na "página da loja" (`?loja=`): ali cada produto já aparece
+// no máximo uma vez (unique (product_id, store_id) do banco garante isso), e
+// o card precisa mostrar o preço DAQUELA loja — nunca o mais barato do
+// catálogo, mesmo que outra loja venda mais barato. Quem decide se dedupe
+// roda é o caller (page.tsx), passando ou não pelo storeMode.
+export function dedupeByProduct(offers: OfferListItem[]): OfferListItem[] {
+  const bestByProduct = new Map<string, OfferListItem>();
+  for (const o of offers) {
+    const current = bestByProduct.get(o.product_id);
+    if (!current || o.price < current.price) bestByProduct.set(o.product_id, o);
+  }
+  const order: string[] = [];
+  const seen = new Set<string>();
+  for (const o of offers) {
+    if (seen.has(o.product_id)) continue;
+    seen.add(o.product_id);
+    order.push(o.product_id);
+  }
+  return order.map((id) => bestByProduct.get(id)!);
+}
+
 export type OfferSort = "preco" | "nome" | "pais";
 
 // Reordena o resultado já filtrado. 'preco' não precisa reordenar — listOffers

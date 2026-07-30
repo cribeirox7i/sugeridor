@@ -45,7 +45,10 @@ export default async function ProductDetailView({
   return (
     <div className="space-y-10">
       <div className="grid gap-8 md:grid-cols-[280px_1fr]">
-        <div className="flex aspect-square items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900">
+        {/* Fundo branco FIXO (não dark:bg-*) — mesmo motivo de OfferCard.tsx:
+            dá visual padrão pra imagem venha com fundo transparente ou
+            branco embutido, nos dois temas. */}
+        <div className="flex aspect-square items-center justify-center rounded-lg border border-neutral-200 bg-white dark:border-neutral-800">
           {product.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={product.image_url} alt={product.name} className="h-full w-full object-contain p-4" />

@@ -12,6 +12,13 @@ type StoreOffer = {
   store: { id: string; name: string } | null;
 };
 
+// Botão "Preços": mostra TODAS as ofertas ativas do produto, inclusive a que
+// já está no card (destacada em negrito) — antes chamava "Outras lojas" e
+// escondia a oferta atual, mas o card às vezes mostra o preço mais barato do
+// catálogo (home) e às vezes o preço DAQUELA loja específica (página da
+// loja, ver page.tsx::dedupeByProduct), então "outras" deixou de ser preciso:
+// o pedido era ver TODOS os preços num lugar só, incluindo o que já está
+// visível, pra comparar.
 export default function StoreOffersPopover({
   productId,
   currentOfferId,
@@ -78,7 +85,9 @@ export default function StoreOffersPopover({
     }
   }
 
-  const others = (offers ?? []).filter((o) => o.id !== currentOfferId);
+  // Sem filtrar por currentOfferId: "Preços" mostra TODOS, inclusive o que já
+  // está no card — é o que diferencia do antigo "Outras lojas".
+  const rows = offers ?? [];
 
   return (
     <div ref={containerRef} className="relative">
@@ -86,7 +95,7 @@ export default function StoreOffersPopover({
         onClick={toggle}
         className="text-xs text-neutral-500 underline decoration-dotted hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
       >
-        {t("otherStores")}
+        {t("pricesButton")}
       </button>
 
       {open &&
@@ -98,18 +107,20 @@ export default function StoreOffersPopover({
             className="z-50 w-48 rounded-lg border border-neutral-200 bg-white p-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-900"
           >
             {loading ? (
-              <p className="px-2 py-1 text-neutral-500">{t("loadingStores")}</p>
-            ) : others.length === 0 ? (
-              <p className="px-2 py-1 text-neutral-500">{t("noOtherStores")}</p>
+              <p className="px-2 py-1 text-neutral-500">{t("loadingPrices")}</p>
+            ) : rows.length === 0 ? (
+              <p className="px-2 py-1 text-neutral-500">{t("noPrices")}</p>
             ) : (
               <ul className="space-y-1">
-                {others.map((o) => (
+                {rows.map((o) => (
                   <li key={o.id}>
                     <a
                       href={`/go/${o.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between rounded px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      className={`flex items-center justify-between rounded px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 ${
+                        o.id === currentOfferId ? "font-semibold" : ""
+                      }`}
                     >
                       <span className="text-neutral-700 dark:text-neutral-300">{o.store?.name}</span>
                       <span className="font-medium text-amber-600 dark:text-amber-400">

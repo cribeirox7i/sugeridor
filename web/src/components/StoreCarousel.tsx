@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import StoreLogo from "@/components/StoreLogo";
 
 type StoreLite = { id: string; name: string; logo_url: string | null };
 
@@ -71,12 +72,7 @@ export default function StoreCarousel({
                 }`}
               >
                 {store.logo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={store.logo_url}
-                    alt=""
-                    className="h-4 w-4 rounded object-contain"
-                  />
+                  <StoreLogo src={store.logo_url} alt="" size="h-4 w-4" />
                 ) : null}
                 <span className="whitespace-nowrap text-neutral-700 dark:text-neutral-300">
                   {store.name}

@@ -6,6 +6,7 @@ import { PUBLIC_CONTAINER } from "@/lib/layout";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import ViewToggle from "@/components/admin/ViewToggle";
+import StoreLogo from "@/components/StoreLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -65,12 +66,7 @@ export default async function LojasPage({
                   }`}
                 >
                   {store.logo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={store.logo_url}
-                      alt=""
-                      className="h-10 w-10 shrink-0 rounded object-contain"
-                    />
+                    <StoreLogo src={store.logo_url} alt="" size="h-10 w-10" />
                   ) : (
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-neutral-100 text-lg dark:bg-neutral-800">
                       🍺
@@ -102,12 +98,7 @@ export default async function LojasPage({
                 >
                   <div className="flex items-center gap-2">
                     {store.logo_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={store.logo_url}
-                        alt=""
-                        className="h-8 w-8 shrink-0 rounded object-contain"
-                      />
+                      <StoreLogo src={store.logo_url} alt="" size="h-8 w-8" />
                     ) : (
                       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-neutral-100 dark:bg-neutral-800">
                         🍺

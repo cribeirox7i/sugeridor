@@ -13,6 +13,7 @@
     "title": "Sugeridor",
     "subtitle": "Ofertas de cervezas artesanales y especiales, reunidas de varias tiendas.",
     "offerCount": "{count, plural, =1 {1 oferta} other {# ofertas}}",
+    "productCount": "{count, plural, =1 {1 producto} other {# productos}}",
     "noOffers": "No se encontraron ofertas.",
     "featuredTitle": "🔥 Ofertas destacadas",
     "storesTitle": "Tiendas",
@@ -43,9 +44,9 @@
   },
   "offerCard": {
     "viewOffer": "Ver oferta",
-    "otherStores": "Otras tiendas",
-    "loadingStores": "Cargando...",
-    "noOtherStores": "Ninguna otra tienda con oferta activa."
+    "pricesButton": "Precios",
+    "loadingPrices": "Cargando...",
+    "noPrices": "No se encontraron precios."
   },
   "product": {
     "backToCatalog": "← Volver al catálogo",

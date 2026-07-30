@@ -13,6 +13,7 @@
     "title": "Sugeridor",
     "subtitle": "Craft and specialty beer deals, gathered from multiple stores.",
     "offerCount": "{count, plural, =1 {1 offer} other {# offers}}",
+    "productCount": "{count, plural, =1 {1 product} other {# products}}",
     "noOffers": "No offers found.",
     "featuredTitle": "🔥 Featured deals",
     "storesTitle": "Stores",
@@ -43,9 +44,9 @@
   },
   "offerCard": {
     "viewOffer": "View offer",
-    "otherStores": "Other stores",
-    "loadingStores": "Loading...",
-    "noOtherStores": "No other store has an active offer."
+    "pricesButton": "Prices",
+    "loadingPrices": "Loading...",
+    "noPrices": "No prices found."
   },
   "product": {
     "backToCatalog": "← Back to catalog",

@@ -4,6 +4,7 @@ import {
   listOffers,
   filterOffers,
   sortOffers,
+  dedupeByProduct,
   distinctAttributeValues,
   distinctBrandValues,
   storesWithActiveOffers,
@@ -126,6 +127,14 @@ export default async function Home({
 
   const offers = sortOffers(filterOffers(allOffers, filters), sort);
 
+  // Um card por PRODUTO fora da página da loja — evita mostrar duas vezes o
+  // mesmo produto só porque duas lojas o vendem (efeito esperado da
+  // mesclagem funcionando, não bug). Na página da loja NÃO dedupe: cada
+  // produto já aparece no máximo uma vez ali (unique product_id+store_id), e
+  // o card tem que mostrar o preço DAQUELA loja — nunca o mais barato do
+  // catálogo geral. Ver lib/queries.ts::dedupeByProduct.
+  const displayOffers = storeMode ? offers : dedupeByProduct(offers);
+
   // A barra de filtros aparece nos dois modos (na "página da loja" só sem o
   // select de loja) — mas estilo/país lá devem refletir só o catálogo
   // DAQUELA loja, não o site inteiro.
@@ -140,9 +149,11 @@ export default async function Home({
 
   // Queda de preço vem pronta de `offers.drop_percent` (trigger da migration
   // 0013) — a home não busca mais price_history. Antes eram os pontos de
-  // histórico de TODAS as ofertas ativas em cada renderização.
+  // histórico de TODAS as ofertas ativas em cada renderização. Continua
+  // vindo do array de ofertas (não do deduplicado): FeaturedDeals mostra a
+  // queda por OFERTA, sem relação com o dedupe do grid abaixo.
   const featuredDeals = storeMode ? [] : featuredDealsFromOffers(allOffers, 5);
-  const dropByOffer = dropPercentByOffer(offers);
+  const dropByOffer = dropPercentByOffer(displayOffers);
 
   // storeId sempre vem preenchido em storeMode (é o que define o modo) — não
   // conta como "filtro ativo" pro badge do acordeon nesse caso, senão o
@@ -200,23 +211,27 @@ export default async function Home({
       <div className="flex-1 overflow-y-auto">
         <div className={`${PUBLIC_CONTAINER} space-y-5 py-5`}>
           {storeMode ? (
-            <StoreHeader store={storeDetail} offerCount={offers.length} />
+            <StoreHeader store={storeDetail} offerCount={displayOffers.length} />
           ) : (
             <>
               <FeaturedDeals deals={featuredDeals} />
+              {/* "produtos", não "ofertas": depois do dedupe cada card é um
+                  produto (que pode ter oferta em mais de uma loja) — contar
+                  "ofertas" aqui diria um número menor que o real e o rótulo
+                  ficaria incoerente com o que a grade mostra. */}
               <p className="text-sm text-neutral-500 dark:text-neutral-500">
-                {t("offerCount", { count: offers.length })}
+                {t("productCount", { count: displayOffers.length })}
               </p>
             </>
           )}
 
-          {offers.length === 0 ? (
+          {displayOffers.length === 0 ? (
             <div className="rounded-lg border border-dashed border-neutral-300 p-12 text-center text-neutral-500 dark:border-neutral-800">
               {t("noOffers")}
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {offers.map((offer) => (
+              {displayOffers.map((offer) => (
                 <OfferCard key={offer.id} offer={offer} dropPercent={dropByOffer.get(offer.id)} />
               ))}
             </div>

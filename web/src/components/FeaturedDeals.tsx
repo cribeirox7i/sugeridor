@@ -41,7 +41,10 @@ export default function FeaturedDeals({ deals }: { deals: FeaturedDeal[] }) {
                 <span className="absolute left-2 top-2 z-10 rounded bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white">
                   -{Math.round(deal.dropPercent)}%
                 </span>
-                <div className="flex aspect-square items-center justify-center bg-neutral-50 dark:bg-neutral-950">
+                {/* Fundo branco FIXO (não dark:bg-*) — mesmo motivo de
+                    OfferCard.tsx: dá visual padrão pra imagem venha com fundo
+                    transparente ou branco embutido, nos dois temas. */}
+                <div className="flex aspect-square items-center justify-center bg-white">
                   {deal.product.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img

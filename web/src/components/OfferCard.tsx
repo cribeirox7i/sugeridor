@@ -3,6 +3,7 @@ import type { OfferListItem } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 import StoreOffersPopover from "@/components/StoreOffersPopover";
 import ProductCardLink from "@/components/ProductCardLink";
+import StoreLogo from "@/components/StoreLogo";
 
 export default function OfferCard({
   offer,
@@ -19,7 +20,11 @@ export default function OfferCard({
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
       <ProductCardLink slug={product.canonical_slug} className="block">
-        <div className="flex aspect-square items-center justify-center bg-neutral-50 p-3 dark:bg-neutral-950">
+        {/* Fundo branco FIXO (não dark:bg-*): a fonte traz imagem com fundo
+            transparente OU branco, sem padrão — no tema escuro a transparente
+            "sangrava" pro fundo do card e a branca destoava do resto. Um
+            fundo branco fixo por trás resolve as duas, dando visual padrão. */}
+        <div className="flex aspect-square items-center justify-center bg-white p-3">
           {product.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -74,12 +79,7 @@ export default function OfferCard({
         <div className="flex items-center justify-between gap-2 text-xs">
           <div className="flex min-w-0 items-center gap-1.5" title={store.name}>
             {store.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={store.logo_url}
-                alt={store.name}
-                className="h-4 w-4 shrink-0 rounded object-contain"
-              />
+              <StoreLogo src={store.logo_url} alt={store.name} size="h-4 w-4" />
             ) : (
               <span className="truncate text-neutral-500">{store.name}</span>
             )}

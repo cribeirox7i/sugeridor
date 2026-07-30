@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import type { Store } from "@/lib/types";
+import StoreLogo from "@/components/StoreLogo";
 
 // Cabeçalho da "página da loja" (home filtrada por ?loja=<id>).
 //
@@ -21,12 +22,7 @@ export default async function StoreHeader({
   return (
     <div className="flex items-start gap-4 border-b border-neutral-200 pb-4 dark:border-neutral-800">
       {store.logo_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={store.logo_url}
-          alt={store.name}
-          className="h-16 w-16 shrink-0 rounded object-contain"
-        />
+        <StoreLogo src={store.logo_url} alt={store.name} size="h-16 w-16" />
       ) : null}
 
       <div className="min-w-0 flex-1">
