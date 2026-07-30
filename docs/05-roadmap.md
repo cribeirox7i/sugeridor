@@ -270,6 +270,15 @@ idênticos — efeito esperado da mesclagem, mas confuso visualmente) e o popove
   negócio**: o lookup de marca é um SELECT (fold + match exato), não uma fórmula como o slug — o
   mesmo risco de dessincronizar Python↔TS que já mordeu este projeto 3 vezes é bem menor aqui.
 
+**Dois ajustes finos pedidos depois de ver a tela renderizada** (mesmo dia, commit `f2a2e0f`):
+toggle de oculto/visível em Produtos era um botão-tag colorido, parecendo selo de status em vez de
+controle — virou checkbox instantâneo (`HiddenToggle.tsx`, chama a Server Action direto no
+`onChange` via `startTransition`, mesmo padrão do toggle "Ativa" de `StoresTable.tsx`); e a coluna
+"Coleta" de uma loja sem plataforma mostrava o texto "Nenhuma (só cadastro manual)", que quebrava
+em duas linhas e desalinhava a grade — trocado por um checkbox desmarcado e bloqueado, sem texto
+visível (a informação virou `aria-label`/`title`). Lição: revisar a tela renderizada de verdade
+continua achando problema que passa batido só lendo o código.
+
 ## Fase 4 — E-mail ⏸️ pausada
 - Caixa dedicada + credenciais IMAP.
 - Cron de leitura + normalizador (Claude API) aplicado a e-mails com múltiplas ofertas por
