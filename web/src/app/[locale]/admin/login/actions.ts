@@ -16,5 +16,7 @@ export async function login(formData: FormData) {
     redirect(`/${locale}/admin/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect(`/${locale}/admin`);
+  // Tela Início foi removida (item 5 da leva de melhorias) — Lojas é o novo
+  // destino padrão pós-login, evita um redirect extra pela raiz de /admin.
+  redirect(`/${locale}/admin/lojas`);
 }

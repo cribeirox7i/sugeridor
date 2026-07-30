@@ -95,6 +95,7 @@ export default async function LojasPage({
         storeId={editing?.id}
         defaultName={editing?.name ?? ""}
         defaultStoreType={editing?.store_type ?? "propria"}
+        defaultWhatsappNumber={editing?.whatsapp_number ?? ""}
         defaultCountry={editing?.country ?? "Brasil"}
         defaultSiteUrl={editing?.site_url ?? ""}
         defaultPlatform={editing?.platform ?? ""}
@@ -132,7 +133,14 @@ export default async function LojasPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{t("title")}</h1>
+        <div>
+          <h1 className="text-xl font-semibold">{t("title")}</h1>
+          {/* Substitui a tela Início removida — a contagem que vivia lá
+              (item 5 da leva de melhorias) agora mora em cada tela. */}
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            {t("count", { count: allStores.length })}
+          </p>
+        </div>
         <Link
           href={adminUrl("/admin/lojas", listParams, { new: "1" })}
           className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"

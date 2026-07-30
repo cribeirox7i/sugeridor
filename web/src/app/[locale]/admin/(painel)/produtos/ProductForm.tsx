@@ -101,6 +101,7 @@ export default function ProductForm({
             <option value="copo">{t("categoryCopo")}</option>
             <option value="souvenirs">{t("categorySouvenirs")}</option>
             <option value="eventos">{t("categoryEventos")}</option>
+            <option value="assinaturas">{t("categoryAssinaturas")}</option>
           </select>
         </label>
       </div>

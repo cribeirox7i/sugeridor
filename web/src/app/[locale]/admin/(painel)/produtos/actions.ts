@@ -8,6 +8,7 @@ import { revalidateAllLocales } from "@/lib/revalidate";
 import { normalizeDashes, separateUnits, titleCaseProductName } from "@/lib/text";
 import { patchProducts } from "@/lib/adminBatch";
 import { adminUrlFromForm } from "@/lib/adminNav";
+import { buildBrandIndex, lookupBrand, type Brand, type BrandAlias } from "@/lib/brands";
 import type { AttributeSchema, ProductType } from "@/lib/types";
 
 export async function saveProduct(formData: FormData) {
@@ -19,7 +20,7 @@ export async function saveProduct(formData: FormData) {
     separateUnits(normalizeDashes((formData.get("name") as string)?.trim() ?? "")),
   );
   const brandRaw = ((formData.get("brand") as string) || "").trim();
-  const brand = brandRaw ? normalizeDashes(brandRaw) : null;
+  let brand = brandRaw ? normalizeDashes(brandRaw) : null;
   const image_url = ((formData.get("image_url") as string) || "").trim() || null;
   const category = ((formData.get("category") as string) || "cervejas").trim();
 
@@ -40,6 +41,27 @@ export async function saveProduct(formData: FormData) {
     const raw = (formData.get(`attr_${field.key}`) as string | null)?.trim();
     if (!raw) continue;
     attributes[field.key] = field.type === "number" ? Number(raw) : raw;
+  }
+
+  // Catálogo de marcas (migration 0021, /admin/marcas) é autoridade sobre
+  // nome e país da marca quando há alias cadastrado — mesma busca que o
+  // scraper faz em scraper/brands.py::lookup_brand, pro cadastro manual não
+  // divergir. Não sobrescreve país já preenchido à mão neste form, só
+  // completa quando o campo do tipo estiver vazio.
+  if (brand) {
+    const [{ data: brandsData }, { data: aliasesData }] = await Promise.all([
+      supabase.from("brands").select("id, name, country"),
+      supabase.from("brand_aliases").select("id, brand_id, alias"),
+    ]);
+    const index = buildBrandIndex(
+      (brandsData ?? []) as Brand[],
+      (aliasesData ?? []) as BrandAlias[],
+    );
+    const match = lookupBrand(index, brand);
+    if (match) {
+      brand = match.name;
+      if (match.country && !attributes.pais) attributes.pais = match.country;
+    }
   }
 
   let error;
@@ -95,6 +117,20 @@ export async function deleteProduct(formData: FormData) {
     redirect(`/${locale}/admin/produtos?error=delete-blocked`);
   }
 
+  revalidateAllLocales("/admin/produtos");
+  revalidateAllLocales("/");
+}
+
+// Oculto/visível (migration 0020) — decisão manual de curadoria, sem afetar a
+// coleta: o scraper continua atualizando preço/histórico desse produto
+// normalmente, só a leitura pública (lib/queries.ts::listOffers) passa a
+// excluir hidden=true.
+export async function toggleProductHidden(formData: FormData) {
+  const id = formData.get("id") as string;
+  const hidden = formData.get("hidden") === "true";
+  if (!id) return;
+  const supabase = await createClient();
+  await supabase.from("products").update({ hidden: !hidden }).eq("id", id);
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
 }

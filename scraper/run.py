@@ -17,7 +17,9 @@ import hashlib
 import sys
 import traceback
 
-from . import categorize, db, enrich, pipeline
+import requests
+
+from . import brands, categorize, db, enrich, pipeline
 from .config import (
     DEFAULT_MAX_ITEMS_PER_STORE,
     MAX_WORKERS,
@@ -137,14 +139,24 @@ def run_enrichment() -> int:
 def run() -> int:
     require_config()
 
-    rows = db.select(
-        "stores",
-        {
-            "platform": "not.is.null",
-            "include_in_collection": "eq.true",
-            "select": "id,name,site_url,platform,config,store_type,country,brand_alias",
-        },
-    )
+    store_select = {
+        "platform": "not.is.null",
+        "include_in_collection": "eq.true",
+        "select": "id,name,site_url,platform,config,store_type,country,brand_alias",
+    }
+    try:
+        # Loja inativa (migration 0020, stores.active) também sai da coleta —
+        # separado de include_in_collection, mas os dois filtram juntos aqui.
+        rows = db.select("stores", {**store_select, "active": "eq.true"})
+    except requests.HTTPError as e:
+        # 42703 = undefined_column: migration 0020 ainda não rodou nesse
+        # ambiente. Cai pro filtro antigo em vez de quebrar a coleta inteira —
+        # mesmo espírito do fallback em web/src/lib/queries.ts::listOffers.
+        body = e.response.json() if e.response is not None else {}
+        if body.get("code") != "42703":
+            raise
+        print("stores.active ainda não existe (migration 0020 pendente) — coletando sem esse filtro.")
+        rows = db.select("stores", store_select)
     if not rows:
         print("Nenhuma loja com platform definido. Nada a fazer.")
         return 0
@@ -170,9 +182,11 @@ def run() -> int:
             print("Nenhuma loja nesta fatia. Nada a fazer.")
             return 0
 
-    # Carrega as palavras-chave de categoria (category_keywords) 1x, antes
-    # dos workers paralelos — evita 1 query por produto classificado.
+    # Carrega as palavras-chave de categoria (category_keywords) e o catálogo
+    # de marcas (brands/brand_aliases, migration 0021) 1x, antes dos workers
+    # paralelos — evita 1 query por produto classificado/normalizado.
     categorize.load_keywords()
+    brands.load_brands()
 
     total_failures = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:

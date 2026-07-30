@@ -48,13 +48,25 @@ export type Store = {
   // Dias sem ser vista pelo coletor até a oferta desta loja ser desativada.
   // null = usa o padrão global de site_settings (ver migration 0013).
   offer_expiration_days: number | null;
+  // Ativa/inativa (migration 0020) — separado de `include_in_collection`:
+  // inativa some do site (home/carrossel/ /lojas) E sai da coleta; reativar
+  // NÃO liga a coleta de volta sozinho. default true.
+  active: boolean;
+  // Loja "vendedor WhatsApp" (migration 0020): cadastro manual, sem
+  // `site_url` de verdade — "Ver oferta" manda pro wa.me em vez de redirecionar
+  // pra um link de produto. Formato esperado: só dígitos com DDI (ex:
+  // "5511999999999"). null = loja normal (site/scraper).
+  whatsapp_number: string | null;
   created_at: string;
 };
 
 // Categorização de alto nível, independente do product_type — texto livre
 // (ver migration 0007/0009), 'cervejas' e 'kit' são as únicas usadas
-// publicamente por ora.
-export type ProductCategory = "cervejas" | "souvenirs" | "eventos" | "kit" | "copo";
+// publicamente por ora. 'assinaturas' (item 11 da leva de melhorias,
+// 2026-07-30) é reservada como as demais não-públicas: existe no banco e no
+// admin (cadastro manual — não é algo que o scraper classifique por
+// palavra-chave), mas fica de fora do catálogo público por ora.
+export type ProductCategory = "cervejas" | "souvenirs" | "eventos" | "kit" | "copo" | "assinaturas";
 
 export type Product = {
   id: string;
@@ -65,6 +77,10 @@ export type Product = {
   image_url: string | null;
   canonical_slug: string;
   category: ProductCategory;
+  // Oculto do catálogo público por decisão manual (migration 0020) — a
+  // coleta continua atualizando preço/histórico normalmente, só a leitura
+  // pública (listOffers) exclui. default false.
+  hidden: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -75,7 +91,9 @@ export type Offer = {
   store_id: string;
   price: number;
   currency: string;
-  url: string;
+  // null pra loja "vendedor WhatsApp" (migration 0020) — sem link de produto,
+  // "Ver oferta" manda pro wa.me da loja em vez de redirecionar pra `url`.
+  url: string | null;
   source_type: "scrape" | "email" | "whatsapp_ocr" | "manual";
   source_ref: string | null;
   active: boolean;

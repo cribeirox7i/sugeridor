@@ -20,17 +20,22 @@ export default async function PainelLayout({
   // Defesa extra além do proxy: sem usuário, fora.
   if (!user) redirect(`/${locale}/admin/login`);
 
+  // "Início" foi removida (cada tela agora mostra a própria contagem, ver
+  // lojas/produtos/ofertas page.tsx) — a raiz /admin só redireciona pra Lojas.
+  // Config foi pro FIM da lista — é a tela menos acessada no dia a dia.
   const NAV = [
-    { href: "/admin", label: t("home") },
     { href: "/admin/lojas", label: t("stores") },
     { href: "/admin/produtos", label: t("products") },
+    // Item 1 da leva de melhorias: catálogo normalizado de marcas (nome +
+    // país), autoridade sobre products.brand.
+    { href: "/admin/marcas", label: t("brands") },
     { href: "/admin/ofertas", label: t("offers") },
-    // Logomarca virou uma seção de Config (era só um formulário).
-    { href: "/admin/config", label: t("config") },
     { href: "/admin/classificacao", label: t("classification") },
     // A tela Coleta foi absorvida por Lojas (tudo lá era sobre lojas: disparo,
     // quais entram na coleta e histórico de execuções).
     { href: "/admin/ferramentas", label: t("tools") },
+    // Logomarca virou uma seção de Config (era só um formulário).
+    { href: "/admin/config", label: t("config") },
   ];
 
   return (

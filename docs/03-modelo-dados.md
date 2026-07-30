@@ -45,10 +45,15 @@ canonical_slug text unique     -- identidade do produto E url amigável. Fórmul
                                 -- seriam agregadas. ATENÇÃO: mudar essa fórmula dessincroniza
                                 -- todos os slugs gravados e a coleta seguinte cria duplicatas —
                                 -- existe "Ressincronizar identificadores" em /admin/ferramentas.
-category      text default 'cervejas'  -- 'cervejas'|'kit'|'copo'|'souvenirs'|'eventos' (texto livre,
-                                        -- classificado por palavra-chave no scraper — ver
-                                        -- 04-conectores-ingestao.md). Só 'cervejas'+'kit' aparecem
-                                        -- no catálogo público.
+category      text default 'cervejas'  -- 'cervejas'|'kit'|'copo'|'souvenirs'|'eventos'|'assinaturas'
+                                        -- (texto livre, classificado por palavra-chave no scraper —
+                                        -- ver 04-conectores-ingestao.md; 'assinaturas' é manual-only,
+                                        -- o scraper nunca classifica um produto assim). Só
+                                        -- 'cervejas'+'kit' aparecem no catálogo público.
+hidden        boolean default false    -- migration 0020. Curadoria manual: oculta do catálogo
+                                        -- público sem afetar a coleta — o scraper continua
+                                        -- atualizando preço/histórico normalmente, só a leitura
+                                        -- pública (web/src/lib/queries.ts::listOffers) exclui.
 created_at    timestamptz
 updated_at    timestamptz
 ```
@@ -78,6 +83,14 @@ brand_alias   text nullable   -- forma curta do nome ("Dogma" para "Cervejaria D
 offer_expiration_days int nullable  -- prazo próprio de expiração desta loja; null = usa o global
                                      -- de site_settings (migration 0013)
 affiliate_program_id uuid nullable fk -> affiliate_programs
+active        boolean default true  -- migration 0020. Separado de `include_in_collection`: loja
+                                     -- inativa some do site (home/carrossel/ /lojas) E sai da
+                                     -- coleta (marcar inativa desliga include_in_collection também;
+                                     -- o inverso não liga a coleta de volta sozinho ao reativar).
+whatsapp_number text nullable        -- migration 0020. Loja "vendedor WhatsApp" — cadastro manual,
+                                     -- sem site_url de verdade. Preenchido = `/go/[offerId]` manda
+                                     -- pro wa.me da loja (com mensagem pronta) em vez de redirecionar
+                                     -- pra `offers.url`. Só dígitos com DDI, ex: "5511999999999".
 created_at    timestamptz
 ```
 
@@ -97,7 +110,10 @@ product_id    uuid fk -> products
 store_id      uuid fk -> stores
 price         numeric(10,2)
 currency      text default 'BRL'
-url            text            -- link original da página de venda
+url            text nullable   -- link original da página de venda. null pra loja "vendedor
+                                -- WhatsApp" (stores.whatsapp_number, migration 0020) — nesse caso
+                                -- `/go/[offerId]` manda pro wa.me da loja em vez de redirecionar
+                                -- pra um link de produto que não existe.
 source_type   text             -- 'scrape' | 'email' | 'whatsapp_ocr' | 'manual'
 source_ref    uuid nullable fk -> raw_captures
 active        boolean default true  -- false em TRÊS casos (ver 04-conectores-ingestao.md):
@@ -216,11 +232,11 @@ A **ordem de prioridade** entre categorias NÃO é dado: fica fixa no código
 'copo'. O scraper carrega a tabela uma vez por execução e cacheia em memória.
 
 ### `text_replacements`
-Regras de/para aplicadas **sob demanda** (nunca na coleta) sobre nome e marca, em
+Regras de/para aplicadas **sob demanda** (nunca na coleta) sobre o NOME do produto, em
 `/admin/ferramentas` (migration 0014).
 ```sql
 id            uuid pk
-target        text           -- 'name' | 'brand'
+target        text           -- 'name' | 'brand' — 'brand' só em regra ANTIGA (ver abaixo)
 search        text           -- o espaço importa nas duas pontas: "Alemã " (com espaço) não casa
                               -- "Alemãzinha"; " 500ml" no `replace` separa volume emendado
 replace       text default ''  -- vazio = remove o trecho
@@ -229,10 +245,52 @@ created_at    timestamptz
 unique (target, search)
 ```
 Existe porque o coletor grava o que a loja escreve: remover o prefixo "Cerveja" deixa "Alemã
-Paulaner…" (58 produtos), e a mesma cervejaria aparece com marcas diferentes entre lojas
-("PAULANER BRAUEREI GRUPPE GMBH & CO. KGAA" vs "Paulaner"), o que impedia as ofertas de agregarem.
-Aplicar recalcula o slug; onde dois produtos convergem, o conflito é **listado** para o usuário
-mesclar caso a caso, nunca mesclado sozinho.
+Paulaner…" (58 produtos). Aplicar recalcula o slug; onde dois produtos convergem, o conflito é
+**listado** para o usuário mesclar caso a caso, nunca mesclado sozinho.
+
+**`target = 'brand'` está pausado desde a migration 0021** (item 1 da leva de melhorias,
+2026-07-30): o catálogo de marcas (`brands`/`brand_aliases`, abaixo) passou a ser a autoridade
+sobre `products.brand` — era o de/para quem resolvia "PAULANER BRAUEREI GRUPPE GMBH & CO. KGAA" vs
+"Paulaner", agora é uma marca cadastrada com esse alias. O formulário de regra nova em
+`/admin/ferramentas` não oferece mais `target = 'brand'`; regras antigas desse tipo continuam
+funcionando (nada foi apagado) até serem migradas manualmente pra `/admin/marcas`.
+
+### `brands` / `brand_aliases`
+Catálogo normalizado de marcas — nome canônico + país + variações encontradas nas lojas, editável
+em `/admin/marcas` (migration 0021). Substitui `text_replacements` como autoridade sobre
+`products.brand` e complementa (não substitui) a regra B de país de `planCountryRewrite`
+("completar pela marca mais comum" — fill-only, só age quando a marca ainda não está cadastrada
+aqui).
+```sql
+-- brands
+id            uuid pk
+name          text unique     -- forma canônica, ex: "Paulaner"
+country       text nullable   -- país de origem — null = desconhecido
+created_at    timestamptz
+
+-- brand_aliases
+id            uuid pk
+brand_id      uuid fk -> brands on delete cascade
+alias         text unique     -- variação encontrada numa loja, ex:
+                               -- "PAULANER BRAUEREI GRUPPE GMBH & CO. KGAA"
+created_at    timestamptz
+```
+`alias` é `unique` global (não só por marca): duas marcas nunca podem reivindicar a mesma variação
+— evita cadastrar a mesma string sob duas marcas por engano. O nome canônico da marca também conta
+como "alias de si mesmo" na busca (fold — minúsculas, sem acento/pontuação), então não é preciso
+cadastrar um alias idêntico ao nome.
+
+**Onde a busca acontece**: no scraper (`scraper/brands.py::lookup_brand`, só pra loja NÃO própria —
+loja própria já tem marca/país por autoridade dela mesma, ver `pipeline.py::_resolve_identity`) e
+no cadastro manual de produto (`produtos/actions.ts`). As duas fazem o MESMO fold+match — é um
+SELECT, não uma regra de negócio como a fórmula do slug, então o risco de dessincronizar entre
+Python e TS é bem menor que os casos já vividos aqui (fórmula do slug, separação de medida).
+
+**"Aplicar catálogo de marcas aos produtos existentes"** (`/admin/marcas`) resolve o mesmo furo que
+"Reclassificar existentes" resolveu pra `category_keywords`: sem isso, cadastrar uma marca nova só
+afetaria produto futuro. A ação recalcula marca+país dos produtos que batem com algum alias e
+**ressincroniza os slugs automaticamente em seguida** — renomear marca muda o slug, e esquecer o
+resync é o mesmo bug já documentado (coleta seguinte duplicaria cada produto renomeado).
 
 ### `ignored_duplicates`
 Pares de produtos que o admin marcou como **"não são duplicata"**, em `/admin/ferramentas`

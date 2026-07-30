@@ -378,12 +378,17 @@ export default async function FerramentasPage({
           </p>
         </div>
 
+        {/* target="brand" só pra regra NOVA — marcas cadastradas em
+            /admin/marcas passaram a ser a autoridade sobre products.brand
+            (item 1 da leva de melhorias). Regras antigas continuam
+            funcionando (não apagamos dado do usuário), só o formulário de
+            regra nova não oferece mais essa opção. */}
+        <p className="max-w-3xl text-xs text-amber-700 dark:text-amber-400">{t("brandMovedHint")}</p>
         <form action={addReplacement} className="flex flex-wrap items-end gap-2">
           <label className="flex flex-col gap-1">
             <span className="text-xs text-neutral-500">{t("fieldTarget")}</span>
             <select name="target" defaultValue="name" className={inputCls}>
               <option value="name">{t("targetName")}</option>
-              <option value="brand">{t("targetBrand")}</option>
             </select>
           </label>
           <label className="flex flex-col gap-1">

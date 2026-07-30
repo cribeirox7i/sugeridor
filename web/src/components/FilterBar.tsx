@@ -25,10 +25,11 @@ type Props = {
 // string. Continua GET (e não roteamento client-side) de propósito — é o que
 // mantém filtro compartilhável por URL e o estado inteiro no servidor.
 //
-// Layout: só BUSCA e PAÍS ficam visíveis na linha principal; estilo, marca,
-// loja, faixa de preço E ordenação ficam atrás do botão "Mais filtros e
-// ordenação". Antes eram 4 controles rotulados na linha, o que somado ao
-// carrossel de lojas logo abaixo consumia duas faixas verticais inteiras.
+// Layout: só BUSCA fica visível na linha principal; país, estilo, marca,
+// loja, faixa de preço E ordenação ficam atrás do botão "Filtros" — antes só
+// país ficava de fora do recolhível, mas isso ainda comia largura que o
+// carrossel de lojas (StoreCarousel) precisava pra caber mais lojas por
+// linha sem rolar tanto. Ver page.tsx pela largura do carrossel.
 //
 // Os selects auto-submetem no `change`: num form GET, mexer num select não
 // envia nada, então antes era obrigatório clicar em "Filtrar" depois de cada
@@ -56,8 +57,10 @@ export default function FilterBar({ estilos, paises, marcas, stores, hideStore, 
   const buscaAplicada = Boolean(current.q) && q === current.q;
   // serve pra avisar que existe filtro valendo mesmo com a caixa fechada.
   // `ordenar` só conta quando difere do padrão (preço), senão o badge nasceria
-  // com 1 em toda visita.
+  // com 1 em toda visita. `pais` entrou aqui quando o select saiu da linha
+  // principal pra dentro do recolhível (ver comentário do componente).
   const moreFiltersCount = [
+    current.pais,
     current.estilo,
     !hideStore && current.storeId,
     current.brand,
@@ -131,23 +134,6 @@ export default function FilterBar({ estilos, paises, marcas, stores, hideStore, 
         )}
       </div>
 
-      <label className="flex items-center gap-1.5">
-        <span className="whitespace-nowrap text-xs text-neutral-500">{t("country")}</span>
-        <select
-          name="pais"
-          defaultValue={current.pais ?? ""}
-          onChange={submitOnChange}
-          className={inputCls}
-        >
-          <option value="">{t("all")}</option>
-          {paises.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-      </label>
-
       <button
         type="button"
         onClick={() => setShowMore((v) => !v)}
@@ -179,6 +165,23 @@ export default function FilterBar({ estilos, paises, marcas, stores, hideStore, 
           dos outros controles — isso já causou sobreposição visual antes). */}
       {showMore && (
         <div className="flex w-full flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900 sm:flex-row sm:flex-wrap sm:items-end">
+          <label className="flex w-full flex-col gap-1 sm:w-32">
+            <span className="text-xs text-neutral-500">{t("country")}</span>
+            <select
+              name="pais"
+              defaultValue={current.pais ?? ""}
+              onChange={submitOnChange}
+              className={inputCls}
+            >
+              <option value="">{t("all")}</option>
+              {paises.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="flex w-full flex-col gap-1 sm:w-32">
             <span className="text-xs text-neutral-500">{t("style")}</span>
             <select

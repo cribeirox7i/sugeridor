@@ -33,6 +33,10 @@ export async function saveStore(formData: FormData) {
     expirationRaw && Number.isFinite(expirationDays) && expirationDays > 0
       ? Math.round(expirationDays)
       : null;
+  // Loja "vendedor WhatsApp" (migration 0020) — só dígitos com DDI, sem "+"
+  // nem espaços (é o formato que o wa.me espera em /go/[offerId]).
+  const whatsappRaw = ((formData.get("whatsapp_number") as string) || "").trim();
+  const whatsapp_number = whatsappRaw ? whatsappRaw.replace(/\D/g, "") : null;
 
   if (!name) return;
 
@@ -58,11 +62,33 @@ export async function saveStore(formData: FormData) {
   const { error } = id
     ? await supabase
         .from("stores")
-        .update({ name, site_url, logo_url, description, platform, config, store_type, country, brand_alias, offer_expiration_days })
+        .update({
+          name,
+          site_url,
+          logo_url,
+          description,
+          platform,
+          config,
+          store_type,
+          country,
+          brand_alias,
+          offer_expiration_days,
+          whatsapp_number,
+        })
         .eq("id", id)
-    : await supabase
-        .from("stores")
-        .insert({ name, site_url, logo_url, description, platform, config, store_type, country, brand_alias, offer_expiration_days });
+    : await supabase.from("stores").insert({
+        name,
+        site_url,
+        logo_url,
+        description,
+        platform,
+        config,
+        store_type,
+        country,
+        brand_alias,
+        offer_expiration_days,
+        whatsapp_number,
+      });
 
   const locale = await getLocale();
 
@@ -152,6 +178,35 @@ export async function setStoresCollection(
     .in("id", ids);
   if (error) return { error: error.message };
   revalidateAllLocales("/admin/lojas");
+  return { error: null };
+}
+
+// ── Ativa/inativa (migration 0020) ────────────────────────────────
+// Flag NOVO, separado de include_in_collection: inativa some do site
+// (home/carrossel/ /lojas, ver lib/queries.ts::listOffers) E desliga a
+// coleta automaticamente — mas o inverso NÃO liga a coleta de volta sozinho
+// (o admin decide os dois separadamente ao reativar).
+export async function toggleStoreActive(id: string, active: boolean) {
+  const supabase = await createClient();
+  const patch: Record<string, boolean> = { active };
+  if (!active) patch.include_in_collection = false;
+  await supabase.from("stores").update(patch).eq("id", id);
+  revalidateAllLocales("/admin/lojas");
+  revalidateAllLocales("/");
+}
+
+export async function setStoresActive(
+  ids: string[],
+  active: boolean,
+): Promise<{ error: string | null }> {
+  if (ids.length === 0) return { error: null };
+  const supabase = await createClient();
+  const patch: Record<string, boolean> = { active };
+  if (!active) patch.include_in_collection = false;
+  const { error } = await supabase.from("stores").update(patch).in("id", ids);
+  if (error) return { error: error.message };
+  revalidateAllLocales("/admin/lojas");
+  revalidateAllLocales("/");
   return { error: null };
 }
 

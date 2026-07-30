@@ -10,7 +10,7 @@ loja, independente de quantos produtos ela tem.
 import threading
 from datetime import datetime, timezone
 
-from . import db
+from . import brands, db
 from .categorize import classify_category
 from .models import Candidate, StoreRecord
 from .normalize import normalize_dashes, prefix_brand, product_slug, title_case_pt
@@ -74,6 +74,18 @@ def _resolve_identity(cand: Candidate, store: StoreRecord) -> tuple[str, str | N
         name = prefix_brand(name, brand)
         if store.country:
             attributes["pais"] = store.country
+    else:
+        # Catálogo de marcas (migration 0021, brands/brand_aliases) é
+        # autoridade sobre nome e país da marca quando há alias cadastrado —
+        # substitui o de/para pra marca. Só pra loja NÃO própria: ali a marca
+        # já é autoridade da própria loja (ramo acima), as duas não disputam
+        # o mesmo produto. Roda antes do slug ser calculado, mesmo motivo de
+        # sempre: o slug deriva de marca+nome.
+        match = brands.lookup_brand(brand)
+        if match:
+            brand, country = match
+            if country:
+                attributes["pais"] = country
 
     return name, brand, attributes
 

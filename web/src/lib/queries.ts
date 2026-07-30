@@ -59,20 +59,36 @@ export async function listOffers(supabase: SupabaseClient): Promise<OfferListIte
   // não existirem (migration 0013 pendente) — sem isso a home fica 500 no
   // intervalo entre o deploy e a migration.
   let select = OFFER_SELECT;
+  // Idem pras colunas de visibilidade da migration 0020 (products.hidden,
+  // stores.active) — filtro em EMBEDDED resource (`product.hidden`,
+  // `store.active`) também estoura 42703 se a coluna não existir ainda,
+  // então precisa do mesmo fallback, independente do de cima (podem faltar
+  // as duas, uma só, ou nenhuma).
+  let withVisibility = true;
   for (let from = 0; ; from += PAGE_SIZE) {
-    const page = async (columns: string) =>
-      await supabase
+    const page = async (columns: string, visibility: boolean) => {
+      let query = supabase
         .from("offers")
         .select(columns)
         .eq("active", true)
-        .in("product.category", PUBLIC_CATEGORIES)
-        .order("price", { ascending: true })
-        .range(from, from + PAGE_SIZE - 1);
+        .in("product.category", PUBLIC_CATEGORIES);
+      if (visibility) {
+        query = query.eq("product.hidden", false).eq("store.active", true);
+      }
+      return await query.order("price", { ascending: true }).range(from, from + PAGE_SIZE - 1);
+    };
 
-    let { data, error } = await page(select);
+    let { data, error } = await page(select, withVisibility);
+    if (error && isMissingColumn(error) && withVisibility) {
+      // Primeiro suspeito: hidden/active (0020) ainda não existem. Tenta de
+      // novo com o mesmo select, sem o filtro de visibilidade.
+      withVisibility = false;
+      ({ data, error } = await page(select, withVisibility));
+    }
     if (error && isMissingColumn(error) && select !== OFFER_SELECT_LEGACY) {
+      // Segundo suspeito: reference_price/drop_percent (0013) também faltam.
       select = OFFER_SELECT_LEGACY;
-      ({ data, error } = await page(select));
+      ({ data, error } = await page(select, withVisibility));
     }
     if (error) throw error;
 

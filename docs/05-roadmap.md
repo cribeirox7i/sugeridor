@@ -203,6 +203,73 @@ Quatro levas seguidas, todas motivadas por uso real do admin e do site no celula
   falha de auth intermitente **não** descarta credencial; num sistema distribuído a ausência de
   determinismo é esperada.
 
+## Automação, curadoria de marcas e ajustes de UX (2026-07-30) ✅ concluída
+
+Duas levas no mesmo dia: automação pós-coleta primeiro, depois uma lista de 11 melhorias planejada
+com o usuário antes de codar (ver seção de decisões abaixo).
+
+**Automação pós-coleta** (migrations `0018`/`0019`): dois toggles em `/admin/config`
+(`auto_apply_replacements`/`auto_merge_duplicates`) ligam, sozinho no fim de cada coleta, o que até
+então era sempre manual em Ferramentas — aplicar as regras de/para ativas e mesclar duplicatas.
+Roda no site (não no scraper Python), via um passo novo no workflow do GitHub Actions que chama
+`POST /api/admin/post-collect` depois do `enrich`, autenticado por um token compartilhado e
+escrevendo com a service_role key (não há sessão de admin nesse contexto). Reaproveita a mesma
+lógica dos botões manuais (`web/src/lib/curation.ts`, extraída de `ferramentas/actions.ts`) — ver
+docs/04-conectores-ingestao.md pro detalhe da ordem (substituição → mesclagem → resync). Migration
+`0019` corrigiu de passagem um bug antigo: `ingestion_jobs` tinha RLS habilitado desde a migration
+0001 mas nunca teve policy pro role `authenticated`, então o histórico de execuções em
+`/admin/lojas` sempre mostrou "nenhuma coleta executada", mesmo com coletas reais rodando com
+sucesso.
+
+**11 melhorias, planejadas antes de codar**: usuário pediu ajuda pra "planejar o melhor formato"
+— usei `EnterPlanMode`, pesquisei o código relevante pra cada item, fiz 4 perguntas de arquitetura
+via `AskUserQuestion` (marcas: tela dedicada substitui o de/para; WhatsApp: mensagem pronta;
+loja ativa: flag novo, separado de include_in_collection; Assinaturas: reservada, não pública) e
+agrupei os 11 itens em 5 levas por acoplamento/risco, cada uma com commit e teste próprios:
+
+- **Leva A** (zero migration): tela Início removida (cada tela mostra a própria contagem agora),
+  Config movida pro fim do menu, botão "Normalizar Nomes" removido de Produtos (duplicava o de
+  Ferramentas).
+- **Leva B** (zero migration): país saiu da linha visível da barra de filtros pro recolhível
+  (botão renomeado de "Mais filtros e ordenação" pra só "Filtros"), carrossel de lojas cresceu de
+  340 pra 480px com o espaço ganho.
+- **Leva C** (migration `0020`): `products.hidden` (oculto do catálogo público, coleta continua
+  normal), `stores.active` (flag NOVO — inativa some do site E desliga a coleta, mas reativar não
+  liga a coleta de volta sozinho), `stores.whatsapp_number` + `offers.url` virou nullable (loja
+  "vendedor WhatsApp": `/go/[offerId]` monta um link `wa.me` com mensagem pronta em vez de
+  redirecionar pra um link de produto que não existe).
+- **Leva D** (sem migration de schema): país do produto normalizado (`scraper/normalize.py` ganhou
+  `_COUNTRY_ALIASES`, mesmo padrão de `_UNIT_CANONICAL` — "Escócia, Reino Unido" → "Escócia";
+  backfill ad-hoc em `supabase/scripts/normalize-product-country.sql`); categoria `assinaturas`
+  nova, reservada como souvenirs/eventos (fora do catálogo público, cadastro manual only).
+- **Leva E** (migration `0021`): catálogo de marcas (`brands`/`brand_aliases`, tela
+  `/admin/marcas`) — ver docs/03-modelo-dados.md pro schema e docs/04-conectores-ingestao.md pra
+  onde a busca entra no scraper e no cadastro manual. Substitui o de/para pra marca (regras antigas
+  continuam funcionando, só o formulário de regra nova não oferece mais essa opção).
+
+Além disso, dois cards do público foram corrigidos na sessão anterior a esta lista (mesmo dia):
+**um card por produto, não por oferta** (produto mesclado em duas lojas mostrava dois cards
+idênticos — efeito esperado da mesclagem, mas confuso visualmente) e o popover "Outras lojas" →
+**"Preços"**, que passou a mostrar todos os preços, inclusive o que já está no card.
+
+### Aprendizados desta leva
+
+- **Filtro em embedded resource também quebra com coluna ausente**: `.eq("product.hidden", false)`
+  estoura 42703 igual a um SELECT com coluna que não existe — precisou do mesmo fallback progressivo
+  já usado pras colunas de queda (0013), só que encadeado (hidden/active E reference_price/drop_percent
+  podem faltar independentemente). Testado contra o banco real SEM a migration 0020: o site continuou
+  funcionando normalmente.
+- **O mesmo cuidado vale pro scraper Python**: a query de `run.py` que decide quais lojas coletar
+  ganhou `active=eq.true`, e uma migration pendente ali quebraria a coleta INTEIRA (não só uma
+  página) — por isso o `except requests.HTTPError` com o mesmo teste de código `42703`.
+- **Nem toda normalização de dado precisa de tabela nova**: o país do produto ("Escócia, Reino
+  Unido") foi resolvido com um dicionário pequeno no scraper, não uma tela — a marca (item 1) já
+  tinha justificativa de tela por outro motivo (o usuário queria gerenciar nome+país juntos, caso a
+  caso), então os dois pedidos pareciam parecidos mas mereciam soluções de tamanhos diferentes.
+- **Reaproveitar a busca por fold() entre Python e TS é mais seguro que reaproveitar uma regra de
+  negócio**: o lookup de marca é um SELECT (fold + match exato), não uma fórmula como o slug — o
+  mesmo risco de dessincronizar Python↔TS que já mordeu este projeto 3 vezes é bem menor aqui.
+
 ## Fase 4 — E-mail ⏸️ pausada
 - Caixa dedicada + credenciais IMAP.
 - Cron de leitura + normalizador (Claude API) aplicado a e-mails com múltiplas ofertas por
@@ -226,20 +293,21 @@ Quatro levas seguidas, todas motivadas por uso real do admin e do site no celula
   engine genérica; `category` é outro eixo (o que é bebida vs. brinde/copo/ingresso).
 
 ## Pendências operacionais conhecidas
-- **Botão "Rodar coleta" do admin ainda não funciona**: faltam `GITHUB_PAT`/`GITHUB_OWNER`/
-  `GITHUB_REPO` no ambiente do Vercel. As coletas são disparadas pela aba Actions ("Run workflow",
-  nunca "Re-run jobs").
-- **Migration `0019` escrita, ainda não rodada**: `ingestion_jobs` tem RLS habilitado desde a
-  migration 0001 mas nunca teve policy de leitura pro role `authenticated` — a tela de histórico de
-  execuções em `/admin/lojas` sempre mostrou "Nenhuma coleta executada ainda", mesmo com coletas
-  reais rodando com sucesso (o scraper grava via service_role, que ignora RLS; o admin lê pela
-  sessão normal, que RLS filtrava sem erro).
-- **Automação pós-coleta (de/para + mesclagem sozinha) não roda ainda**: os toggles existem em
-  `/admin/config` mas faltam os quatro secrets descritos em
-  [02-arquitetura.md](02-arquitetura.md#webhook-do-github-actions-de-volta-pro-site-automação-pós-coleta)
-  — `SITE_BASE_URL`/`AUTOMATION_TOKEN` no repositório do GitHub, `AUTOMATION_TOKEN`/
-  `SUPABASE_SERVICE_ROLE_KEY` no Vercel. Sem eles o passo do workflow avisa e não faz nada (não
-  quebra a coleta).
+- **Botão "Rodar coleta" do admin**: `GITHUB_PAT`/`GITHUB_OWNER`/`GITHUB_REPO` configurados no
+  Vercel e confirmados funcionando (2026-07-30).
+- **Migrations `0019`, `0020` e `0021` escritas, ainda não confirmadas como rodadas**: `0019`
+  corrige o RLS de `ingestion_jobs` (histórico de execuções em `/admin/lojas` sempre mostrando
+  "nenhuma coleta"); `0020` adiciona `products.hidden`/`stores.active`/`stores.whatsapp_number` +
+  `offers.url` nullable; `0021` cria `brands`/`brand_aliases`. O código tolera a ausência das três
+  (fallback sem quebrar o site nem a coleta, ver "Aprendizados" da leva de 2026-07-30 acima), mas
+  nenhuma tela/campo novo funciona de verdade antes de rodar.
+- **Automação pós-coleta (de/para + mesclagem sozinha) configurada e confirmada** (2026-07-30):
+  os quatro secrets (`SITE_BASE_URL`/`AUTOMATION_TOKEN` no GitHub, `AUTOMATION_TOKEN`/
+  `SUPABASE_SERVICE_ROLE_KEY` no Vercel, ver
+  [02-arquitetura.md](02-arquitetura.md#webhook-do-github-actions-de-volta-pro-site-automação-pós-coleta))
+  estão cadastrados. Os dois toggles em `/admin/config` continuam desligados por padrão — ligar é
+  decisão do usuário, sobretudo a mesclagem automática (reverte uma decisão antiga do projeto de
+  nunca mesclar sem revisão humana).
 - **Agendamento** (`schedule:`) segue não configurado por decisão do usuário — a intenção é rodar
   1x/dia manualmente.
 - **Central da Cerveja** responde 403 ao scraper: é o Cloudflare barrando o IP do runner (do IP local

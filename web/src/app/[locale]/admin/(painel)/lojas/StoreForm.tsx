@@ -28,6 +28,7 @@ export default function StoreForm({
   defaultBrandAlias,
   defaultExpirationDays,
   globalExpirationDays,
+  defaultWhatsappNumber,
 }: {
   // Ausente = loja nova, ainda não salva — o painel "Detectar campos" (txt)
   // não tem produto anterior pra recuperar nesse caso, então já nasce
@@ -47,6 +48,9 @@ export default function StoreForm({
   // placeholder, pra deixar claro qual valor está valendo quando em branco.
   defaultExpirationDays: string;
   globalExpirationDays: number;
+  // Vazio = loja normal (site/scraper). Preenchido = "vendedor WhatsApp":
+  // "Ver oferta" manda pro wa.me em vez de um link de produto (migration 0020).
+  defaultWhatsappNumber: string;
 }) {
   const t = useTranslations("admin.stores");
   const tCommon = useTranslations("admin.common");
@@ -184,6 +188,21 @@ export default function StoreForm({
             />
             <span className="text-xs text-neutral-500 dark:text-neutral-600">
               {t("expirationHint")}
+            </span>
+          </label>
+
+          <label className="space-y-1">
+            <span className={labelCls}>{t("whatsappNumber")}</span>
+            <ClearableInput
+              name="whatsapp_number"
+              inputMode="numeric"
+              defaultValue={defaultWhatsappNumber}
+              placeholder="5511999999999"
+              className={inputCls}
+              clearLabel={tCommon("clear")}
+            />
+            <span className="text-xs text-neutral-500 dark:text-neutral-600">
+              {t("whatsappNumberHint")}
             </span>
           </label>
         </div>

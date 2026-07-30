@@ -8,7 +8,7 @@ import ViewToggle from "@/components/admin/ViewToggle";
 import { adminUrl } from "@/lib/adminNav";
 import SearchBox from "@/components/admin/SearchBox";
 import ProductForm from "./ProductForm";
-import { deleteProduct, normalizeExistingProductNames } from "./actions";
+import { deleteProduct, toggleProductHidden } from "./actions";
 import type { ProductCategory } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +19,7 @@ const CATEGORY_KEY: Record<ProductCategory, string> = {
   copo: "categoryCopo",
   souvenirs: "categorySouvenirs",
   eventos: "categoryEventos",
+  assinaturas: "categoryAssinaturas",
 };
 
 function categoryLabel(t: (key: string) => string, category: ProductCategory): string {
@@ -34,12 +35,9 @@ export default async function ProdutosPage({
     error?: string;
     q?: string;
     view?: string;
-    normalized?: string;
-    conflitos?: string;
-    erro?: string;
   }>;
 }) {
-  const { edit, new: isNew, error, q, view, normalized, conflitos, erro } = await searchParams;
+  const { edit, new: isNew, error, q, view } = await searchParams;
   const supabase = await createClient();
   const t = await getTranslations("admin.products");
   const tCommon = await getTranslations("admin.common");
@@ -81,7 +79,14 @@ export default async function ProdutosPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{t("title")}</h1>
+        <div>
+          <h1 className="text-xl font-semibold">{t("title")}</h1>
+          {/* Substitui a tela Início removida (item 5 da leva de melhorias) —
+              a contagem que vivia lá agora mora em cada tela. */}
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            {t("count", { count: allProducts.length })}
+          </p>
+        </div>
         <Link
           href={adminUrl("/admin/produtos", listParams, { new: "1" })}
           className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
@@ -92,17 +97,11 @@ export default async function ProdutosPage({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <SearchBox placeholder={t("searchPlaceholder")} defaultValue={q} view={view} />
-        <div className="flex items-center gap-3">
-          <ViewToggle defaultView="list" />
-          <form action={normalizeExistingProductNames}>
-            <button
-              type="submit"
-              className="rounded border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
-            >
-              {t("normalizeNames")}
-            </button>
-          </form>
-        </div>
+        {/* "Normalizar nomes" saiu daqui (item 7 da leva de melhorias) — já
+            existe em /admin/ferramentas, que é onde as outras ações de
+            curadoria em lote vivem; duplicar o botão em duas telas confundia
+            sobre qual usar. */}
+        <ViewToggle defaultView="list" />
       </div>
 
       {error === "delete-blocked" && (
@@ -113,19 +112,6 @@ export default async function ProdutosPage({
       {error === "save-failed" && (
         <p className="rounded bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
           {t("saveFailed")}
-        </p>
-      )}
-      {erro && (
-        <p className="rounded bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-          {t("actionFailed")}
-        </p>
-      )}
-      {normalized !== undefined && (
-        <p className="rounded bg-green-100 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
-          {t("normalizeResult", {
-            count: Number(normalized),
-            conflicts: Number(conflitos ?? 0),
-          })}
         </p>
       )}
 
@@ -148,12 +134,16 @@ export default async function ProdutosPage({
                 <th className="px-4 py-2 font-medium">{t("brandColumn")}</th>
                 <th className="px-4 py-2 font-medium">{t("typeColumn")}</th>
                 <th className="px-4 py-2 font-medium">{t("categoryColumn")}</th>
+                <th className="px-4 py-2 font-medium">{t("hiddenColumn")}</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
             <tbody>
               {products.map((p) => (
-                <tr key={p.id} className="border-t border-neutral-200 dark:border-neutral-800">
+                <tr
+                  key={p.id}
+                  className={`border-t border-neutral-200 dark:border-neutral-800 ${p.hidden ? "opacity-50" : ""}`}
+                >
                   <td className="px-4 py-2">{p.name}</td>
                   <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{p.brand ?? "—"}</td>
                   <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
@@ -161,6 +151,22 @@ export default async function ProdutosPage({
                   </td>
                   <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
                     {categoryLabel(t, p.category)}
+                  </td>
+                  <td className="px-4 py-2">
+                    <form action={toggleProductHidden}>
+                      <input type="hidden" name="id" value={p.id} />
+                      <input type="hidden" name="hidden" value={String(p.hidden)} />
+                      <button
+                        type="submit"
+                        className={
+                          p.hidden
+                            ? "rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+                            : "rounded bg-green-100 px-2 py-1 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                        }
+                      >
+                        {p.hidden ? t("hiddenOn") : t("hiddenOff")}
+                      </button>
+                    </form>
                   </td>
                   <td className="px-4 py-2 text-right">
                     <div className="flex justify-end gap-2">
@@ -189,9 +195,9 @@ export default async function ProdutosPage({
           {products.map((p) => (
             <div
               key={p.id}
-              className="flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+              className={`flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900 ${p.hidden ? "opacity-50" : ""}`}
             >
-              <div className="flex aspect-square items-center justify-center bg-neutral-50 dark:bg-neutral-950">
+              <div className="flex aspect-square items-center justify-center bg-white">
                 {p.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.image_url} alt={p.name} className="h-full w-full object-contain" />
@@ -207,13 +213,27 @@ export default async function ProdutosPage({
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">
                   {p.product_type?.name ?? "—"}
                 </p>
-                <div className="mt-auto flex gap-2 pt-2">
+                <div className="mt-auto flex flex-wrap gap-2 pt-2">
                   <Link
                     href={adminUrl("/admin/produtos", listParams, { edit: p.id })}
                     className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
                   >
                     {t("edit")}
                   </Link>
+                  <form action={toggleProductHidden}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <input type="hidden" name="hidden" value={String(p.hidden)} />
+                    <button
+                      type="submit"
+                      className={
+                        p.hidden
+                          ? "rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+                          : "rounded bg-green-100 px-2 py-1 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                      }
+                    >
+                      {p.hidden ? t("hiddenOn") : t("hiddenOff")}
+                    </button>
+                  </form>
                   <DeleteButton
                     action={deleteProduct}
                     id={p.id}

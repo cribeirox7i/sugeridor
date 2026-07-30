@@ -25,7 +25,7 @@ from ..config import DEFAULT_MAX_ITEMS_PER_STORE
 from ..extract import absolute_url
 from ..http import fetch
 from ..models import Candidate, StoreRecord
-from ..normalize import clean_product_name, parse_volume_ml
+from ..normalize import clean_product_name, normalize_country, parse_volume_ml
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 # Nomes de atributo (como a plataforma FBits rotula) -> chave do nosso schema.
@@ -60,6 +60,8 @@ def _extract_fbits_attributes(html_text: str) -> dict:
                     attributes[key] = float(num.group(0).replace(",", "."))
                 except ValueError:
                     pass
+        elif key == "pais":
+            attributes[key] = normalize_country(value)
         else:
             attributes[key] = value
     return attributes

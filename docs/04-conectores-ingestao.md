@@ -73,6 +73,16 @@ não é como ficou implementado — a versão real, mais simples, não precisou 
   própria: no marketplace a marca vem do vendor e traz razão social, distribuidor ou placeholder, e
   prefixar pioraria o nome. Tudo isso acontece **antes** do slug ser calculado — o slug deriva de
   marca+nome, então corrigir depois deixaria a chave errada e a coleta seguinte criaria duplicata.
+- **Catálogo de marcas** (`brands`/`brand_aliases`, migration 0021, editável em `/admin/marcas`):
+  pra loja NÃO própria, `scraper/brands.py::lookup_brand` busca a marca da fonte (fold — minúsculas,
+  sem acento/pontuação) contra as marcas/aliases cadastrados, ANTES do passo acima. Achou → marca
+  vira o nome canônico e, se a marca tiver país cadastrado, `attributes.pais` também é sobrescrito.
+  Não achou → segue com o que a fonte trouxe, igual a antes desta migration. Substitui o de/para
+  (`text_replacements` com `target='brand'`) como autoridade sobre marca — ver
+  [03-modelo-dados.md](03-modelo-dados.md) pro schema. Cacheado em memória 1x por execução
+  (`run.py` chama `brands.load_brands()` antes do `ThreadPoolExecutor`, mesmo padrão de
+  `categorize.load_keywords`). Espelhado em TS (`web/src/lib/brands.ts`) pro cadastro manual de
+  produto fazer a mesma busca.
 - **Preço inválido nunca é gravado**: candidato com preço `<= 0` é descartado antes de tocar no
   banco; o próprio banco também rejeita via `check (price > 0)` em `offers`/`price_history`
   (defesa em profundidade, não só a aplicação).

@@ -6,7 +6,13 @@ import { Link } from "@/i18n/navigation";
 import type { Store } from "@/lib/types";
 import DeleteButton from "@/components/admin/DeleteButton";
 import DetectPlatformCardButton from "./DetectPlatformCardButton";
-import { deleteStores, setStoresCollection, toggleStoreCollection } from "./actions";
+import {
+  deleteStores,
+  setStoresCollection,
+  toggleStoreCollection,
+  setStoresActive,
+  toggleStoreActive,
+} from "./actions";
 
 type ServerAction = (formData: FormData) => void | Promise<void>;
 
@@ -68,6 +74,16 @@ export default function StoresTable({
     });
   }
 
+  function bulkActive(active: boolean) {
+    if (selected.size === 0) return;
+    setBulkError(null);
+    startTransition(async () => {
+      const { error } = await setStoresActive([...selected], active);
+      if (error) setBulkError(error);
+      else setSelected(new Set());
+    });
+  }
+
   // Dispara o workflow só pras lojas marcadas (o endpoint aceita a lista e a
   // repassa como input; ver api/admin/scrape/route.ts).
   function collectSelected() {
@@ -121,6 +137,22 @@ export default function StoresTable({
           </button>
           <button
             type="button"
+            onClick={() => bulkActive(true)}
+            disabled={isPending}
+            className="rounded border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+          >
+            {t("activateSelected")}
+          </button>
+          <button
+            type="button"
+            onClick={() => bulkActive(false)}
+            disabled={isPending}
+            className="rounded border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:hover:bg-neutral-800"
+          >
+            {t("deactivateSelected")}
+          </button>
+          <button
+            type="button"
             onClick={bulkDelete}
             disabled={isPending}
             className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-300 dark:hover:bg-red-950"
@@ -157,6 +189,7 @@ export default function StoresTable({
               <th className="px-4 py-2 font-medium">{t("nameColumn")}</th>
               <th className="px-4 py-2 font-medium">{t("site")}</th>
               <th className="px-4 py-2 font-medium">{t("platformColumn")}</th>
+              <th className="px-4 py-2 font-medium">{t("activeColumn")}</th>
               <th className="px-4 py-2 font-medium">{t("collectionColumn")}</th>
               <th className="px-4 py-2" />
             </tr>
@@ -190,6 +223,19 @@ export default function StoresTable({
                 </td>
                 <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
                   {s.platform ?? "—"}
+                </td>
+                <td className="px-4 py-2">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={s.active}
+                      onChange={(e) => startTransition(() => toggleStoreActive(s.id, e.target.checked))}
+                      className="h-4 w-4 rounded border-neutral-300 dark:border-neutral-700"
+                    />
+                    <span className="text-xs text-neutral-500">
+                      {s.active ? t("activeOn") : t("activeOff")}
+                    </span>
+                  </label>
                 </td>
                 <td className="px-4 py-2">
                   {s.platform ? (

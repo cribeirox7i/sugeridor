@@ -11,16 +11,23 @@ export async function saveOffer(formData: FormData) {
   const store_id = formData.get("store_id") as string;
   const priceRaw = (formData.get("price") as string)?.replace(",", ".");
   const price = Number(priceRaw);
-  const url = (formData.get("url") as string)?.trim();
+  const url = ((formData.get("url") as string) || "").trim() || null;
   const currency = ((formData.get("currency") as string) || "BRL").trim();
 
-  // Preço <= 0 nunca é uma oferta válida (mesmo critério do scraper em
-  // scraper/pipeline.py) — nem chega a tentar salvar; o banco também
-  // rejeitaria via constraint (migration 0010), mas validar aqui dá um erro
-  // mais claro que só "não foi possível salvar".
-  if (!product_id || !store_id || !url || !Number.isFinite(price) || price <= 0) return;
+  if (!product_id || !store_id || !Number.isFinite(price) || price <= 0) return;
 
   const supabase = await createClient();
+
+  // URL só é obrigatória pra loja normal — loja "vendedor WhatsApp"
+  // (migration 0020, stores.whatsapp_number) não tem link de produto: "Ver
+  // oferta" manda pro wa.me da loja em /go/[offerId] (ver route.ts).
+  const { data: store } = await supabase
+    .from("stores")
+    .select("whatsapp_number")
+    .eq("id", store_id)
+    .maybeSingle();
+  if (!url && !store?.whatsapp_number) return;
+
   const now = new Date().toISOString();
 
   // Uma oferta por (produto, loja): upsert. Cadastro manual sempre grava como

@@ -179,9 +179,13 @@ export default async function Home({
               lojas) esmagava a coluna até largura ZERO e a busca desaparecia;
             - sem largura definida no carrossel, `shrink-0` na coluna fazia a
               largura dela virar max-content — e ao abrir "Mais filtros" a
-              caixa de campos (1417px) vazava a faixa inteira. */}
+              caixa de campos (1417px) vazava a faixa inteira.
+            Piso reduzido de 520 pra 280: país saiu da linha visível do
+            FilterBar (foi pro recolhível, junto dos outros filtros), então a
+            linha principal agora é só busca + botão "Filtros" — cabe em bem
+            menos espaço. A folga sobrando foi pro carrossel (340 → 480). */}
         <div className={`${PUBLIC_CONTAINER} flex flex-col gap-x-4 gap-y-3 lg:flex-row lg:items-start`}>
-          <div className="lg:min-w-[520px] lg:flex-1">
+          <div className="lg:min-w-[280px] lg:flex-1">
             <FiltersAccordion activeCount={activeFilterCount}>
               <FilterBar
                 estilos={estilos}

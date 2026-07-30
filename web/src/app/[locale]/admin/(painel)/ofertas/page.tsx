@@ -145,14 +145,17 @@ export default async function OfertasPage({
 
         <label className="space-y-1 sm:col-span-2">
           <span className={labelCls}>{t("url")}</span>
+          {/* Não é `required`: loja "vendedor WhatsApp" (whatsapp_number
+              cadastrado, ver StoreForm) não tem link de produto — o servidor
+              valida que pelo menos um dos dois exista (ver ofertas/actions.ts). */}
           <ClearableInput
             name="url"
             type="url"
-            required
             placeholder="https://..."
             className={inputCls}
             clearLabel={tCommon("clear")}
           />
+          <span className="text-xs text-neutral-500 dark:text-neutral-600">{t("urlHint")}</span>
         </label>
       </div>
 
@@ -176,7 +179,16 @@ export default async function OfertasPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{t("title")}</h1>
+        <div>
+          <h1 className="text-xl font-semibold">{t("title")}</h1>
+          {/* Substitui a tela Início removida (item 5 da leva de melhorias) —
+              a contagem que vivia lá agora mora em cada tela. Conta o TOTAL
+              (allOffers), não o filtrado — é a mesma noção de "cadastradas"
+              das outras duas telas. */}
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+            {t("count", { count: allOffers.length })}
+          </p>
+        </div>
         {!missingPrereq && (
           <Link
             href={adminUrl("/admin/ofertas", listParams, { new: "1" })}

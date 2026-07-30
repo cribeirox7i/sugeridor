@@ -191,6 +191,24 @@ def product_slug(brand: str | None, name: str) -> str:
     return slugify(f"{brand or ''} {name}")
 
 
+# País do PRODUTO (attributes.pais) vem como texto livre do scraper — cada
+# site escreve à sua maneira. Poucas variantes sujas conhecidas até agora;
+# mapa pequeno (mesmo padrão de _UNIT_CANONICAL) em vez de uma tabela/tela
+# nova só pra isso. Acrescentar aqui conforme aparecer variante nova.
+_COUNTRY_ALIASES = {
+    "escócia, reino unido": "Escócia",
+}
+
+
+def normalize_country(pais: str) -> str:
+    """Forma canônica de país de produto — nome único, sem combinações como
+    "Escócia, Reino Unido" (o pedido foi só "Escócia"). Só existe no Python:
+    o país do produto entra no sistema unicamente por aqui (extração de HTML,
+    ver jsonld.py::_extract_fbits_attributes) — nenhum caminho em TS lê texto
+    bruto de país, então não há o que espelhar por ora."""
+    return _COUNTRY_ALIASES.get(pais.strip().lower(), pais)
+
+
 def parse_volume_ml(name: str) -> int | None:
     """Extrai volume em ml do nome. Trata '330ml', '355 ml', '500ML', '1L', '1,5L'."""
     # litros
