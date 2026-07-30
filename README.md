@@ -38,9 +38,16 @@ ferramentas de curadoria e reorganização do catálogo público — ver
   apelido da loja e é prefixada ao nome quando falta. O `canonical_slug` é a identidade do produto e
   inclui a marca de propósito, para não agregar ofertas de produtos diferentes de mesmo nome.
 - Admin com 7 telas: Início, **Lojas** (CRUD + seleção em lote + disparo da coleta + histórico de
-  execuções — absorveu a antiga tela Coleta), Produtos, Ofertas, Classificação (palavras-chave de
-  categoria), **Ferramentas** (curadoria em lote, regras de/para aplicáveis uma a uma, e duas listas
-  de duplicados com mesclar/ignorar em lote) e Config (alertas, expiração e logomarca).
+  execuções — absorveu a antiga tela Coleta; loja nova nasce **própria** por padrão, não
+  marketplace), Produtos, Ofertas, Classificação (palavras-chave de categoria), **Ferramentas**
+  (curadoria em lote, regras de/para aplicáveis uma a uma, e duas listas de duplicados com
+  mesclar/ignorar em lote) e Config (alertas, expiração, logomarca e **automação pós-coleta**).
+- **Automação pós-coleta** (opt-in, dois toggles em `/admin/config`): aplicar as regras de/para
+  ativas e mesclar duplicatas sozinho no fim de cada coleta, sem precisar voltar no admin. Roda no
+  site (não no scraper Python) via um passo novo no workflow do GitHub Actions que chama uma rota
+  autenticada depois do `enrich` — reaproveita a mesma lógica dos botões manuais de Ferramentas
+  (`web/src/lib/postCollect.ts`). Exige secrets novos ainda não configurados, ver
+  [docs/05-roadmap.md](docs/05-roadmap.md).
 - Scraper Python config-driven por plataforma (vtex/shopify/tray/jsonld/html/txt), disparado
   manualmente via GitHub Actions em **4 shards paralelos**, com rate limit por host, gravação em
   lote no banco, leituras paginadas, guard-rail de 200 produtos/loja, classificação de categoria por
@@ -55,7 +62,9 @@ ferramentas de curadoria e reorganização do catálogo público — ver
   histórico a cada render.
 - Preço inválido (`<= 0`) nunca é gravado — descartado na aplicação e bloqueado por constraint no
   banco (defesa em profundidade).
-- Migrations aplicadas: `0001` a `0017`.
+- Migrations aplicadas: `0001` a `0018`. `0019` (corrige RLS de `ingestion_jobs` — a tela de
+  histórico de execuções em `/admin/lojas` sempre devolveu 0 linhas, mesmo com coleta rodando com
+  sucesso) escrita, **ainda não rodada** pelo usuário.
 
 **Pausado por decisão do usuário** (evitar dependência de API paga do Claude por ora): Fase 4
 (e-mail como fonte), Fase 5 (WhatsApp via print+OCR), e envio de e-mail de verdade para os

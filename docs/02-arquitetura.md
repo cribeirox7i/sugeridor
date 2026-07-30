@@ -101,6 +101,30 @@ já custou uma sessão inteira de diagnóstico — 7 re-runs reproduzindo erros 
 Quando fizer sentido automatizar, basta adicionar um gatilho `schedule:` ao mesmo arquivo `.yml`
 — o botão manual continua funcionando em paralelo, não é uma migração, é um acréscimo.
 
+## Webhook do GitHub Actions de volta pro site (automação pós-coleta)
+
+Sentido contrário do disparo acima: depois que a coleta e o `enrich` terminam, o próprio workflow
+chama de volta o site (`POST /api/admin/post-collect`) pra rodar a automação de de/para + mesclagem
+descrita em [04-conectores-ingestao.md](04-conectores-ingestao.md), se ligada em `/admin/config`.
+Era o webhook que este documento já previa pra revalidação de cache; a primeira implementação dele
+acabou sendo esta.
+
+Como não há sessão de admin nesse contexto (é uma Action rodando, não alguém logado), a
+autenticação é um **token compartilhado** e a escrita usa a **service_role key** (que ignora RLS),
+não o cliente de cookie das Server Actions normais. Isso exige quatro variáveis novas, nenhuma
+delas configurada ainda:
+
+| Onde | Variável | Uso |
+|---|---|---|
+| Secrets do repositório (GitHub) | `SITE_BASE_URL` | URL do site (ex: `https://sugeridor.vercel.app`) — sem ela o passo do workflow só avisa e não chama nada |
+| Secrets do repositório (GitHub) | `AUTOMATION_TOKEN` | Mesmo valor da variável abaixo no Vercel — é o que autentica a chamada |
+| Ambiente do servidor (Vercel) | `AUTOMATION_TOKEN` | A rota compara o header `Authorization: Bearer <token>` contra este valor; sem bater, 401 |
+| Ambiente do servidor (Vercel) | `SUPABASE_SERVICE_ROLE_KEY` | Só pra esta rota (nunca exposta ao navegador) — sem ela a rota devolve 503 |
+
+Sem os dois secrets do GitHub configurados, o passo do workflow **não falha** o job: só imprime um
+aviso e sai. Com eles configurados mas a rota respondendo erro (token errado, secret faltando no
+Vercel), o passo falha de propósito — é config errada de verdade, não ausência de recurso opcional.
+
 ## Escalabilidade no plano free
 
 - **GitHub Actions**: o repositório é **público**, então os minutos de runner são gratuitos e

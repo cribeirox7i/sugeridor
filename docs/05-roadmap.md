@@ -229,6 +229,17 @@ Quatro levas seguidas, todas motivadas por uso real do admin e do site no celula
 - **Botão "Rodar coleta" do admin ainda não funciona**: faltam `GITHUB_PAT`/`GITHUB_OWNER`/
   `GITHUB_REPO` no ambiente do Vercel. As coletas são disparadas pela aba Actions ("Run workflow",
   nunca "Re-run jobs").
+- **Migration `0019` escrita, ainda não rodada**: `ingestion_jobs` tem RLS habilitado desde a
+  migration 0001 mas nunca teve policy de leitura pro role `authenticated` — a tela de histórico de
+  execuções em `/admin/lojas` sempre mostrou "Nenhuma coleta executada ainda", mesmo com coletas
+  reais rodando com sucesso (o scraper grava via service_role, que ignora RLS; o admin lê pela
+  sessão normal, que RLS filtrava sem erro).
+- **Automação pós-coleta (de/para + mesclagem sozinha) não roda ainda**: os toggles existem em
+  `/admin/config` mas faltam os quatro secrets descritos em
+  [02-arquitetura.md](02-arquitetura.md#webhook-do-github-actions-de-volta-pro-site-automação-pós-coleta)
+  — `SITE_BASE_URL`/`AUTOMATION_TOKEN` no repositório do GitHub, `AUTOMATION_TOKEN`/
+  `SUPABASE_SERVICE_ROLE_KEY` no Vercel. Sem eles o passo do workflow avisa e não faz nada (não
+  quebra a coleta).
 - **Agendamento** (`schedule:`) segue não configurado por decisão do usuário — a intenção é rodar
   1x/dia manualmente.
 - **Central da Cerveja** responde 403 ao scraper: é o Cloudflare barrando o IP do runner (do IP local

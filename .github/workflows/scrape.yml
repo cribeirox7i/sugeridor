@@ -80,3 +80,25 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python -m scraper.run --enrich-only
+
+      # Aplica de/para e mescla duplicatas sozinho, se ligado em /admin/config
+      # (site_settings.auto_apply_replacements/auto_merge_duplicates, migration
+      # 0018) — ver web/src/lib/postCollect.ts. `if: always()` porque vale
+      # tentar mesmo se o passo de enriquecimento acima tiver falhado (ele
+      # mesmo já captura suas próprias exceções e quase nunca falha de verdade).
+      # Sem os dois secrets (recurso novo, opcional), só avisa e não quebra o
+      # job — mesmo espírito do botão "Rodar coleta", que também tolera faltar
+      # configuração. Com os secrets presentes, uma resposta de erro FALHA o
+      # job (visível na aba Actions), porque aí é config errada de verdade.
+      - name: Automação pós-coleta (de/para + mesclagem, se ligada em /admin/config)
+        if: always()
+        env:
+          SITE_BASE_URL: ${{ secrets.SITE_BASE_URL }}
+          AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+        run: |
+          if [ -z "$SITE_BASE_URL" ] || [ -z "$AUTOMATION_TOKEN" ]; then
+            echo "SITE_BASE_URL/AUTOMATION_TOKEN não configurados nos secrets do repositório — pulando automação pós-coleta."
+            exit 0
+          fi
+          curl --fail --show-error -X POST "$SITE_BASE_URL/api/admin/post-collect" \
+            -H "Authorization: Bearer $AUTOMATION_TOKEN"

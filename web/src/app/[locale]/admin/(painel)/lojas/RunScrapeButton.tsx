@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 type State = { kind: "idle" | "loading" | "ok" | "error"; msg?: string };
 
 export default function RunScrapeButton() {
-  const t = useTranslations("admin.collection");
+  const t = useTranslations("admin.stores");
   const [state, setState] = useState<State>({ kind: "idle" });
   const router = useRouter();
 

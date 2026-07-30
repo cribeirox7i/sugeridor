@@ -45,6 +45,22 @@ export async function saveOfferExpirationDays(formData: FormData) {
   revalidateAllLocales("/admin/config");
 }
 
+// Os dois toggles de automação pós-coleta (migration 0018) — ver
+// web/src/lib/postCollect.ts. Checkbox desmarcado não manda o campo no
+// FormData, então ausência = false (não "não mudou").
+export async function saveAutomationSettings(formData: FormData) {
+  const auto_apply_replacements = formData.get("auto_apply_replacements") === "on";
+  const auto_merge_duplicates = formData.get("auto_merge_duplicates") === "on";
+
+  const supabase = await createClient();
+  await supabase
+    .from("site_settings")
+    .update({ auto_apply_replacements, auto_merge_duplicates })
+    .eq("id", 1);
+
+  revalidateAllLocales("/admin/config");
+}
+
 export async function toggleAlertActive(formData: FormData) {
   const id = formData.get("id") as string;
   const active = formData.get("active") === "true";

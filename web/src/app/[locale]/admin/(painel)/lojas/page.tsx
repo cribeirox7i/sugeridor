@@ -88,10 +88,13 @@ export default async function LojasPage({
       {view && <input type="hidden" name="view" value={view} />}
       {q && <input type="hidden" name="q" value={q} />}
 
+      {/* 'propria' como padrão pra loja NOVA: a maioria das lojas cadastradas
+          até aqui é cervejaria própria, não marketplace (mesmo padrão do
+          default da coluna no banco, migration 0018). */}
       <StoreForm
         storeId={editing?.id}
         defaultName={editing?.name ?? ""}
-        defaultStoreType={editing?.store_type ?? "marketplace"}
+        defaultStoreType={editing?.store_type ?? "propria"}
         defaultCountry={editing?.country ?? "Brasil"}
         defaultSiteUrl={editing?.site_url ?? ""}
         defaultPlatform={editing?.platform ?? ""}

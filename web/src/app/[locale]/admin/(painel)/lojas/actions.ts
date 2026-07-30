@@ -16,7 +16,10 @@ export async function saveStore(formData: FormData) {
   const description = descriptionRaw ? normalizeDashes(descriptionRaw) : null;
   const platform = ((formData.get("platform") as string) || "").trim() || null;
   const configRaw = ((formData.get("config") as string) || "").trim();
-  const store_type = ((formData.get("store_type") as string) || "marketplace").trim();
+  // Rede de segurança se o campo vier vazio por algum motivo — o formulário
+  // sempre manda um valor (StoreForm inicializa com "propria", mesmo default
+  // da coluna no banco desde a migration 0018).
+  const store_type = ((formData.get("store_type") as string) || "propria").trim();
   const countryRaw = ((formData.get("country") as string) || "").trim();
   const country = countryRaw ? normalizeDashes(countryRaw) : "Brasil";
   // Apelido vazio = usa o nome da loja (ver migration 0015), por isso null.

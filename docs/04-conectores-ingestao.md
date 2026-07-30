@@ -220,3 +220,32 @@ preço de um produto que já existe no catálogo?
 Esse é o ponto mais delicado do sistema (falso positivo = mistura ofertas de produtos diferentes;
 falso negativo = duplica o mesmo produto). Vale começar com o limiar mais conservador (prefere
 criar produto novo a juntar errado) e ir ajustando com o uso real.
+
+## Automação pós-coleta (opt-in)
+
+Até a migration 0018, aplicar as regras de/para e mesclar duplicatas era sempre manual — toda
+coleta nova, o usuário tinha que voltar em `/admin/ferramentas` e clicar de novo. Dois toggles em
+`site_settings` (`auto_apply_replacements`/`auto_merge_duplicates`, editáveis em `/admin/config`)
+ligam isso sozinho, na ordem:
+
+1. **Aplicar TODAS as regras de/para ativas**, uma de cada vez (não em bloco) e na mesma ordem da
+   tela — exatamente o que clicar "Aplicar" em cada regra, em sequência, já fazia. Uma regra nunca
+   grava o que colidiria com outro produto (mesma regra de segurança do botão manual); o que colide
+   vira candidato a duplicata pro passo seguinte.
+2. **Mesclar as duplicatas restantes** — por nome e as que as regras ativas ainda criariam —
+   pulando qualquer par marcado como "ignorar" em Ferramentas (`ignored_duplicates`). É a mesma
+   função por trás do botão "Mesclar" em lote, não uma regra nova.
+3. **Ressincronizar os slugs** de todo o catálogo — sempre, se o passo 2 rodou. Essencial: o
+   sobrevivente de uma mesclagem por nome costuma ficar com um slug ANTIGO, fora da fórmula atual, e
+   sem isto a coleta seguinte criaria uma duplicata dele de novo.
+
+**Onde roda**: no site (Next.js), não no scraper Python — reaproveita a mesma lógica dos botões
+manuais (`web/src/lib/replacements.ts`/`duplicates.ts`/`merge.ts`/`curation.ts`) em vez de
+reescrevê-la em Python, o que já causou bugs reais neste projeto quando as duas linguagens saíram
+dessincronizadas (fórmula do slug, separação de medida, comparação de marca). O workflow do GitHub
+Actions chama uma rota (`POST /api/admin/post-collect`) depois do job `enrich`, autenticada por um
+token compartilhado (não há sessão de admin nesse contexto) e escrevendo com a service_role key
+(`web/src/lib/supabase/serviceClient.ts`, ignora RLS). Ver `docs/02-arquitetura.md` pros secrets
+necessários — ainda não configurados.
+
+Os dois toggles nascem **desligados**: sem eles, nada muda no comportamento de hoje.

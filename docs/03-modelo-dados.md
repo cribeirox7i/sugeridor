@@ -66,9 +66,11 @@ logo_url      text nullable
 description   text nullable
 include_in_collection boolean default true  -- toggle rápido pra tirar a loja da coleta sem
                                              -- desconfigurar a plataforma
-store_type    text default 'marketplace'  -- 'marketplace' (revende várias marcas) | 'propria'
-                                           -- (a própria cervejaria) — produtos sem marca/país de
-                                           -- loja 'propria' herdam o nome/país dela
+store_type    text default 'propria'      -- 'marketplace' (revende várias marcas) | 'propria'
+                                           -- (a própria cervejaria, default desde a migration 0018 —
+                                           -- a maioria das lojas cadastradas até aqui é própria) —
+                                           -- produtos sem marca/país de loja 'propria' herdam o
+                                           -- nome/país dela
 country       text default 'Brasil'       -- país da loja, usado na herança acima
 brand_alias   text nullable   -- forma curta do nome ("Dogma" para "Cervejaria Dogma"), usada como
                                -- products.brand e como prefixo do nome dos produtos em loja
@@ -268,6 +270,15 @@ logo_black_url         text nullable  -- logo pro tema claro (editável em /admi
 logo_white_url         text nullable  -- logo pro tema escuro
 offer_expiration_days  int default 45  -- editável em /admin/config — dias sem o scraper ver a
                                         -- oferta até desativá-la automaticamente
+auto_apply_replacements boolean default false  -- migration 0018. Liga a automação pós-coleta que
+                                        -- aplica as regras de/para ativas sozinha, uma por vez, na
+                                        -- mesma ordem e com a mesma regra de segurança do botão
+                                        -- manual (nunca grava o que colidiria com outro produto) —
+                                        -- ver web/src/lib/postCollect.ts e 04-conectores-ingestao.md
+auto_merge_duplicates  boolean default false  -- migration 0018. Liga a mesclagem automática das
+                                        -- duplicatas (por nome e as que as regras de/para criariam),
+                                        -- pulando pares marcados como "ignorar", seguida de
+                                        -- ressincronização de slug (essencial pós-mesclagem)
 updated_at             timestamptz
 ```
 

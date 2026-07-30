@@ -6,19 +6,19 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidateAllLocales } from "@/lib/revalidate";
 import { normalizeDashes } from "@/lib/text";
 import { prefixBrand, productSlug } from "@/lib/slug";
-import { planReplacements, type ProductForReplace, type Replacement } from "@/lib/replacements";
-import { chooseKeeper, planMerge, type MergeCandidate, type MergeOffer } from "@/lib/merge";
+import { planReplacements, type Replacement } from "@/lib/replacements";
 import { groupPairs } from "@/lib/duplicates";
 import { planCountryRewrite, type ProductForCountry } from "@/lib/countryRules";
 import { patchProducts } from "@/lib/adminBatch";
+import {
+  fetchAllProducts,
+  mergeProductGroupsWith,
+  resyncProductSlugsWith,
+} from "@/lib/curation";
 
 // O PostgREST corta em 1000 linhas sem avisar; ler paginado é obrigatório
 // (products já passou de 1000).
 const PAGE_SIZE = 1000;
-
-// Ids por consulta: UUID é longo e uma cláusula in(...) com centenas deles gera
-// URL que estoura limite de header (mesma cautela de queries.ts).
-const ID_BATCH = 100;
 
 type SupabaseLike = Awaited<ReturnType<typeof createClient>>;
 
@@ -37,21 +37,6 @@ async function fetchProductsForCountry(
       .range(from, from + PAGE_SIZE - 1);
     if (error) throw error;
     const page = (data ?? []) as ProductForCountry[];
-    all.push(...page);
-    if (page.length < PAGE_SIZE) return all;
-  }
-}
-
-async function fetchAllProducts(supabase: SupabaseLike): Promise<ProductForReplace[]> {
-  const all: ProductForReplace[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("products")
-      .select("id, name, brand, canonical_slug")
-      .order("created_at")
-      .range(from, from + PAGE_SIZE - 1);
-    if (error) throw error;
-    const page = (data ?? []) as ProductForReplace[];
     all.push(...page);
     if (page.length < PAGE_SIZE) return all;
   }
@@ -272,35 +257,16 @@ export async function rebrandOwnStoreProducts() {
 // Esta ação recalcula o slug de TODO o catálogo (não só lojas próprias, porque
 // o problema atinge qualquer produto cujo nome contenha a marca) e aplica onde
 // não há colisão. Idempotente: rodar de novo não muda nada.
+//
+// A lógica em si mora em lib/curation.ts (`resyncProductSlugsWith`) — isto é
+// só um wrapper fino que resolve o cliente Supabase da sessão de admin e o
+// redirect/getLocale, que só fazem sentido vindos de um clique no admin. A
+// automação pós-coleta (web/src/lib/postCollect.ts) chama o núcleo direto,
+// com um cliente de service_role key (sem sessão nenhuma).
 export async function resyncProductSlugs() {
   const supabase = await createClient();
-  const products = await fetchAllProducts(supabase);
   const locale = await getLocale();
-
-  const changed: { id: string; canonical_slug: string }[] = [];
-  for (const p of products) {
-    const slug = productSlug(p.brand, p.name);
-    if (slug !== p.canonical_slug) changed.push({ id: p.id, canonical_slug: slug });
-  }
-
-  // Slug é unique: dois produtos convergindo derrubariam o lote inteiro. Deixa
-  // de fora quem colide (com outro do lote ou com produto intocado) e reporta —
-  // esses casos são duplicatas de verdade, resolvidas por mesclagem.
-  const owner = new Map(products.map((p) => [p.canonical_slug, p.id]));
-  const seen = new Map<string, string>();
-  const safe: typeof changed = [];
-  let skipped = 0;
-  for (const c of changed) {
-    const existing = owner.get(c.canonical_slug);
-    if ((existing && existing !== c.id) || seen.has(c.canonical_slug)) {
-      skipped++;
-      continue;
-    }
-    seen.set(c.canonical_slug, c.id);
-    safe.push(c);
-  }
-
-  const { error, updated } = await patchProducts(supabase, safe);
+  const { error, updated, skipped } = await resyncProductSlugsWith(supabase);
   if (error) redirect(`/${locale}/admin/ferramentas?erro=resync`);
 
   revalidateAllLocales("/admin/ferramentas");
@@ -419,141 +385,14 @@ export async function unignoreDuplicate(formData: FormData) {
 // sucesso é parcial com frequência (uma oferta com disparo de alerta vinculado
 // barra a exclusão daquele grupo e não afeta os outros), e sem saber QUAIS
 // deram certo a tela só poderia adivinhar quais marcar como resolvidos.
+//
+// A lógica em si mora em lib/curation.ts (`mergeProductGroupsWith`) — isto é
+// só um wrapper fino que resolve o cliente Supabase da sessão de admin. A
+// automação pós-coleta (web/src/lib/postCollect.ts) chama o núcleo direto,
+// com um cliente de service_role key (sem sessão de admin nenhuma).
 export async function mergeProductGroups(
   groups: string[][],
 ): Promise<{ mergedIndexes: number[]; failed: number; error: string | null }> {
-  const ids = [...new Set(groups.flat())].filter(Boolean);
-  if (ids.length === 0) return { mergedIndexes: [], failed: 0, error: null };
-
   const supabase = await createClient();
-
-  // Linhas dos envolvidos e as ofertas deles, em lotes (uma cláusula in(...)
-  // com centenas de UUIDs gera URL que estoura limite de header — mesma
-  // cautela de queries.ts).
-  const products = new Map<string, MergeCandidate>();
-  const offersByProduct = new Map<string, MergeOffer[]>();
-
-  for (let i = 0; i < ids.length; i += ID_BATCH) {
-    const batch = ids.slice(i, i + ID_BATCH);
-    const { data, error } = await supabase
-      .from("products")
-      .select("id, brand, image_url, created_at")
-      .in("id", batch);
-    if (error) return { mergedIndexes: [], failed: 0, error: error.message };
-    for (const row of (data ?? []) as Omit<MergeCandidate, "offers" | "lastSeenAt">[]) {
-      products.set(row.id, { ...row, offers: 0, lastSeenAt: null });
-    }
-
-    const { data: offerRows, error: offersErr } = await supabase
-      .from("offers")
-      .select("id, product_id, store_id, last_seen_at")
-      .in("product_id", batch);
-    if (offersErr) return { mergedIndexes: [], failed: 0, error: offersErr.message };
-    for (const o of (offerRows ?? []) as (MergeOffer & { product_id: string })[]) {
-      const list = offersByProduct.get(o.product_id);
-      if (list) list.push(o);
-      else offersByProduct.set(o.product_id, [o]);
-    }
-  }
-
-  for (const [productId, list] of offersByProduct) {
-    const p = products.get(productId);
-    if (!p) continue;
-    p.offers = list.length;
-    p.lastSeenAt = list.reduce<string | null>(
-      (max, o) => (max === null || o.last_seen_at > max ? o.last_seen_at : max),
-      null,
-    );
-  }
-
-  const now = new Date().toISOString();
-  const mergedIndexes: number[] = [];
-  let failed = 0;
-  let firstError: string | null = null;
-
-  for (const [index, group] of groups.entries()) {
-    const candidates = group.map((id) => products.get(id)).filter((p): p is MergeCandidate => !!p);
-    if (candidates.length < 2) {
-      // Já resolvido numa chamada anterior (ou id inexistente): não é falha, e
-      // marcar como resolvido é o que tira da tela um grupo que não existe mais.
-      mergedIndexes.push(index);
-      continue;
-    }
-
-    const [keep, ...drops] = chooseKeeper(candidates);
-    // Um grupo só conta como resolvido se TODOS os descartes dele saíram — num
-    // grupo de 3, resolver metade deixaria uma duplicata de pé.
-    let groupOk = true;
-    // Vai mudando conforme as ofertas migram: no grupo de 3+, o segundo
-    // descarte precisa enxergar as ofertas que o primeiro já trouxe, senão o
-    // planMerge não vê o conflito de loja e o unique (product_id, store_id)
-    // estoura.
-    let keepOffers = offersByProduct.get(keep.id) ?? [];
-
-    for (const drop of drops) {
-      const dropOffers = offersByProduct.get(drop.id) ?? [];
-      // A decisão de quais ofertas mover e quais apagar é lógica pura, testada
-      // isoladamente em lib/merge.ts.
-      const { toMove, toDelete } = planMerge(keepOffers, dropOffers);
-
-      // Apaga primeiro: mover antes deixaria duas ofertas da mesma loja no
-      // mesmo produto e violaria o unique.
-      //
-      // Os três passos não são uma transação (são chamadas separadas ao
-      // PostgREST): se o segundo falhar, o primeiro já aconteceu. Na prática o
-      // que falha aqui é a exclusão de uma oferta com disparo de alerta
-      // vinculado (FK sem cascade, de propósito), que é o PRIMEIRO passo — então
-      // o grupo é reportado como não mesclado e nada foi tocado nele.
-      if (toDelete.length > 0) {
-        const { error } = await supabase.from("offers").delete().in("id", toDelete);
-        if (error) {
-          firstError ??= error.message;
-          groupOk = false;
-          break;
-        }
-      }
-
-      if (toMove.length > 0) {
-        const { error } = await supabase
-          .from("offers")
-          .update({ product_id: keep.id, updated_at: now })
-          .in("id", toMove);
-        if (error) {
-          firstError ??= error.message;
-          groupOk = false;
-          break;
-        }
-      }
-
-      // price_history segue a oferta (FK com cascade em offers), então não
-      // precisa ser movido. O produto órfão sai por último: as FKs são RESTRICT
-      // de propósito, então se sobrou oferta apontando pra ele o banco barra
-      // aqui em vez de deixar dado inconsistente.
-      const { error: delErr } = await supabase.from("products").delete().eq("id", drop.id);
-      if (delErr) {
-        firstError ??= delErr.message;
-        groupOk = false;
-        break;
-      }
-
-      // Estado do produto mantido depois desta mesclagem.
-      const movedIds = new Set(toMove);
-      const deletedIds = new Set(toDelete);
-      keepOffers = [
-        ...keepOffers.filter((o) => !deletedIds.has(o.id)),
-        ...dropOffers.filter((o) => movedIds.has(o.id)),
-      ];
-      products.delete(drop.id);
-    }
-
-    if (groupOk) mergedIndexes.push(index);
-    else failed++;
-  }
-
-  if (mergedIndexes.length > 0) {
-    revalidateAllLocales("/admin/ferramentas");
-    revalidateAllLocales("/admin/produtos");
-    revalidateAllLocales("/");
-  }
-  return { mergedIndexes, failed, error: firstError };
+  return mergeProductGroupsWith(supabase, groups);
 }

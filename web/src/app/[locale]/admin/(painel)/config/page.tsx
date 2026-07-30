@@ -6,7 +6,13 @@ import Modal from "@/components/admin/Modal";
 import DeleteButton from "@/components/admin/DeleteButton";
 import { formatPrice } from "@/lib/format";
 import ScopeFields from "./ScopeFields";
-import { saveAlert, toggleAlertActive, deleteAlert, saveOfferExpirationDays } from "./actions";
+import {
+  saveAlert,
+  toggleAlertActive,
+  deleteAlert,
+  saveOfferExpirationDays,
+  saveAutomationSettings,
+} from "./actions";
 import { saveSiteSettings } from "./brandingActions";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +64,9 @@ export default async function ConfigPage({
       .limit(20),
     supabase
       .from("site_settings")
-      .select("offer_expiration_days, logo_black_url, logo_white_url")
+      .select(
+        "offer_expiration_days, logo_black_url, logo_white_url, auto_apply_replacements, auto_merge_duplicates",
+      )
       .eq("id", 1)
       .maybeSingle(),
   ]);
@@ -68,6 +76,14 @@ export default async function ConfigPage({
   const productTypes = (typesData ?? []) as ProductTypeLite[];
   const triggers = (triggersData ?? []) as unknown as TriggerRow[];
   const offerExpirationDays = siteSettingsData?.offer_expiration_days ?? 45;
+  // Ausentes (migration 0018 ainda não rodou nesse ambiente) = desligado, não
+  // erro — mesmo espírito de getSiteSettings em queries.ts.
+  const autoApplyReplacements = Boolean(
+    (siteSettingsData as { auto_apply_replacements?: boolean } | null)?.auto_apply_replacements,
+  );
+  const autoMergeDuplicates = Boolean(
+    (siteSettingsData as { auto_merge_duplicates?: boolean } | null)?.auto_merge_duplicates,
+  );
   const siteSettings = siteSettingsData as
     | { logo_black_url: string | null; logo_white_url: string | null }
     | null;
@@ -165,6 +181,56 @@ export default async function ConfigPage({
               defaultValue={offerExpirationDays}
               className={`${inputCls} w-28`}
             />
+          </label>
+          <button
+            type="submit"
+            className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
+          >
+            {t("save")}
+          </button>
+        </form>
+      </section>
+
+      {/* Automação pós-coleta: aplica de/para e mescla duplicatas sozinho no
+          fim de cada coleta (web/src/lib/postCollect.ts), na ordem
+          substituição -> mesclagem -> ressincronização de slug. Exige os
+          secrets SITE_BASE_URL/AUTOMATION_TOKEN no repositório do GitHub e
+          SUPABASE_SERVICE_ROLE_KEY/AUTOMATION_TOKEN no Vercel — sem eles o
+          passo do workflow só avisa e não roda nada (ver
+          .github/workflows/scrape.yml). */}
+      <section className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900">
+        <div>
+          <h2 className="font-medium">{t("automationTitle")}</h2>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("automationHint")}</p>
+        </div>
+        <form action={saveAutomationSettings} className="space-y-3">
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="auto_apply_replacements"
+              defaultChecked={autoApplyReplacements}
+              className="mt-1 h-4 w-4 rounded border-neutral-300 dark:border-neutral-700"
+            />
+            <span>
+              <span className="block">{t("autoApplyReplacements")}</span>
+              <span className="block text-xs text-neutral-500 dark:text-neutral-600">
+                {t("autoApplyReplacementsHint")}
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              name="auto_merge_duplicates"
+              defaultChecked={autoMergeDuplicates}
+              className="mt-1 h-4 w-4 rounded border-neutral-300 dark:border-neutral-700"
+            />
+            <span>
+              <span className="block">{t("autoMergeDuplicates")}</span>
+              <span className="block text-xs text-neutral-500 dark:text-neutral-600">
+                {t("autoMergeDuplicatesHint")}
+              </span>
+            </span>
           </label>
           <button
             type="submit"
