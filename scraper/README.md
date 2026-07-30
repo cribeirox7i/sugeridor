@@ -83,10 +83,26 @@ segue com preço na vitrine, e esse ponto sujaria a média que alimenta o selo
      **apenas se o preço mudou** (ou é a primeira vez que a oferta é vista).
      `last_seen_at` é atualizado sempre, então a expiração não é afetada.
 
-   Dois cuidados registrados no código: o Postgres recusa o lote inteiro se a
-   mesma chave de conflito aparecer duas vezes (daí o dedup antes de enviar), e
-   o `upsert` do PostgREST exige linha COMPLETA — patch parcial vai por PATCH
-   (`db.update_by_id_many`), senão os NOT NULL são violados.
+   Três cuidados registrados no código: o Postgres recusa o lote inteiro se a
+   mesma chave de conflito aparecer duas vezes (daí o dedup antes de enviar); o
+   `upsert` do PostgREST exige linha COMPLETA — patch parcial vai por PATCH
+   (`db.update_by_id_many`), senão os NOT NULL são violados; e a criação de
+   produto usa **`ON CONFLICT DO NOTHING`**
+   (`db.insert_many_ignore_conflicts`), não um insert simples.
+
+   O último é uma **corrida** real: o fluxo é "consulta quais slugs existem →
+   insere os que faltam", mas as lojas rodam em paralelo (threads) e o workflow
+   roda vários shards. Duas lojas que vendem o MESMO produto podem consultar
+   juntas — nenhuma acha — e as duas tentam inserir; a segunda estoura o unique
+   de `canonical_slug` e a coleta daquela loja inteira falha com 409. Aconteceu:
+   a Casa Flora falhou enquanto a Nono Bier, no mesmo shard, criava 131
+   produtos. Ficou muito mais provável depois que a separação de medida no nome
+   fez os slugs de lojas diferentes convergirem — que é justamente o objetivo,
+   é o que faz as ofertas agregarem numa página só. Um lock em Python não
+   resolveria (shards são processos separados, em runners diferentes): a
+   garantia tem que vir do banco. Depois do insert, os slugs que não voltaram
+   são consultados para pegar o id, senão a oferta daquela loja seria perdida
+   naquela execução.
 5. Cada execução é registrada em `ingestion_jobs` (visível no admin).
 6. Depois que **todas** as lojas terminam, `enrich.py` roda passos sobre o
    catálogo inteiro (não faz sentido por-loja): desativa ofertas não vistas há

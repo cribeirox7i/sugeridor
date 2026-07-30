@@ -190,6 +190,18 @@ Quatro levas seguidas, todas motivadas por uso real do admin e do site no celula
   geral.
 - **Layout validado com o volume de hoje quebra com o de amanhã**: a barra foi conferida com 7 lojas
   e quebrou em 9. Testar acima do volume atual, não com o que está no banco.
+- **Feature funcionando pode acordar bug adormecido.** A separação de medida no nome fez os slugs de
+  lojas diferentes convergirem — que é o objetivo, é o que faz as ofertas agregarem numa página só
+  (a agregação saiu de 1 para 21 produtos com 2+ lojas). Só que o fluxo "consulta quais slugs
+  existem → insere os que faltam" tem uma janela de corrida, e com as lojas rodando em paralelo isso
+  passou a estourar 409 no unique de `canonical_slug`. A garantia tinha que vir do banco
+  (`ON CONFLICT DO NOTHING`) — um lock em Python não cobre shards, que são processos separados.
+- **Rotação de chave do Supabase pode falhar de forma intermitente.** Um shard deu 401 e três
+  passaram, com a mesma chave. Isso me levou a descartar a hipótese de credencial — errado: o
+  projeto tinha migrado para o formato novo de chaves (`sb_publishable_`/`sb_secret_`) e a
+  propagação da chave legada sendo desativada é inconsistente. Atualizar o secret resolveu. Lição:
+  falha de auth intermitente **não** descarta credencial; num sistema distribuído a ausência de
+  determinismo é esperada.
 
 ## Fase 4 — E-mail ⏸️ pausada
 - Caixa dedicada + credenciais IMAP.

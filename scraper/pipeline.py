@@ -165,10 +165,21 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
         db.update_by_id_many("products", patches)
 
     # ── 3. Cria os produtos novos, num insert em lote ──
+    #
+    # `ON CONFLICT DO NOTHING` (ver db.insert_many_ignore_conflicts) e não um
+    # insert simples: entre a consulta do passo 1 e este insert, OUTRA loja
+    # rodando em paralelo (thread do mesmo shard ou outro shard inteiro) pode ter
+    # criado o mesmo produto. É comum justamente onde o catálogo se sobrepõe —
+    # que é o caso desejado, o que faz as ofertas agregarem numa página só.
     to_create = [p for p in prepared if p["slug"] not in existing]
+    # Quantos produtos ESTA execução criou de fato. Não é `len(to_create)`: com
+    # `ON CONFLICT DO NOTHING`, parte do lote pode ter sido criada por outra
+    # loja/shard em paralelo. Reportar a intenção em vez do resultado é
+    # justamente o tipo de log que já enganou antes.
+    created_count = 0
     if to_create:
         type_id = product_type_id(to_create[0]["cand"].product_type_slug)
-        created = db.insert_many(
+        created = db.insert_many_ignore_conflicts(
             "products",
             [
                 {
@@ -189,9 +200,30 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
                 }
                 for p in to_create
             ],
+            on_conflict="canonical_slug",
         )
+        created_count = len(created)
         for row in created:
             existing[row["canonical_slug"]] = row
+
+        # O insert devolve só o que ele criou, então o que ficou de fora é
+        # exatamente o que outra execução criou nesse meio-tempo. Buscar o id
+        # agora é o que garante que a oferta DESTA loja seja gravada mesmo
+        # assim — sem isso o produto existiria sem a oferta dela até a coleta
+        # seguinte.
+        racing = [p["slug"] for p in to_create if p["slug"] not in existing]
+        if racing:
+            print(
+                f"[{store.name}] {len(racing)} produto(s) criados em paralelo por outra "
+                f"loja/shard — reaproveitando em vez de duplicar."
+            )
+            for i in range(0, len(racing), _SLUG_LOOKUP_BATCH):
+                quoted = ",".join(f'"{s}"' for s in racing[i : i + _SLUG_LOOKUP_BATCH])
+                for row in db.select(
+                    "products",
+                    {"canonical_slug": f"in.({quoted})", "select": "id,canonical_slug"},
+                ):
+                    existing[row["canonical_slug"]] = row
 
     # ── 4. Ofertas e histórico de preço, também em lote ──
     now = _now()
@@ -223,7 +255,7 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
             price_by_product[row["id"]] = p["cand"].price
 
     if not offer_rows:
-        return len(to_create)
+        return created_count
 
     # Preço que já está gravado, ANTES do upsert sobrescrever — é o que diz se
     # o preço mudou. Uma query por loja (paginada), não por oferta.
@@ -261,7 +293,7 @@ def process_candidates(candidates: list[Candidate], store: StoreRecord) -> int:
         f"de {len(offers)} oferta(s) (só o que mudou de preço)."
     )
 
-    return len(to_create)
+    return created_count
 
 
 # ── ingestion_jobs ────────────────────────────────────────────────

@@ -117,6 +117,47 @@ def insert_many(table: str, rows: list[dict], *, returning: bool = True) -> list
     return out
 
 
+def insert_many_ignore_conflicts(
+    table: str, rows: list[dict], on_conflict: str
+) -> list[dict[str, Any]]:
+    """INSERT em lote que IGNORA linhas que já existem (`ON CONFLICT DO
+    NOTHING`), devolvendo só as que foram de fato criadas.
+
+    Existe por causa de uma CORRIDA entre lojas coletadas em paralelo. O fluxo
+    normal é "consulta quais slugs já existem → insere os que faltam", mas
+    `run.py` roda várias lojas ao mesmo tempo (ThreadPoolExecutor) e o workflow
+    roda vários shards: duas lojas que vendem o MESMO produto podem consultar
+    juntas (nenhuma acha), e as duas tentam inserir — a segunda estoura o unique
+    de `canonical_slug` e a coleta daquela loja inteira falha com 409.
+
+    Aconteceu de verdade: Casa Flora falhou enquanto a Nono Bier, no mesmo
+    shard, criava 131 produtos — as duas compartilham catálogo. Ficou muito mais
+    provável depois que a separação de medida no nome fez os slugs de lojas
+    diferentes convergirem, que é justamente o objetivo (é o que faz as ofertas
+    agregarem numa página só).
+
+    Um lock em Python NÃO resolveria: os shards são processos separados, em
+    runners diferentes. A garantia tem que vir do banco.
+
+    Como o PostgREST devolve apenas as linhas inseridas, quem chama precisa
+    buscar as ignoradas se precisar do id delas (ver pipeline.py)."""
+    out: list[dict[str, Any]] = []
+    for batch in _chunks(rows):
+        r = requests.post(
+            _url(table),
+            headers=_headers({"Prefer": "resolution=ignore-duplicates,return=representation"}),
+            params={"on_conflict": on_conflict},
+            json=batch,
+            timeout=60,
+        )
+        r.raise_for_status()
+        if r.text:
+            data = r.json()
+            if isinstance(data, list):
+                out.extend(data)
+    return out
+
+
 def update_by_id_many(table: str, patches: list[dict]) -> int:
     """Aplica patches PARCIAIS (um por linha, cada um com sua chave `id`).
 
