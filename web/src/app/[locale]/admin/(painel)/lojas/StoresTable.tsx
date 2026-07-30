@@ -253,7 +253,19 @@ export default function StoresTable({
                       </span>
                     </label>
                   ) : (
-                    <span className="text-xs text-neutral-400">{t("collectionNone")}</span>
+                    // Sem plataforma = só cadastro manual, não há coleta pra
+                    // incluir/excluir. Antes um texto ("Nenhuma (só cadastro
+                    // manual)") quebrava em duas linhas e desalinhava a
+                    // grade — só o checkbox desmarcado e bloqueado mantém a
+                    // mesma altura de linha das demais.
+                    <input
+                      type="checkbox"
+                      checked={false}
+                      disabled
+                      aria-label={t("collectionNone")}
+                      title={t("collectionNone")}
+                      className="h-4 w-4 rounded border-neutral-300 opacity-50 dark:border-neutral-700"
+                    />
                   )}
                 </td>
                 <td className="px-4 py-2">

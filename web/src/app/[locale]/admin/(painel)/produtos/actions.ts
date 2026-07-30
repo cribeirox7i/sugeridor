@@ -125,9 +125,7 @@ export async function deleteProduct(formData: FormData) {
 // coleta: o scraper continua atualizando preço/histórico desse produto
 // normalmente, só a leitura pública (lib/queries.ts::listOffers) passa a
 // excluir hidden=true.
-export async function toggleProductHidden(formData: FormData) {
-  const id = formData.get("id") as string;
-  const hidden = formData.get("hidden") === "true";
+export async function toggleProductHidden(id: string, hidden: boolean) {
   if (!id) return;
   const supabase = await createClient();
   await supabase.from("products").update({ hidden: !hidden }).eq("id", id);

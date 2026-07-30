@@ -8,7 +8,8 @@ import ViewToggle from "@/components/admin/ViewToggle";
 import { adminUrl } from "@/lib/adminNav";
 import SearchBox from "@/components/admin/SearchBox";
 import ProductForm from "./ProductForm";
-import { deleteProduct, toggleProductHidden } from "./actions";
+import { deleteProduct } from "./actions";
+import HiddenToggle from "./HiddenToggle";
 import type { ProductCategory } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -153,20 +154,7 @@ export default async function ProdutosPage({
                     {categoryLabel(t, p.category)}
                   </td>
                   <td className="px-4 py-2">
-                    <form action={toggleProductHidden}>
-                      <input type="hidden" name="id" value={p.id} />
-                      <input type="hidden" name="hidden" value={String(p.hidden)} />
-                      <button
-                        type="submit"
-                        className={
-                          p.hidden
-                            ? "rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
-                            : "rounded bg-green-100 px-2 py-1 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                        }
-                      >
-                        {p.hidden ? t("hiddenOn") : t("hiddenOff")}
-                      </button>
-                    </form>
+                    <HiddenToggle id={p.id} hidden={p.hidden} />
                   </td>
                   <td className="px-4 py-2 text-right">
                     <div className="flex justify-end gap-2">
@@ -220,20 +208,7 @@ export default async function ProdutosPage({
                   >
                     {t("edit")}
                   </Link>
-                  <form action={toggleProductHidden}>
-                    <input type="hidden" name="id" value={p.id} />
-                    <input type="hidden" name="hidden" value={String(p.hidden)} />
-                    <button
-                      type="submit"
-                      className={
-                        p.hidden
-                          ? "rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
-                          : "rounded bg-green-100 px-2 py-1 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                      }
-                    >
-                      {p.hidden ? t("hiddenOn") : t("hiddenOff")}
-                    </button>
-                  </form>
+                  <HiddenToggle id={p.id} hidden={p.hidden} />
                   <DeleteButton
                     action={deleteProduct}
                     id={p.id}
