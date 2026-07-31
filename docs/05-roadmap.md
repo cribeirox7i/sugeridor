@@ -279,6 +279,39 @@ em duas linhas e desalinhava a grade — trocado por um checkbox desmarcado e bl
 visível (a informação virou `aria-label`/`title`). Lição: revisar a tela renderizada de verdade
 continua achando problema que passa batido só lendo o código.
 
+## User-Agent de navegador, primeira loja WBuy e ajuste de layout (2026-07-31) ✅ concluída
+
+**Migrations `0019`-`0021` confirmadas rodadas** (verificado direto no banco via PostgREST — ver
+seção de pendências abaixo).
+
+**Decisão revista: User-Agent de navegador comum, não mais identificável** (commit `e834872`).
+Motivada por cadastrar a Faca Cervejaria (WBuy): o WAF da loja bloqueava com 403 **até a home**
+só por causa da palavra "Bot" no header — confirmado testando com o UA do projeto (403) e com UA
+de navegador (200) do mesmo IP. O `robots.txt` dela não proíbe scraping (libera `Googlebot`
+explicitamente, só nomeia crawlers agressivos conhecidos como bloqueados), então o bloqueio era
+regra genérica de infraestrutura (AWS/CloudFront Bot Control), não uma objeção real da loja.
+Perguntei ao usuário antes de reverter a postura anterior (documentada desde 2026-07-26) — decisão
+dele foi mudar o padrão do projeto todo, não só caso a caso. Trocado em `scraper/config.py`
+(`USER_AGENT`) e `web/src/lib/detectPlatform.ts`; `docs/06-riscos-e-legal.md` reescrito explicando
+o trade-off. **Não resolve** o outro tipo de bloqueio já conhecido (IP do runner do GitHub
+Actions, caso da Central da Cerveja) — troca de header não muda IP de origem.
+
+**WBuy não precisa de coletor novo**: é HTML server-renderizado sem JSON-LD (`@type: Product`) e
+sem path comum de produto (fica na raiz, ex: `/gaz-helio-new-engalnd-ipa/`), então a detecção
+automática (`detectPlatform`) não confirma sozinha — mas o coletor genérico `platform: "html"`
+(seletores CSS configuráveis) funciona normalmente. Validado ponta-a-ponta pra Faca Cervejaria: 3
+produtos extraídos certos (nome/preço/link/imagem) rodando `scraper/platforms/html.py` local
+contra o site real, antes de aplicar em produção. Configuração aplicada por SQL direto (sem
+`service_role` key local, mesmo padrão de outras vezes) — loja pronta pra coleta real.
+
+**Carrossel de lojas mais largo, colado na coluna de filtros** (commit `2b417c3`): a coluna de
+filtros tinha piso em px (`lg:min-w-[280px] lg:flex-1`) que sobrava bem mais espaço vazio do que
+o conteúdo real dela (só busca + botão "Filtros" desde que país virou recolhível) — o carrossel
+ficava com uma borda esquerda longe dos filtros. Trocado pra coluna de filtros com largura de
+CONTEÚDO (`lg:shrink-0`) e carrossel ocupando o resto (`lg:flex-1`, era 480px fixos). Testado em
+desktop (home e página da loja) e mobile, sem overflow horizontal — o risco já conhecido dessa
+área (ver leva de 2026-07-28/29: "layout validado com o volume de hoje quebra com o de amanhã").
+
 ## Fase 4 — E-mail ⏸️ pausada
 - Caixa dedicada + credenciais IMAP.
 - Cron de leitura + normalizador (Claude API) aplicado a e-mails com múltiplas ofertas por
