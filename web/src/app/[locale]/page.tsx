@@ -172,20 +172,19 @@ export default async function Home({
           `hideStore` tira apenas o select de loja. */}
       <div className="shrink-0 border-b border-neutral-200 py-3 dark:border-neutral-800">
         {/* Divisão de espaço à prova das duas quebras que já aconteceram aqui:
-            o carrossel tem largura DEFINIDA (rola dentro dela, então caber
-            menos só mostra menos pílulas de uma vez) e a coluna de filtros
-            cresce no que resta, com um piso.
-            - sem o piso, o conteúdo intrínseco do carrossel (1292px com 9
-              lojas) esmagava a coluna até largura ZERO e a busca desaparecia;
-            - sem largura definida no carrossel, `shrink-0` na coluna fazia a
-              largura dela virar max-content — e ao abrir "Mais filtros" a
-              caixa de campos (1417px) vazava a faixa inteira.
-            Piso reduzido de 520 pra 280: país saiu da linha visível do
-            FilterBar (foi pro recolhível, junto dos outros filtros), então a
-            linha principal agora é só busca + botão "Filtros" — cabe em bem
-            menos espaço. A folga sobrando foi pro carrossel (340 → 480). */}
+            a coluna de filtros fica do tamanho do próprio CONTEÚDO (busca +
+            botão "Filtros" — só isso na linha principal desde que país virou
+            recolhível) e o carrossel de lojas ocupa TODO o resto (`flex-1`),
+            com a borda esquerda dele colada no fim do conteúdo dos filtros.
+            - `lg:shrink-0` na coluna de filtros é o que evita a quebra
+              antiga (o carrossel espremendo a coluna até largura zero e a
+              busca sumindo) sem precisar de piso em px: ela nunca encolhe,
+              só o carrossel (que rola por dentro) cede espaço.
+            - ao abrir "Mais filtros" a caixa de campos ainda quebra linha
+              sozinha (ver FilterBar), então não vaza a faixa mesmo com a
+              coluna maior que a largura mínima de antes. */}
         <div className={`${PUBLIC_CONTAINER} flex flex-col gap-x-4 gap-y-3 lg:flex-row lg:items-start`}>
-          <div className="lg:min-w-[280px] lg:flex-1">
+          <div className="lg:shrink-0">
             <FiltersAccordion activeCount={activeFilterCount}>
               <FilterBar
                 estilos={estilos}
