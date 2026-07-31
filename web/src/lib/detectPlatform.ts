@@ -14,7 +14,12 @@ export type DetectResult = {
   site_url?: string;
 };
 
-const UA = "SugeridorBot/1.0 (+https://sugeridor.vercel.app; detector de plataforma)";
+// UA de navegador comum — ver docs/06-riscos-e-legal.md (decisão revista em
+// 2026-07-31, mesmo motivo do scraper Python: um UA identificável era
+// bloqueado por WAFs mesmo em lojas cujo robots.txt não proíbe raspagem).
+const UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 async function fetchText(url: string, timeoutMs = 9000): Promise<string | null> {
   try {

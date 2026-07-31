@@ -6,16 +6,22 @@
   Alguns e-commerces proíbem scraping explicitamente nos ToS, mesmo que o `robots.txt` não bloqueie.
 - **Rate limiting educado**: intervalo entre requests, não bater agressivo num mesmo site (risco de
   bloqueio de IP e de sobrecarregar o site alheio).
-- **User-Agent identificável** (não fingir ser navegador comum) é mais eticamente correto, mas
-  aumenta a chance de bloqueio — decisão sua caso a caso por loja.
+- **User-Agent de navegador comum** (decisão revista em 2026-07-31 — antes era um UA identificável
+  tipo `SugeridorBot/1.0 (+https://...)`). Motivo da mudança: a Faca Cervejaria bloqueava até a
+  home com 403 só por causa da palavra "Bot" no header — um WAF genérico (AWS/CloudFront), não uma
+  decisão específica da loja contra scraping (o `robots.txt` dela libera `Googlebot` e só nomeia
+  crawlers agressivos conhecidos como bloqueados). O trade-off consciente: perde-se identificação
+  fácil pro dono do site que quiser reclamar por e-mail, ganha-se acesso a lojas que bloqueariam por
+  padrão de infraestrutura, não por objeção real. Continua valendo tudo o que já mitigava o resto do
+  risco (rate limit por host, guard-rails de volume, não republicar conteúdo protegido) — só o
+  header de identificação mudou.
 - **Risco de bloqueio/mudança de layout**: scraper vai quebrar eventualmente; o log em
   `ingestion_jobs` é o que avisa isso. **Já aconteceu na prática** (2026-07-26): duas lojas
   passaram a responder 403 Forbidden só quando a requisição vinha do runner do GitHub Actions —
   o mesmo request, feito de outra rede, respondia 200 normalmente. É bloqueio pelo IP do runner
-  (datacenter, comum alvo de WAF/anti-bot), não algo que o código controla. **Decisão**: não
-  contornar isso trocando User-Agent pra fingir navegador nem qualquer outra evasão — o coletor só
-  registra a falha (por loja, sem derrubar as outras) e segue. Se uma loja específica passar a
-  falhar sempre, é sinal de conversar com ela sobre acesso, não de mascarar o coletor.
+  (datacenter, comum alvo de WAF/anti-bot), não algo que o código controla — trocar User-Agent não
+  ajuda nesse caso específico (é o IP, não o header). Se uma loja específica passar a falhar
+  sempre mesmo com UA de navegador, é sinal de conversar com ela sobre acesso.
 - Exibir preço e link de um produto, com atribuição clara da loja de origem e sem republicar
   conteúdo protegido (descrições longas, fotos autorais em alta resolução) reduz risco de disputa
   — o foco do hub é a oferta (preço + link), não republicar o catálogo da loja.

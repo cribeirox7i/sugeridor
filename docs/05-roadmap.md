@@ -304,12 +304,11 @@ continua achando problema que passa batido só lendo o código.
 ## Pendências operacionais conhecidas
 - **Botão "Rodar coleta" do admin**: `GITHUB_PAT`/`GITHUB_OWNER`/`GITHUB_REPO` configurados no
   Vercel e confirmados funcionando (2026-07-30).
-- **Migrations `0019`, `0020` e `0021` escritas, ainda não confirmadas como rodadas**: `0019`
-  corrige o RLS de `ingestion_jobs` (histórico de execuções em `/admin/lojas` sempre mostrando
-  "nenhuma coleta"); `0020` adiciona `products.hidden`/`stores.active`/`stores.whatsapp_number` +
-  `offers.url` nullable; `0021` cria `brands`/`brand_aliases`. O código tolera a ausência das três
-  (fallback sem quebrar o site nem a coleta, ver "Aprendizados" da leva de 2026-07-30 acima), mas
-  nenhuma tela/campo novo funciona de verdade antes de rodar.
+- **Migrations `0019`, `0020` e `0021` confirmadas rodadas (2026-07-31)**: `0019` corrige o RLS de
+  `ingestion_jobs`; `0020` adicionou `products.hidden`/`stores.active`/`stores.whatsapp_number` +
+  `offers.url` nullable; `0021` criou `brands`/`brand_aliases`. Verificado direto no banco via
+  PostgREST (colunas e tabelas respondendo). Telas/campos novos (oculto, loja ativa, WhatsApp,
+  catálogo de marcas) já podem ser usados de verdade.
 - **Automação pós-coleta (de/para + mesclagem sozinha) configurada e confirmada** (2026-07-30):
   os quatro secrets (`SITE_BASE_URL`/`AUTOMATION_TOKEN` no GitHub, `AUTOMATION_TOKEN`/
   `SUPABASE_SERVICE_ROLE_KEY` no Vercel, ver

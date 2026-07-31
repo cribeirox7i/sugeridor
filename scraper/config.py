@@ -6,10 +6,13 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 # service_role key: ignora RLS. NUNCA exposta no frontend — só aqui, no job.
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
-# User-Agent identificável e educado (ver docs/06-riscos-e-legal.md).
+# User-Agent de navegador comum (ver docs/06-riscos-e-legal.md — decisão
+# revista em 2026-07-31: um UA identificável levava WAFs a bloquear a coleta
+# por conter "Bot", mesmo em lojas cujo robots.txt não proíbe raspagem).
 USER_AGENT = os.environ.get(
     "SCRAPER_USER_AGENT",
-    "SugeridorBot/1.0 (+https://sugeridor.vercel.app; coletor de ofertas)",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
 )
 
 # Intervalo entre requests ao mesmo site, em segundos (rate limit educado).
