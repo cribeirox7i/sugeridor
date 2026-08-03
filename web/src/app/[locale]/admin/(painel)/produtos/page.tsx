@@ -127,7 +127,8 @@ export default async function ProdutosPage({
           {t("empty")}
         </p>
       ) : isList ? (
-        <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
+        // overflow-x-auto (não hidden) — ver comentário em StoresTable.tsx.
+        <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
           <table className="w-full text-[13px]">
             <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
               <tr>

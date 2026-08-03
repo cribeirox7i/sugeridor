@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import AdminNavScroller from "@/components/admin/AdminNavScroller";
 import { signOut } from "./actions";
 
 export default async function PainelLayout({
@@ -42,17 +42,20 @@ export default async function PainelLayout({
     <div className="flex h-dvh flex-col overflow-hidden bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       {/* shrink-0 + só o <main> rola abaixo — navbar nunca sai de vista. */}
       <header className="shrink-0 border-b border-neutral-200 dark:border-neutral-800">
-        <div className="mx-auto flex max-w-[1140px] items-center gap-3 px-6 py-3">
-          {/* 7 abas não cabem em tela de celular. `overflow-x-auto` sozinho
-              não bastou num celular Android real: o gesto de "voltar" do
-              sistema intercepta arrastões que começam perto da borda
-              esquerda, ANTES do site receber o toque — reproduzido em mais
-              de um navegador, então não é bug de app. `AdminNavScroller`
-              acrescenta setas clicáveis (mesmo padrão do StoreCarousel do
-              site público) que não dependem do gesto de arrastar. */}
-          <span className="shrink-0 font-semibold">Sugeridor</span>
-          <AdminNavScroller items={NAV} />
-          <div className="flex shrink-0 items-center gap-3">
+        {/* As 7 abas não cabem numa linha de celular. Duas tentativas de
+            resolver por ROLAGEM LATERAL falharam num Android real (primeiro
+            `overflow-x-auto` no <nav>, depois setas clicáveis): nada rola de
+            lado nesse aparelho, e as setas só comeram o pouco espaço que
+            havia, deixando o menu sem nenhum item visível.
+            Solução que não depende de rolagem: as abas QUEBRAM em várias
+            linhas no mobile (`flex-wrap` + `w-full`, que joga o <nav> pra
+            linha de baixo), e idioma/tema/sair ficam na primeira linha ao
+            lado da marca (pedido do usuário). No desktop tudo volta pra uma
+            linha só (`lg:`), com as abas no meio via `order`. */}
+        <div className="mx-auto flex max-w-[1140px] flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3">
+          <span className="order-1 shrink-0 font-semibold">Sugeridor</span>
+
+          <div className="order-2 ml-auto flex shrink-0 items-center gap-3 lg:order-3">
             <span className="hidden text-sm text-neutral-500 sm:inline">{user.email}</span>
             <LanguageSwitcher />
             <ThemeToggle />
@@ -65,6 +68,18 @@ export default async function PainelLayout({
               </button>
             </form>
           </div>
+
+          <nav className="order-3 flex w-full flex-wrap items-center gap-1 lg:order-2 lg:ml-0 lg:w-auto lg:flex-1">
+            {NAV.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="shrink-0 rounded px-3 py-1.5 text-sm whitespace-nowrap text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </header>
       <main className="flex-1 overflow-y-auto">

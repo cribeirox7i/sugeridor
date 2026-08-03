@@ -173,7 +173,12 @@ export default function StoresTable({
         </p>
       )}
 
-      <div className="overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-800">
+      {/* `overflow-x-auto`, NÃO `overflow-hidden`: o hidden estava aqui só
+          pra recortar os cantos arredondados, mas CORTAVA a tabela no
+          celular (7 colunas não cabem em 375px) sem deixar rolar de lado —
+          a coluna Site aparecia cortada no meio da URL e as colunas
+          seguintes eram inalcançáveis. `auto` recorta igual, e rola. */}
+      <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
         <table className="w-full text-[13px]">
           <thead className="bg-neutral-50 text-left text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
             <tr>
