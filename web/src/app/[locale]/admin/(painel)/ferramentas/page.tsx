@@ -135,6 +135,7 @@ export default async function FerramentasPage({
     remarcados?: string;
     ressincronizados?: string;
     conflitos?: string;
+    mesclados?: string;
     normalized?: string;
     reclassified?: string;
     paisesLoja?: string;
@@ -256,6 +257,7 @@ export default async function FerramentasPage({
           {t("applyResult", {
             count: Number(sp.aplicados),
             conflicts: Number(sp.conflitos ?? 0),
+            merged: Number(sp.mesclados ?? 0),
           })}
         </p>
       )}

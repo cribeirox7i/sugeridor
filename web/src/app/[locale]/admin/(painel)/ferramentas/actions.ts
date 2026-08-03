@@ -15,6 +15,7 @@ import {
   mergeProductGroupsWith,
   resyncProductSlugsWith,
 } from "@/lib/curation";
+import { autoMergeDuplicatesIfEnabled } from "@/lib/postCollect";
 
 // O PostgREST corta em 1000 linhas sem avisar; ler paginado é obrigatório
 // (products já passou de 1000).
@@ -131,10 +132,17 @@ export async function applyReplacementsAction(formData: FormData) {
   const locale = await getLocale();
   if (error) redirect(`/${locale}/admin/ferramentas?erro=aplicar`);
 
+  // Se "mesclar automaticamente" está ligado em /admin/config, a regra que
+  // acabou de ser aplicada pode ter criado duplicatas por nome (identificador
+  // mudou) — mescla na hora em vez de deixar pra próxima coleta.
+  const { merged } = await autoMergeDuplicatesIfEnabled(supabase);
+
   revalidateAllLocales("/admin/ferramentas");
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
-  redirect(`/${locale}/admin/ferramentas?aplicados=${updated}&conflitos=${conflicts.length}`);
+  redirect(
+    `/${locale}/admin/ferramentas?aplicados=${updated}&conflitos=${conflicts.length}&mesclados=${merged}`,
+  );
 }
 
 // ── Regravar marca e nome a partir da loja própria ────────────────

@@ -85,7 +85,7 @@ async function applyAllReplacements(
 // acima) e mescla todos os grupos que não foram marcados como "ignorar" —
 // automatizando exatamente o que o clique em "Mesclar" faz em lote, sem regra
 // nova nenhuma.
-async function mergeAllDuplicates(
+export async function mergeAllDuplicates(
   supabase: SupabaseClient,
 ): Promise<{ merged: number; failed: number }> {
   const [products, ignoredPairs, { data: rulesData, error: rulesErr }] = await Promise.all([
@@ -121,6 +121,34 @@ async function mergeAllDuplicates(
   const { mergedIndexes, failed, error } = await mergeProductGroupsWith(supabase, groups);
   if (error) throw new Error(error);
   return { merged: mergedIndexes.length, failed };
+}
+
+// Mesma automação de `auto_merge_duplicates`, mas disparada NA HORA a partir
+// de uma ação manual da tela de Ferramentas (ex: aplicar uma regra de/para),
+// em vez de esperar a próxima coleta. Sem isto, ligar o toggle não bastava:
+// aplicar uma regra manualmente criava duplicata por nome na hora, e ela só
+// era mesclada sozinha depois da próxima chamada a /api/admin/post-collect —
+// confuso pra quem via o toggle ligado e a lista de Ferramentas cheia mesmo
+// assim. Usa o cliente de sessão do admin (RLS normal), não a service_role
+// key — quem chama já está autenticado como admin.
+export async function autoMergeDuplicatesIfEnabled(
+  supabase: SupabaseClient,
+): Promise<{ ran: boolean; merged: number; failed: number; slugsResynced: number }> {
+  const { data: settings, error: settingsError } = await supabase
+    .from("site_settings")
+    .select("auto_merge_duplicates")
+    .eq("id", 1)
+    .maybeSingle();
+  if (settingsError || !settings?.auto_merge_duplicates) {
+    return { ran: false, merged: 0, failed: 0, slugsResynced: 0 };
+  }
+
+  const { merged, failed } = await mergeAllDuplicates(supabase);
+  // Mesma razão do bloco em runPostCollectionAutomation: o sobrevivente de um
+  // grupo mesclado por nome pode ter ficado com slug fora da fórmula atual.
+  const { updated: slugsResynced, error: resyncError } = await resyncProductSlugsWith(supabase);
+  if (resyncError) throw new Error(resyncError);
+  return { ran: true, merged, failed, slugsResynced };
 }
 
 export type PostCollectResult = {
