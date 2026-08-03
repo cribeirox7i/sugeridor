@@ -312,6 +312,47 @@ CONTEÚDO (`lg:shrink-0`) e carrossel ocupando o resto (`lg:flex-1`, era 480px f
 desktop (home e página da loja) e mobile, sem overflow horizontal — o risco já conhecido dessa
 área (ver leva de 2026-07-28/29: "layout validado com o volume de hoje quebra com o de amanhã").
 
+## Admin utilizável no celular (2026-08-03) ✅ concluída
+
+Reportado como "o site mobile não faz rolagem lateral, nem na tela nem nos menus". Levou 4 commits
+(`97364a8`→`4f53475`) porque o diagnóstico errou duas vezes antes de achar a causa — o aprendizado
+está no fim desta seção.
+
+- **Grids do admin cortadas (causa raiz)**: os wrappers das 5 tabelas usavam `overflow-hidden`,
+  posto ali só pra recortar os cantos do `rounded-lg`. Mas `hidden` **corta** o conteúdo
+  horizontalmente sem oferecer rolagem — com 7 colunas em 375px, a coluna Site aparecia cortada no
+  meio da URL e as seguintes eram inalcançáveis. `overflow-x-auto` recorta igual (cantos
+  preservados) e rola. Corrigido em `StoresTable`, `OffersTable`, `produtos/page`, `lojas/page`
+  (últimas execuções) e `config/page` (disparos recentes).
+- **Menu do admin**: o `<nav>` tinha `flex-1 min-w-0` disputando a mesma linha com
+  idioma/tema/sair (`shrink-0`), colapsando pra largura ~zero — não havia o que rolar nem o que
+  clicar, mesmo com `overflow-x-auto`. Agora os controles ficam na primeira linha e o `<nav>`
+  sozinho na de baixo (`w-full`, ganha a largura inteira e rola); no desktop volta pra linha única
+  via `lg:` + `order`. Uma tentativa intermediária com setas ‹ › (`AdminNavScroller`) foi
+  **revertida** — as setas comeram o pouco espaço e o menu ficou sem nenhum item visível.
+- **Horários apareciam 3h adiantados**: `toLocaleString("pt-BR")` sem `timeZone` usa o fuso de quem
+  renderiza, e nas telas Server Component isso é o servidor da Vercel, em UTC. Novo helper
+  `formatDateTime` em `web/src/lib/format.ts` fixa `America/Sao_Paulo`. Vale registrar que **não
+  havia cron pra ajustar** — o `schedule:` do workflow segue desativado por decisão do usuário, o
+  pedido era sobre a exibição.
+- Botões Detectar/Editar/Excluir da linha da loja saíram de `flex-wrap` (empilhavam) pra
+  `flex-nowrap` — só possível depois da tabela passar a rolar.
+
+### Aprendizados desta leva
+
+- **`overflow-hidden` usado só pra recortar canto arredondado é armadilha** em qualquer container
+  que possa ficar mais largo que a viewport. `overflow-x-auto` recorta igual e ainda rola.
+- **Sintoma relatado em vários lugares é sinal de causa sistêmica.** O relato original já dizia
+  "nem na tela nem nos menus" e foi tratado como problema só do menu; a causa comum
+  (`overflow-hidden`) apareceu num `grep` de 2 minutos assim que o escopo foi lido corretamente.
+- **Hipótese que não dá pra verificar no ambiente disponível não é diagnóstico.** Chegou-se a
+  atribuir o problema ao gesto de "voltar" do Android interceptando o swipe — não testável naquela
+  sessão (screenshot/drag com timeout) — e o fix construído sobre essa hipótese piorou a tela. O
+  caminho certo era dizer que faltava o dado e pedir.
+- **`flex-1` num item que divide linha com itens `shrink-0` pode colapsar pra zero.** Já tinha
+  mordido este projeto na barra de ferramentas do site público (ver leva de 2026-07-28/29) e
+  repetiu aqui: um scroller de largura zero parece um scroller quebrado.
+
 ## Fase 4 — E-mail ⏸️ pausada
 - Caixa dedicada + credenciais IMAP.
 - Cron de leitura + normalizador (Claude API) aplicado a e-mails com múltiplas ofertas por
