@@ -7,6 +7,7 @@ import DeleteButton from "@/components/admin/DeleteButton";
 import ViewToggle from "@/components/admin/ViewToggle";
 import SearchBox from "@/components/admin/SearchBox";
 import { adminUrl } from "@/lib/adminNav";
+import { formatDateTime } from "@/lib/format";
 import { saveStore, deleteStore } from "./actions";
 import StoreForm from "./StoreForm";
 import StoresTable from "./StoresTable";
@@ -33,10 +34,9 @@ const STATUS_STYLE: Record<Job["status"], string> = {
   failed: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
 };
 
-function fmtDate(dt: string | null): string {
-  if (!dt) return "—";
-  return new Date(dt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-}
+// Fuso de São Paulo vem do helper — esta página é Server Component, então sem
+// isso o horário sairia em UTC (fuso do servidor da Vercel).
+const fmtDate = formatDateTime;
 
 export default async function LojasPage({
   searchParams,

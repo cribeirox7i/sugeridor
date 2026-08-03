@@ -273,8 +273,12 @@ export default function StoresTable({
                     />
                   )}
                 </td>
-                <td className="px-4 py-2">
-                  <div className="flex flex-wrap items-center justify-end gap-2">
+                <td className="px-4 py-2 whitespace-nowrap">
+                  {/* `flex-nowrap`: com a tabela rolando de lado (ver o
+                      wrapper acima), a célula pode ter a largura natural —
+                      antes o `flex-wrap` empilhava Detectar/Editar/Excluir
+                      um sobre o outro quando a coluna era espremida. */}
+                  <div className="flex flex-nowrap items-center justify-end gap-2">
                     <DetectPlatformCardButton storeId={s.id} siteUrl={s.site_url} />
                     <Link
                       href={`/admin/lojas?edit=${s.id}`}

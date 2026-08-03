@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { PriceAlert } from "@/lib/types";
 import Modal from "@/components/admin/Modal";
 import DeleteButton from "@/components/admin/DeleteButton";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatDateTime } from "@/lib/format";
 import ScopeFields from "./ScopeFields";
 import {
   saveAlert,
@@ -411,7 +411,7 @@ export default async function ConfigPage({
                         </span>
                       </td>
                       <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
-                        {new Date(tr.triggered_at).toLocaleString("pt-BR")}
+                        {formatDateTime(tr.triggered_at)}
                       </td>
                     </tr>
                   );

@@ -42,16 +42,15 @@ export default async function PainelLayout({
     <div className="flex h-dvh flex-col overflow-hidden bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       {/* shrink-0 + só o <main> rola abaixo — navbar nunca sai de vista. */}
       <header className="shrink-0 border-b border-neutral-200 dark:border-neutral-800">
-        {/* As 7 abas não cabem numa linha de celular. Duas tentativas de
-            resolver por ROLAGEM LATERAL falharam num Android real (primeiro
-            `overflow-x-auto` no <nav>, depois setas clicáveis): nada rola de
-            lado nesse aparelho, e as setas só comeram o pouco espaço que
-            havia, deixando o menu sem nenhum item visível.
-            Solução que não depende de rolagem: as abas QUEBRAM em várias
-            linhas no mobile (`flex-wrap` + `w-full`, que joga o <nav> pra
-            linha de baixo), e idioma/tema/sair ficam na primeira linha ao
-            lado da marca (pedido do usuário). No desktop tudo volta pra uma
-            linha só (`lg:`), com as abas no meio via `order`. */}
+        {/* As 7 abas não cabem numa linha de celular. O que fez a rolagem
+            lateral finalmente funcionar não foi o `overflow-x-auto` em si
+            (ele já estava aqui numa tentativa anterior e parecia morto):
+            era o <nav> estar com `flex-1` numa linha DISPUTADA com
+            idioma/tema/sair, colapsando pra largura ~zero — não havia o que
+            rolar nem o que clicar. Com os controles na primeira linha e o
+            <nav> sozinho na de baixo (`w-full`), ele tem a largura inteira
+            e rola normalmente. No desktop tudo volta pra uma linha só
+            (`lg:`), com as abas no meio via `order`. */}
         <div className="mx-auto flex max-w-[1140px] flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3">
           <span className="order-1 shrink-0 font-semibold">Sugeridor</span>
 
@@ -69,7 +68,7 @@ export default async function PainelLayout({
             </form>
           </div>
 
-          <nav className="order-3 flex w-full flex-wrap items-center gap-1 lg:order-2 lg:ml-0 lg:w-auto lg:flex-1">
+          <nav className="order-3 flex w-full items-center gap-1 overflow-x-auto [scrollbar-width:none] lg:order-2 lg:ml-0 lg:w-auto lg:flex-1 [&::-webkit-scrollbar]:hidden">
             {NAV.map((item) => (
               <Link
                 key={item.href}

@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import DeleteButton from "@/components/admin/DeleteButton";
+import { formatDateTime } from "@/lib/format";
 import { deleteOffers } from "./actions";
 
 type OfferRow = {
@@ -131,7 +132,7 @@ export default function OffersTable({
                 <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{o.store?.name ?? "—"}</td>
                 <td className="px-4 py-2">{brl(o.price, o.currency)}</td>
                 <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
-                  {new Date(o.last_seen_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                  {formatDateTime(o.last_seen_at)}
                 </td>
                 <td className="px-4 py-2">
                   <form action={toggleOfferActive}>
