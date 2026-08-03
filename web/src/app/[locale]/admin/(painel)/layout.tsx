@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { getTranslations, getLocale } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import AdminNavScroller from "@/components/admin/AdminNavScroller";
 import { signOut } from "./actions";
 
 export default async function PainelLayout({
@@ -43,24 +43,15 @@ export default async function PainelLayout({
       {/* shrink-0 + só o <main> rola abaixo — navbar nunca sai de vista. */}
       <header className="shrink-0 border-b border-neutral-200 dark:border-neutral-800">
         <div className="mx-auto flex max-w-[1140px] items-center gap-3 px-6 py-3">
-          {/* 7 abas não cabem em tela de celular — sem `overflow-x-auto` elas
-              simplesmente saíam da viewport sem nenhum jeito de alcançar,
-              nem rolando nem apertando (bug reportado no site, achado aqui
-              no admin). `min-w-0` é o que deixa o flex item de fato encolher
-              e rolar em vez de esticar; os links ganham `shrink-0` pra não
-              quebrar palavra nem espremer. */}
-          <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <span className="mr-3 shrink-0 font-semibold">Sugeridor</span>
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="shrink-0 rounded px-3 py-1.5 text-sm whitespace-nowrap text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
+          {/* 7 abas não cabem em tela de celular. `overflow-x-auto` sozinho
+              não bastou num celular Android real: o gesto de "voltar" do
+              sistema intercepta arrastões que começam perto da borda
+              esquerda, ANTES do site receber o toque — reproduzido em mais
+              de um navegador, então não é bug de app. `AdminNavScroller`
+              acrescenta setas clicáveis (mesmo padrão do StoreCarousel do
+              site público) que não dependem do gesto de arrastar. */}
+          <span className="shrink-0 font-semibold">Sugeridor</span>
+          <AdminNavScroller items={NAV} />
           <div className="flex shrink-0 items-center gap-3">
             <span className="hidden text-sm text-neutral-500 sm:inline">{user.email}</span>
             <LanguageSwitcher />
