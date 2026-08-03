@@ -42,20 +42,26 @@ export default async function PainelLayout({
     <div className="flex h-dvh flex-col overflow-hidden bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
       {/* shrink-0 + só o <main> rola abaixo — navbar nunca sai de vista. */}
       <header className="shrink-0 border-b border-neutral-200 dark:border-neutral-800">
-        <div className="mx-auto flex max-w-[1140px] items-center justify-between px-6 py-3">
-          <nav className="flex items-center gap-1">
-            <span className="mr-3 font-semibold">Sugeridor</span>
+        <div className="mx-auto flex max-w-[1140px] items-center gap-3 px-6 py-3">
+          {/* 7 abas não cabem em tela de celular — sem `overflow-x-auto` elas
+              simplesmente saíam da viewport sem nenhum jeito de alcançar,
+              nem rolando nem apertando (bug reportado no site, achado aqui
+              no admin). `min-w-0` é o que deixa o flex item de fato encolher
+              e rolar em vez de esticar; os links ganham `shrink-0` pra não
+              quebrar palavra nem espremer. */}
+          <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <span className="mr-3 shrink-0 font-semibold">Sugeridor</span>
             {NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded px-3 py-1.5 text-sm text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
+                className="shrink-0 rounded px-3 py-1.5 text-sm whitespace-nowrap text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-300 dark:hover:bg-neutral-900 dark:hover:text-neutral-100"
               >
                 {item.label}
               </Link>
             ))}
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <span className="hidden text-sm text-neutral-500 sm:inline">{user.email}</span>
             <LanguageSwitcher />
             <ThemeToggle />
