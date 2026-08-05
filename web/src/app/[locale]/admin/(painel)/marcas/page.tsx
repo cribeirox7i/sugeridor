@@ -2,6 +2,8 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import DeleteButton from "@/components/admin/DeleteButton";
 import { STORE_COUNTRIES } from "@/lib/countries";
+import { fetchAllProducts } from "@/lib/curation";
+import { buildBrandIndex, missingBrandSuggestions } from "@/lib/brands";
 import {
   addBrand,
   updateBrand,
@@ -30,9 +32,10 @@ export default async function MarcasPage({
   const supabase = await createClient();
   const t = await getTranslations("admin.brands");
 
-  const [{ data: brandsData }, { data: aliasesData }] = await Promise.all([
+  const [{ data: brandsData }, { data: aliasesData }, products] = await Promise.all([
     supabase.from("brands").select("*").order("name"),
     supabase.from("brand_aliases").select("*").order("created_at"),
+    fetchAllProducts(supabase),
   ]);
 
   const brands = (brandsData ?? []) as BrandRow[];
@@ -43,6 +46,15 @@ export default async function MarcasPage({
     if (list) list.push(a);
     else aliasesByBrand.set(a.brand_id, [a]);
   }
+
+  // Marcas que já aparecem em produtos coletados mas ainda não têm entrada
+  // aqui — sem isto a tela só listava o que alguém cadastrasse à mão, vazia
+  // mesmo com o catálogo cheio de marcas reais.
+  const brandIndex = buildBrandIndex(brands, aliases);
+  const missingBrands = missingBrandSuggestions(
+    products.map((p) => p.brand),
+    brandIndex,
+  );
 
   const inputCls =
     "rounded border border-neutral-300 bg-white px-2.5 py-1.5 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100";
@@ -115,6 +127,53 @@ export default async function MarcasPage({
             {t("addBrand")}
           </button>
         </form>
+      </section>
+
+      {/* ── Marcas sem cadastro ── */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-medium">{t("missingTitle", { count: missingBrands.length })}</h2>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("missingHint")}</p>
+        </div>
+
+        {missingBrands.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-neutral-300 p-8 text-center text-sm text-neutral-500 dark:border-neutral-800">
+            {t("missingEmpty")}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {missingBrands.map((m) => (
+              <form
+                key={m.name}
+                action={addBrand}
+                className="flex flex-wrap items-end gap-2 rounded-lg border border-neutral-200 p-3 dark:border-neutral-800"
+              >
+                <input type="hidden" name="name" value={m.name} />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="truncate text-sm font-medium">{m.name}</span>
+                  <span className="text-xs text-neutral-500">{t("usedInProducts", { count: m.count })}</span>
+                </div>
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-neutral-500">{t("fieldCountry")}</span>
+                  <select name="country" defaultValue="" className={`${inputCls} w-44`}>
+                    <option value="">{t("countryUnknown")}</option>
+                    {STORE_COUNTRIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="submit"
+                  className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
+                >
+                  {t("registerBrand")}
+                </button>
+              </form>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* ── Lista de marcas ── */}
