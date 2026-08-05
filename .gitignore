@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+scraper/.env.local
 
 # Supabase CLI
 supabase/.temp/
