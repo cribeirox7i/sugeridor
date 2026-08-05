@@ -372,6 +372,9 @@
       "title": "Logomarca do site",
       "blackLabel": "Logomarca preta (usada no tema claro)",
       "whiteLabel": "Logomarca branca (usada no tema escuro)",
+      "fileHint": "PNG, JPG ou SVG. Enviar um arquivo novo substitui o atual — fica salvo no próprio site, não precisa de link externo.",
+      "current": "Atual",
+      "removeLabel": "Remover ao salvar",
       "save": "Salvar",
       "preview": "Pré-visualização",
       "noLogo": "Nenhuma logomarca cadastrada — o nome \"Sugeridor\" é exibido no lugar."

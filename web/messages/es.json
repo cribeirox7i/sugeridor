@@ -372,6 +372,9 @@
       "title": "Logotipo del sitio",
       "blackLabel": "Logotipo negro (usado en el tema claro)",
       "whiteLabel": "Logotipo blanco (usado en el tema oscuro)",
+      "fileHint": "PNG, JPG o SVG. Subir un archivo nuevo reemplaza el actual — queda guardado en el propio sitio, sin necesidad de link externo.",
+      "current": "Actual",
+      "removeLabel": "Quitar al guardar",
       "save": "Guardar",
       "preview": "Vista previa",
       "noLogo": "Ningún logotipo definido — se muestra el nombre \"Sugeridor\" en su lugar."

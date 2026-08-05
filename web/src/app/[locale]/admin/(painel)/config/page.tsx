@@ -250,18 +250,22 @@ export default async function ConfigPage({
             <label className="block space-y-1">
               <span className={labelCls}>{tBranding("blackLabel")}</span>
               <input
-                name="logo_black_url"
-                type="url"
-                placeholder="https://.../logo-preta.png"
-                defaultValue={siteSettings?.logo_black_url ?? ""}
-                className={inputCls}
+                name="logo_black_file"
+                type="file"
+                accept="image/*"
+                className={`${inputCls} file:mr-3 file:rounded file:border-0 file:bg-neutral-200 file:px-3 file:py-1.5 file:text-sm dark:file:bg-neutral-800`}
               />
             </label>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">{tBranding("fileHint")}</p>
             {siteSettings?.logo_black_url && (
-              <div className="rounded border border-neutral-200 bg-white p-4 dark:border-neutral-800">
-                <p className="mb-2 text-xs text-neutral-500">{tBranding("preview")}</p>
+              <div className="space-y-2 rounded border border-neutral-200 bg-white p-4 dark:border-neutral-800">
+                <p className="text-xs text-neutral-500">{tBranding("current")}</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={siteSettings.logo_black_url} alt="" className="h-10" />
+                <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
+                  <input type="checkbox" name="remove_logo_black" />
+                  {tBranding("removeLabel")}
+                </label>
               </div>
             )}
           </div>
@@ -270,18 +274,22 @@ export default async function ConfigPage({
             <label className="block space-y-1">
               <span className={labelCls}>{tBranding("whiteLabel")}</span>
               <input
-                name="logo_white_url"
-                type="url"
-                placeholder="https://.../logo-branca.png"
-                defaultValue={siteSettings?.logo_white_url ?? ""}
-                className={inputCls}
+                name="logo_white_file"
+                type="file"
+                accept="image/*"
+                className={`${inputCls} file:mr-3 file:rounded file:border-0 file:bg-neutral-200 file:px-3 file:py-1.5 file:text-sm dark:file:bg-neutral-800`}
               />
             </label>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">{tBranding("fileHint")}</p>
             {siteSettings?.logo_white_url && (
-              <div className="rounded border border-neutral-800 bg-neutral-900 p-4">
-                <p className="mb-2 text-xs text-neutral-400">{tBranding("preview")}</p>
+              <div className="space-y-2 rounded border border-neutral-800 bg-neutral-900 p-4">
+                <p className="text-xs text-neutral-400">{tBranding("current")}</p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={siteSettings.logo_white_url} alt="" className="h-10" />
+                <label className="flex items-center gap-2 text-xs text-neutral-300">
+                  <input type="checkbox" name="remove_logo_white" />
+                  {tBranding("removeLabel")}
+                </label>
               </div>
             )}
           </div>

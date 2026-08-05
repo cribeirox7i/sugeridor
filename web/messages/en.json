@@ -372,6 +372,9 @@
       "title": "Site logo",
       "blackLabel": "Black logo (used in light theme)",
       "whiteLabel": "White logo (used in dark theme)",
+      "fileHint": "PNG, JPG or SVG. Uploading a new file replaces the current one — it's stored on the site itself, no external link needed.",
+      "current": "Current",
+      "removeLabel": "Remove on save",
       "save": "Save",
       "preview": "Preview",
       "noLogo": "No logo set — the name \"Sugeridor\" is shown instead."
