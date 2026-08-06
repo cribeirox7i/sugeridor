@@ -32,9 +32,9 @@ export default async function SiteHeader({
       <div className={`${PUBLIC_CONTAINER} flex items-start justify-between py-6`}>
         {/* A logo leva pro catálogo — numa página que não é a home (ex.: /lojas)
             é o caminho de volta esperado. */}
-        <Link href="/" className="min-w-0">
-          <Logo settings={resolved} fallbackText={t("title")} className="h-8" />
-          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("subtitle")}</p>
+        <Link href="/" className="flex min-w-0 items-end gap-3">
+          <Logo settings={resolved} fallbackText={t("title")} className="h-14 shrink-0" />
+          <p className="min-w-0 text-sm text-neutral-500 dark:text-neutral-400">{t("subtitle")}</p>
         </Link>
         <div className="flex shrink-0 items-center gap-2">
           <LanguageSwitcher />
