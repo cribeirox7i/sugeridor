@@ -17,6 +17,7 @@ import {
   deleteReplacement,
   toggleReplacement,
   applyReplacementsAction,
+  applyAllReplacementsAction,
   rebrandOwnStoreProducts,
   resyncProductSlugs,
   rewriteProductCountries,
@@ -136,6 +137,8 @@ export default async function FerramentasPage({
     ressincronizados?: string;
     conflitos?: string;
     mesclados?: string;
+    falhas?: string;
+    regrasAplicadas?: string;
     normalized?: string;
     reclassified?: string;
     paisesLoja?: string;
@@ -285,6 +288,38 @@ export default async function FerramentasPage({
           })}
         </p>
       )}
+      {sp.regrasAplicadas !== undefined && (
+        <p className={okBanner}>
+          {t("applyAllResult", {
+            rules: Number(sp.regrasAplicadas),
+            updated: Number(sp.aplicados ?? 0),
+            merged: Number(sp.mesclados ?? 0),
+            resynced: Number(sp.ressincronizados ?? 0),
+            conflicts: Number(sp.conflitos ?? 0),
+          })}
+        </p>
+      )}
+
+      {/* ── Aplicar tudo de uma vez ── */}
+      {/* Item pedido explicitamente: depois de uma coleta, o usuário não deve
+          precisar clicar regra por regra. Este botão faz a MESMA sequência da
+          automação pós-coleta (web/src/lib/postCollect.ts), só que sob
+          demanda — útil tanto pra rodar manualmente quanto pra confirmar que a
+          automação (se ligada em /admin/config) está fazendo a coisa certa. */}
+      <section className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
+        <div>
+          <h2 className="font-medium">{t("applyAllTitle")}</h2>
+          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{t("applyAllHint")}</p>
+        </div>
+        <form action={applyAllReplacementsAction}>
+          <button
+            type="submit"
+            className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
+          >
+            {t("applyAllButton")}
+          </button>
+        </form>
+      </section>
 
       {/* ── Ações em lote ── */}
       <section className="space-y-4 rounded-lg border border-neutral-200 bg-neutral-50 p-5 dark:border-neutral-800 dark:bg-neutral-900">

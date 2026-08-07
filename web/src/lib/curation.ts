@@ -150,6 +150,12 @@ export async function mergeProductGroupsWith(
 
   const now = new Date().toISOString();
   const mergedIndexes: number[] = [];
+  // Imagem do lado descartado, quando o mantido não tem nenhuma — chooseKeeper
+  // agora prioriza o produto mais ANTIGO (ver lib/merge.ts), que pode muito bem
+  // ser o lado incompleto de uma dupla antiga. Sem isto, mesclar apagaria a
+  // única imagem do grupo pra sempre; um patch em lote no fim, não um update
+  // por grupo.
+  const imagePatches: { id: string; image_url: string }[] = [];
   let failed = 0;
   let firstError: string | null = null;
 
@@ -163,6 +169,10 @@ export async function mergeProductGroupsWith(
     }
 
     const [keep, ...drops] = chooseKeeper(candidates);
+    if (!keep.image_url) {
+      const withImage = drops.find((d) => d.image_url);
+      if (withImage?.image_url) imagePatches.push({ id: keep.id, image_url: withImage.image_url });
+    }
     // Um grupo só conta como resolvido se TODOS os descartes dele saíram — num
     // grupo de 3, resolver metade deixaria uma duplicata de pé.
     let groupOk = true;
@@ -230,6 +240,12 @@ export async function mergeProductGroupsWith(
 
     if (groupOk) mergedIndexes.push(index);
     else failed++;
+  }
+
+  // Só as linhas que sobreviveram até aqui (um grupo que falhou no meio pode
+  // ter deixado `keep` intocado, mas o patch é inofensivo mesmo assim).
+  if (imagePatches.length > 0) {
+    await patchProducts(supabase, imagePatches);
   }
 
   if (mergedIndexes.length > 0) {

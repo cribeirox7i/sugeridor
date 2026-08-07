@@ -388,7 +388,11 @@
     },
     "tools": {
       "pageTitle": "Catalog tools",
-      "hint": "Actions that reprocess already-stored products. Nothing here runs during collection — always on demand, and all are idempotent.",
+      "hint": "Actions that reprocess already-stored products. All are idempotent (running twice has no extra effect). Run on demand here, or turn it on in /admin/config to repeat automatically after every collection.",
+      "applyAllTitle": "Apply everything at once",
+      "applyAllHint": "Runs every active find/replace rule in sequence, merges whatever duplicates are left, and resyncs identifiers — the same thing the post-collection automation does on its own (if enabled in /admin/config), just on demand. Use it after a manual collection instead of clicking rule by rule.",
+      "applyAllButton": "Apply rules + merge now",
+      "applyAllResult": "{rules, plural, =0 {No applicable rule.} =1 {1 rule applied,} other {# rules applied,}} {updated, plural, =0 {no product changed.} =1 {1 product changed.} other {# products changed.}} {merged, plural, =0 {} =1 {1 duplicate merged.} other {# duplicates merged.}} {resynced, plural, =0 {} =1 {1 identifier resynced.} other {# identifiers resynced.}} {conflicts, plural, =0 {No conflicts left.} =1 {1 conflict still needs your decision below.} other {# conflicts still need your decision below.}}",
       "actionsTitle": "Bulk actions",
       "actionsHint": "Applied across the whole stored catalog.",
       "normalizeNames": "Normalize names",

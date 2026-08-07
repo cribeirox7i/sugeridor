@@ -388,7 +388,11 @@
     },
     "tools": {
       "pageTitle": "Ferramentas do catálogo",
-      "hint": "Ações que reprocessam produtos já cadastrados. Nada aqui roda automaticamente na coleta — é sempre sob demanda, e todas são idempotentes (rodar duas vezes não faz efeito dobrado).",
+      "hint": "Ações que reprocessam produtos já cadastrados. Todas são idempotentes (rodar duas vezes não faz efeito dobrado). Pode rodar sob demanda aqui, ou ligar em /admin/config pra repetir sozinho depois de cada coleta.",
+      "applyAllTitle": "Aplicar tudo de uma vez",
+      "applyAllHint": "Roda todas as regras de/para ativas em sequência, mescla as duplicatas que sobrarem e ressincroniza os identificadores — a mesma coisa que a automação pós-coleta faz sozinha (se ligada em /admin/config), só que na hora. Use depois de rodar uma coleta manual, em vez de clicar regra por regra.",
+      "applyAllButton": "Aplicar regras + mesclar agora",
+      "applyAllResult": "{rules, plural, =0 {Nenhuma regra aplicável.} =1 {1 regra aplicada,} other {# regras aplicadas,}} {updated, plural, =0 {nenhum produto alterado.} =1 {1 produto alterado.} other {# produtos alterados.}} {merged, plural, =0 {} =1 {1 duplicata mesclada.} other {# duplicatas mescladas.}} {resynced, plural, =0 {} =1 {1 identificador ressincronizado.} other {# identificadores ressincronizados.}} {conflicts, plural, =0 {Sem conflitos restantes.} =1 {1 conflito ainda precisa da sua decisão abaixo.} other {# conflitos ainda precisam da sua decisão abaixo.}}",
       "actionsTitle": "Ações em lote",
       "actionsHint": "Aplicam sobre todo o catálogo já gravado.",
       "normalizeNames": "Normalizar nomes",

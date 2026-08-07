@@ -388,7 +388,11 @@
     },
     "tools": {
       "pageTitle": "Herramientas del catálogo",
-      "hint": "Acciones que reprocesan productos ya registrados. Nada aquí se ejecuta en la recolección — siempre a demanda, y todas son idempotentes.",
+      "hint": "Acciones que reprocesan productos ya registrados. Todas son idempotentes (ejecutar dos veces no duplica el efecto). Ejecuta a demanda aquí, o actívalo en /admin/config para repetirlo solo después de cada recolección.",
+      "applyAllTitle": "Aplicar todo de una vez",
+      "applyAllHint": "Ejecuta todas las reglas de buscar/reemplazar activas en secuencia, fusiona las duplicadas que queden y resincroniza los identificadores — lo mismo que hace sola la automatización posterior a la recolección (si está activada en /admin/config), pero al instante. Úsalo después de una recolección manual, en vez de hacer clic regla por regla.",
+      "applyAllButton": "Aplicar reglas + fusionar ahora",
+      "applyAllResult": "{rules, plural, =0 {Ninguna regla aplicable.} =1 {1 regla aplicada,} other {# reglas aplicadas,}} {updated, plural, =0 {ningún producto alterado.} =1 {1 producto alterado.} other {# productos alterados.}} {merged, plural, =0 {} =1 {1 duplicada fusionada.} other {# duplicadas fusionadas.}} {resynced, plural, =0 {} =1 {1 identificador resincronizado.} other {# identificadores resincronizados.}} {conflicts, plural, =0 {Sin conflictos pendientes.} =1 {1 conflicto todavía necesita tu decisión abajo.} other {# conflictos todavía necesitan tu decisión abajo.}}",
       "actionsTitle": "Acciones en lote",
       "actionsHint": "Se aplican sobre todo el catálogo guardado.",
       "normalizeNames": "Normalizar nombres",

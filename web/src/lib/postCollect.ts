@@ -43,7 +43,7 @@ async function fetchIgnoredPairs(supabase: SupabaseClient): Promise<Set<string>>
 // aplica o que é seguro. Refaz a leitura do catálogo entre uma regra e outra
 // porque a regra seguinte precisa enxergar o que a anterior já gravou (é o que
 // clicar os botões em sequência já fazia manualmente).
-async function applyAllReplacements(
+export async function applyAllReplacements(
   supabase: SupabaseClient,
 ): Promise<{ rulesApplied: number; updated: number; conflicts: number }> {
   const { data: rulesData, error } = await supabase

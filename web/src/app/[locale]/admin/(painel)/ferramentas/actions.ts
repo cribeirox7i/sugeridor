@@ -15,7 +15,7 @@ import {
   mergeProductGroupsWith,
   resyncProductSlugsWith,
 } from "@/lib/curation";
-import { autoMergeDuplicatesIfEnabled } from "@/lib/postCollect";
+import { autoMergeDuplicatesIfEnabled, applyAllReplacements, mergeAllDuplicates } from "@/lib/postCollect";
 
 // O PostgREST corta em 1000 linhas sem avisar; ler paginado é obrigatório
 // (products já passou de 1000).
@@ -135,13 +135,63 @@ export async function applyReplacementsAction(formData: FormData) {
   // Se "mesclar automaticamente" está ligado em /admin/config, a regra que
   // acabou de ser aplicada pode ter criado duplicatas por nome (identificador
   // mudou) — mescla na hora em vez de deixar pra próxima coleta.
-  const { merged } = await autoMergeDuplicatesIfEnabled(supabase);
+  const { ran, merged } = await autoMergeDuplicatesIfEnabled(supabase);
+
+  // `conflicts.length` é de ANTES da mesclagem — se ela rodou, pode ter
+  // resolvido exatamente esses conflitos, e mostrar o número velho na tela
+  // ("existem N conflitos") sem nenhum grupo de fato pendente pra revisar era
+  // a fonte da confusão: a lista abaixo já está limpa, mas o banner ainda
+  // falava dos que acabaram de ser mesclados. Reconfere contra o catálogo
+  // fresco só quando a mesclagem rodou — é o único caso em que o número pode
+  // ter mudado.
+  let remainingConflicts = conflicts.length;
+  if (ran) {
+    const freshProducts = await fetchAllProducts(supabase);
+    remainingConflicts = planReplacements(freshProducts, rules).conflicts.length;
+  }
 
   revalidateAllLocales("/admin/ferramentas");
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
   redirect(
-    `/${locale}/admin/ferramentas?aplicados=${updated}&conflitos=${conflicts.length}&mesclados=${merged}`,
+    `/${locale}/admin/ferramentas?aplicados=${updated}&conflitos=${remainingConflicts}&mesclados=${merged}`,
+  );
+}
+
+// ── Aplicar TODAS as regras + mesclar de uma vez ──────────────────
+// O botão por regra (acima) resolve uma correção pontual; este resolve o
+// catálogo inteiro numa passada, pra não depender de clicar regra por regra
+// toda vez que uma coleta termina. Reaproveita a MESMA sequência estagiada da
+// automação pós-coleta (web/src/lib/postCollect.ts): aplica uma regra de cada
+// vez, relendo o catálogo entre uma e outra — é isso que evita o problema do
+// botão único antigo (aplicar tudo em bloco colidia tanto que não sobrava
+// nada pra gravar, ver comentário de applyReplacementsAction). Sempre mescla
+// as duplicatas resultantes no fim, INDEPENDENTE do toggle
+// `auto_merge_duplicates` — quem clicou aqui já pediu pra resolver tudo agora.
+export async function applyAllReplacementsAction() {
+  const supabase = await createClient();
+  const locale = await getLocale();
+
+  const { rulesApplied, updated } = await applyAllReplacements(supabase);
+  const { merged, failed } = await mergeAllDuplicates(supabase);
+  // Ressincronizar é ESSENCIAL depois de mesclar — o sobrevivente pode ter
+  // ficado com slug fora da fórmula atual, e a coleta seguinte duplicaria ele
+  // de novo (mesmo motivo de runPostCollectionAutomation).
+  const { updated: resynced, error: resyncError } = await resyncProductSlugsWith(supabase);
+  if (resyncError) redirect(`/${locale}/admin/ferramentas?erro=aplicar`);
+
+  const freshProducts = await fetchAllProducts(supabase);
+  const { data: rulesData } = await supabase.from("text_replacements").select("*").eq("active", true);
+  const remainingConflicts = planReplacements(
+    freshProducts,
+    (rulesData ?? []) as Replacement[],
+  ).conflicts.length;
+
+  revalidateAllLocales("/admin/ferramentas");
+  revalidateAllLocales("/admin/produtos");
+  revalidateAllLocales("/");
+  redirect(
+    `/${locale}/admin/ferramentas?regrasAplicadas=${rulesApplied}&aplicados=${updated}&mesclados=${merged}&falhas=${failed}&ressincronizados=${resynced}&conflitos=${remainingConflicts}`,
   );
 }
 
