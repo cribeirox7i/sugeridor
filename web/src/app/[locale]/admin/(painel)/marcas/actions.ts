@@ -2,34 +2,93 @@
 
 import { redirect } from "next/navigation";
 import { getLocale } from "next-intl/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { revalidateAllLocales } from "@/lib/revalidate";
 import { normalizeDashes } from "@/lib/text";
 import { buildBrandIndex, lookupBrand, type Brand, type BrandAlias } from "@/lib/brands";
+import { fold } from "@/lib/slug";
 import { patchProducts } from "@/lib/adminBatch";
 import { resyncProductSlugsWith } from "@/lib/curation";
+import {
+  DEFAULT_BRAND_COUNTRY,
+  fetchProductsForBrandSync,
+  mergeBrand,
+  syncBrandsFromProducts,
+} from "@/lib/brandSync";
 
 // ── CRUD de marcas ─────────────────────────────────────────────────
-export async function addBrand(formData: FormData) {
-  const name = normalizeDashes(((formData.get("name") as string) || "").trim());
-  const country = ((formData.get("country") as string) || "").trim() || null;
-  if (!name) return;
-  const supabase = await createClient();
-  // unique(name): marca duplicada é ignorada em silêncio, mesmo padrão de
-  // addReplacement/addKeyword.
-  await supabase.from("brands").upsert({ name, country }, { onConflict: "name", ignoreDuplicates: true });
-  revalidateAllLocales("/admin/marcas");
+
+// Item 10: nome duplicado é bloqueado (não só o unique exato do banco — dois
+// nomes que só diferem em caixa/acento também contam, mesmo critério de
+// lookupBrand/missingBrandSuggestions).
+async function findByFoldedName(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  name: string,
+  excludeId?: string,
+): Promise<Brand | null> {
+  const { data } = await supabase.from("brands").select("id, name, country");
+  const brands = (data ?? []) as Brand[];
+  const key = fold(name);
+  return brands.find((b) => b.id !== excludeId && fold(b.name) === key) ?? null;
 }
 
-export async function updateBrand(formData: FormData) {
-  const id = formData.get("id") as string;
+export async function addBrand(formData: FormData) {
   const name = normalizeDashes(((formData.get("name") as string) || "").trim());
-  const country = ((formData.get("country") as string) || "").trim() || null;
-  if (!id || !name) return;
+  const country = ((formData.get("country") as string) || "").trim() || DEFAULT_BRAND_COUNTRY;
+  const locale = await getLocale();
+  if (!name) return;
   const supabase = await createClient();
-  await supabase.from("brands").update({ name, country }).eq("id", id);
+
+  const dup = await findByFoldedName(supabase, name);
+  if (dup) redirect(`/${locale}/admin/marcas?new=1&erro=duplicada`);
+
+  const { error } = await supabase.from("brands").insert({ name, country });
+  if (error) redirect(`/${locale}/admin/marcas?new=1&erro=salvar`);
+
   revalidateAllLocales("/admin/marcas");
+  redirect(`/${locale}/admin/marcas`);
+}
+
+export type UpdateBrandResult =
+  | { status: "ok" }
+  | { status: "conflict"; existingId: string; existingName: string }
+  | { status: "error" };
+
+// Chamada diretamente pelo client (BrandForm), não como <form action>: item 8
+// precisa do retorno pra decidir se pergunta sobre mesclar, e um redirect de
+// Server Action não dá pra "responder" — mesmo padrão de mergeProductGroups
+// em ferramentas/actions.ts.
+export async function updateBrand(id: string, rawName: string, rawCountry: string | null): Promise<UpdateBrandResult> {
+  const name = normalizeDashes(rawName.trim());
+  const country = (rawCountry || "").trim() || DEFAULT_BRAND_COUNTRY;
+  if (!id || !name) return { status: "error" };
+  const supabase = await createClient();
+
+  const dup = await findByFoldedName(supabase, name, id);
+  if (dup) return { status: "conflict", existingId: dup.id, existingName: dup.name };
+
+  const { error } = await supabase.from("brands").update({ name, country }).eq("id", id);
+  if (error) return { status: "error" };
+
+  revalidateAllLocales("/admin/marcas");
+  revalidateAllLocales("/admin/produtos");
+  return { status: "ok" };
+}
+
+// Item 9: chamada quando o usuário confirma a mesclagem sugerida por
+// updateBrand. `sourceId` (a marca que estava sendo editada) é absorvida por
+// `targetId` (a que já tinha aquele nome) — produtos e aliases migram, e
+// `sourceId` é apagada.
+export async function mergeBrandAction(sourceId: string, targetId: string): Promise<{ error: string | null }> {
+  if (!sourceId || !targetId) return { error: "invalid" };
+  const supabase = await createClient();
+  const result = await mergeBrand(supabase, sourceId, targetId);
+  if (!result.error) {
+    revalidateAllLocales("/admin/marcas");
+    revalidateAllLocales("/admin/produtos");
+    revalidateAllLocales("/");
+  }
+  return result;
 }
 
 export async function deleteBrand(formData: FormData) {
@@ -64,38 +123,25 @@ export async function deleteBrandAlias(formData: FormData) {
   revalidateAllLocales("/admin/marcas");
 }
 
+// ── Sincronizar com o catálogo de produtos (itens 1+2) ──────────────
+export async function syncBrandsFromProductsAction() {
+  const supabase = await createClient();
+  const locale = await getLocale();
+
+  let created = 0;
+  try {
+    ({ created } = await syncBrandsFromProducts(supabase));
+  } catch {
+    redirect(`/${locale}/admin/marcas?erro=sincronizar`);
+  }
+
+  revalidateAllLocales("/admin/marcas");
+  redirect(`/${locale}/admin/marcas?criadas=${created}`);
+}
+
 // ── Aplicar o catálogo aos produtos já existentes ──────────────────
 // Sem isto, cadastrar uma marca nova só afetaria produtos futuros — mesmo
 // furo que "Reclassificar existentes" resolveu pra category_keywords.
-//
-// PRECISA de `attributes` (que fetchAllProducts não traz, ver lib/curation.ts)
-// pra poder também preencher o país — daí o select próprio em vez de
-// reaproveitar o helper genérico.
-type ProductForBrands = {
-  id: string;
-  name: string;
-  brand: string | null;
-  canonical_slug: string;
-  attributes: Record<string, string | number> | null;
-};
-
-const PAGE_SIZE = 1000;
-
-async function fetchProductsForBrands(supabase: SupabaseClient): Promise<ProductForBrands[]> {
-  const all: ProductForBrands[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from("products")
-      .select("id, name, brand, canonical_slug, attributes")
-      .order("created_at")
-      .range(from, from + PAGE_SIZE - 1);
-    if (error) throw error;
-    const page = (data ?? []) as ProductForBrands[];
-    all.push(...page);
-    if (page.length < PAGE_SIZE) return all;
-  }
-}
-
 export async function applyBrandsToProducts() {
   const supabase = await createClient();
   const locale = await getLocale();
@@ -103,7 +149,7 @@ export async function applyBrandsToProducts() {
   const [{ data: brandsData }, { data: aliasesData }, products] = await Promise.all([
     supabase.from("brands").select("id, name, country"),
     supabase.from("brand_aliases").select("id, brand_id, alias"),
-    fetchProductsForBrands(supabase),
+    fetchProductsForBrandSync(supabase),
   ]);
 
   const index = buildBrandIndex(

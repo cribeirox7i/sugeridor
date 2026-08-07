@@ -57,3 +57,34 @@ def lookup_brand(raw_brand: str | None) -> tuple[str, str | None] | None:
     with _lock:
         mapping = _by_alias or {}
     return mapping.get(_fold(raw_brand))
+
+
+def ensure_brand(raw_name: str, country: str | None) -> tuple[str, str | None]:
+    """Garante que `raw_name` existe em `brands`, cadastrando com `country`
+    (Brasil, se não vier nenhum) quando ainda não está no catálogo. Só faz
+    sentido chamar depois que `lookup_brand` já devolveu None pra esse texto —
+    o cadastro criado aqui vira autoridade pros próximos produtos da mesma
+    marca, dentro desta run (mapa em memória) e nas seguintes (banco).
+
+    Ao contrário de `lookup_brand`, este caminho ESCREVE — por isso o lock
+    cobre a checagem+escrita inteira: sem ele, dois workers do
+    ThreadPoolExecutor descobrindo a mesma marca nova ao mesmo tempo
+    cadastrariam duas linhas quase iguais (`db.upsert` resolve conflito só de
+    nome EXATO, não por fold)."""
+    name = raw_name.strip()
+    if not name:
+        return raw_name, country
+    final_country = country or "Brasil"
+    with _lock:
+        mapping = _by_alias or {}
+        cached = mapping.get(_fold(name))
+        if cached:
+            return cached
+        try:
+            row = db.upsert("brands", {"name": name, "country": final_country}, on_conflict="name")
+        except Exception:  # noqa: BLE001 — rede/banco fora do ar não pode travar a coleta
+            return name, final_country
+        result = (row["name"], row.get("country")) if row else (name, final_country)
+        if _by_alias is not None:
+            _by_alias[_fold(name)] = result
+        return result

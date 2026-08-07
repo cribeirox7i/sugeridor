@@ -86,6 +86,18 @@ def _resolve_identity(cand: Candidate, store: StoreRecord) -> tuple[str, str | N
             brand, country = match
             if country:
                 attributes["pais"] = country
+        elif brand:
+            # Marca nova, sem alias cadastrado nenhum — cadastra automaticamente
+            # (país do produto se a extração da página já achou um, senão
+            # Brasil) pra virar autoridade nos próximos produtos com a mesma
+            # marca. Item 3 da leva de mesclagem de marcas (2026-08-07).
+            existing_pais = attributes.get("pais")
+            canon_name, canon_country = brands.ensure_brand(
+                brand, existing_pais if isinstance(existing_pais, str) else None
+            )
+            brand = canon_name
+            if canon_country:
+                attributes["pais"] = canon_country
 
     return name, brand, attributes
 

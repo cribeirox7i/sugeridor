@@ -9,6 +9,7 @@ import { normalizeDashes, separateUnits, titleCaseProductName } from "@/lib/text
 import { patchProducts } from "@/lib/adminBatch";
 import { adminUrlFromForm } from "@/lib/adminNav";
 import { buildBrandIndex, lookupBrand, type Brand, type BrandAlias } from "@/lib/brands";
+import { ensureBrand } from "@/lib/brandSync";
 import type { AttributeSchema, ProductType } from "@/lib/types";
 
 export async function saveProduct(formData: FormData) {
@@ -61,6 +62,17 @@ export async function saveProduct(formData: FormData) {
     if (match) {
       brand = match.name;
       if (match.country && !attributes.pais) attributes.pais = match.country;
+    } else {
+      // Marca sem cadastro nenhum: cria automaticamente (item 3 da leva de
+      // mesclagem de marcas) pra virar autoridade nos próximos produtos, em
+      // vez de ficar só como texto solto neste produto.
+      const created = await ensureBrand(
+        supabase,
+        brand,
+        typeof attributes.pais === "string" ? attributes.pais : null,
+      );
+      brand = created.name;
+      if (created.country && !attributes.pais) attributes.pais = created.country;
     }
   }
 
