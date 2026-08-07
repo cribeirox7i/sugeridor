@@ -259,3 +259,10 @@ token compartilhado (não há sessão de admin nesse contexto) e escrevendo com 
 necessários — ainda não configurados.
 
 Os dois toggles nascem **desligados**: sem eles, nada muda no comportamento de hoje.
+
+**Também dispara fora da coleta** (2026-08-03): aplicar uma regra de/para manualmente em
+`/admin/ferramentas` (botão "Aplicar" de uma regra) chama `autoMergeDuplicatesIfEnabled`
+(`web/src/lib/postCollect.ts`) logo em seguida, se `auto_merge_duplicates` estiver ligado. Antes,
+só rodava depois de `/api/admin/post-collect` (ou seja, só na próxima coleta) — aplicar uma regra à
+mão criava duplicata por nome na hora, e ela ficava esperando até a coleta seguinte pra ser
+mesclada sozinha, o que parecia a automação não estar funcionando com o toggle ligado.

@@ -324,7 +324,7 @@ ponto de histórico apenas quando o preço muda — nenhuma escrita a mais por c
 Linha única (singleton, `id = 1`) com configurações globais do site.
 ```sql
 id                     int pk (sempre 1)
-logo_black_url         text nullable  -- logo pro tema claro (editável em /admin/config)
+logo_black_url         text nullable  -- logo pro tema claro (upload em /admin/config)
 logo_white_url         text nullable  -- logo pro tema escuro
 offer_expiration_days  int default 45  -- editável em /admin/config — dias sem o scraper ver a
                                         -- oferta até desativá-la automaticamente
@@ -339,6 +339,14 @@ auto_merge_duplicates  boolean default false  -- migration 0018. Liga a mesclage
                                         -- ressincronização de slug (essencial pós-mesclagem)
 updated_at             timestamptz
 ```
+
+`logo_black_url`/`logo_white_url` guardam a URL PÚBLICA de um objeto no bucket `branding` do
+Supabase Storage (migration `0022`, criado `public: true` — leitura sem sessão, escrita só
+`authenticated`), não mais uma URL colada de fora (era assim antes da migration 0022: o admin
+digitava um link externo, a imagem "morava" em outro site). O upload em `/admin/config`
+(`brandingActions.ts`) grava sempre no mesmo caminho por slot (`logo-black`/`logo-white`,
+`upsert: true`) — reenviar substitui o arquivo em vez de acumular objeto órfão — e anexa `?v=<timestamp>`
+na URL salva só pra evitar servir a versão antiga cacheada depois de uma troca.
 
 ## Cálculo de variação de preço (resumo da lógica)
 

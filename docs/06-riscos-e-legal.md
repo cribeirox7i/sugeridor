@@ -22,6 +22,13 @@
   (datacenter, comum alvo de WAF/anti-bot), não algo que o código controla — trocar User-Agent não
   ajuda nesse caso específico (é o IP, não o header). Se uma loja específica passar a falhar
   sempre mesmo com UA de navegador, é sinal de conversar com ela sobre acesso.
+  **Terceira ocorrência** (2026-08-05): Invicta e Brejas, mesmo padrão (403 só do runner, 200 de
+  IP comum — confirmado rodando `python -m scraper.run` local). Como o coletor não muda o
+  resultado (`jsonld`/`html`/`txt` usam a mesma sessão HTTP, `scraper/http.py`, então o bloqueio
+  acontece antes de qualquer parsing), a mitigação prática virou `scraper/run-local.ps1`: script
+  que roda a coleta de uma loja específica (ou todas) direto da máquina do usuário, cujo IP não
+  está na lista de bloqueio de datacenter. Não é automático — precisa ser disparado manualmente de
+  vez em quando, mas evita depender só de aceitar a loja como perdida ou tirar da coleta.
 - Exibir preço e link de um produto, com atribuição clara da loja de origem e sem republicar
   conteúdo protegido (descrições longas, fotos autorais em alta resolução) reduz risco de disputa
   — o foco do hub é a oferta (preço + link), não republicar o catálogo da loja.

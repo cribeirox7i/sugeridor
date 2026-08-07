@@ -353,6 +353,52 @@ está no fim desta seção.
   mordido este projeto na barra de ferramentas do site público (ver leva de 2026-07-28/29) e
   repetiu aqui: um scroller de largura zero parece um scroller quebrado.
 
+## Mesclagem em tempo real, marcas sugeridas, coleta local e identidade visual (2026-08-03 a 2026-08-06) ✅ concluída
+
+- **Automação pós-coleta também dispara na hora**: aplicar uma regra de/para manualmente em
+  Ferramentas (com `auto_merge_duplicates` ligado) agora mescla as duplicatas resultantes na
+  mesma ação, em vez de só na próxima coleta — ver `04-conectores-ingestao.md`. Diagnosticado a
+  partir do relato "os toggles estão ligados mas os itens continuam em Ferramentas pra mesclar à
+  mão": a automação em si funcionava (log confirmou `groupsMerged: 12` numa coleta real), só não
+  reagia a uma regra aplicada fora do fluxo de coleta.
+- **Marcas sem cadastro sugeridas em `/admin/marcas`**: a tela listava só o catálogo curado
+  (`brands`/`brand_aliases`), começando vazia até alguém cadastrar cada marca à mão — sem refletir
+  as marcas já presentes em `products.brand`. Nova seção agrupa por `fold()` os valores de
+  `products.brand` que ainda não batem com nenhuma entrada/alias, com cadastro em um clique
+  (`missingBrandSuggestions`, `web/src/lib/brands.ts`).
+- **Loja Invicta sem nenhum produto coletado**: diagnosticado como bloqueio de IP do runner do
+  GitHub Actions (terceiro caso do tipo, ver `06-riscos-e-legal.md`), não config errada — os três
+  coletores testados (`jsonld`, `html`, `txt`) usam a mesma sessão HTTP, então trocar de coletor
+  não muda o resultado. Mitigação: `scraper/run-local.ps1`, script que roda a coleta de uma loja
+  específica direto da máquina do usuário.
+- **Identidade visual a partir de imagem própria do usuário** (antes não existia — ícone/logo
+  eram os padrões do Next.js): favicon, `icon`/`apple-icon` (Chrome/Firefox/Edge/iOS) e
+  `manifest.ts` (PWA instalável) gerados a partir de uma imagem enviada; logomarca do cabeçalho a
+  partir de outra. Upload de logomarca deixou de ser URL colada (a imagem "morava" em outro site)
+  e virou arquivo de verdade, salvo no bucket `branding` do Supabase Storage (migration `0022`,
+  público pra leitura, só admin escreve) — ver `03-modelo-dados.md`.
+- **Cabeçalho reformulado**: logomarca maior (32px → 56px) e subtítulo ao lado, alinhado pela
+  margem inferior da imagem, em vez de empilhado embaixo — só fazia sentido depois que a logomarca
+  passou a ser uma imagem de verdade, não mais o texto "Sugeridor".
+- Migration `0022`.
+
+### Aprendizados desta leva
+
+- **Arquivo estático de ícone (`icon.png`/`apple-icon.png`) dentro de rota com
+  `generateStaticParams` quebra o build do Next 16/Turbopack** ("failed to find source route ...
+  for prerender"), mesmo funcionando normal em `next dev` — só aparece no `next build`, que é
+  quando a Vercel faz o deploy. A saída documentada pra ícone em segmento dinâmico é código
+  (`icon.ts`/`apple-icon.ts` lendo o PNG de `public/` e devolvendo como `Response`), não arquivo
+  estático — vale testar `npm run build` local antes de push sempre que mexer nesses arquivos de
+  convenção do Next, não só `next dev`.
+- **GitHub nunca mostra o valor de um secret já salvo** — a tela de "Update secret" vem em branco
+  de propósito, não é sinal de que o secret está vazio ou quebrado.
+- **Reconfigurar um secret (`AUTOMATION_TOKEN`) só no GitHub não basta**: precisa bater com o
+  mesmo valor cadastrado na Vercel, senão o passo que chama `/api/admin/post-collect` volta 401.
+- **"Mesmo código, IP diferente" é toda a diferença entre rodar no GitHub Actions e local** — não
+  existe scraper "de produção" separado de um "de teste"; o que muda é só de onde o request HTTP
+  sai, e isso é o suficiente pra contornar bloqueio de WAF por IP de datacenter.
+
 ## Fase 4 — E-mail ⏸️ pausada
 - Caixa dedicada + credenciais IMAP.
 - Cron de leitura + normalizador (Claude API) aplicado a e-mails com múltiplas ofertas por
@@ -387,14 +433,16 @@ está no fim desta seção.
   os quatro secrets (`SITE_BASE_URL`/`AUTOMATION_TOKEN` no GitHub, `AUTOMATION_TOKEN`/
   `SUPABASE_SERVICE_ROLE_KEY` no Vercel, ver
   [02-arquitetura.md](02-arquitetura.md#webhook-do-github-actions-de-volta-pro-site-automação-pós-coleta))
-  estão cadastrados. Os dois toggles em `/admin/config` continuam desligados por padrão — ligar é
-  decisão do usuário, sobretudo a mesclagem automática (reverte uma decisão antiga do projeto de
-  nunca mesclar sem revisão humana).
+  estão cadastrados. **Atualização (2026-08-03)**: usuário ligou `auto_merge_duplicates` e
+  confirmou funcionando de verdade (log real: `groupsMerged: 12`) — não é mais só "configurado",
+  está em uso.
+- **Migration `0022` confirmada rodada (2026-08-05)**: bucket `branding` no Supabase Storage,
+  usado pelo upload de logomarca em `/admin/config` (ver `03-modelo-dados.md`).
 - **Agendamento** (`schedule:`) segue não configurado por decisão do usuário — a intenção é rodar
   1x/dia manualmente.
-- **Central da Cerveja** responde 403 ao scraper: é o Cloudflare barrando o IP do runner (do IP local
-  o mesmo User-Agent recebe 200), então não é questão de header. Ou se aceita que ela falhe, ou se
-  desmarca da coleta.
+- **Central da Cerveja e Invicta** respondem 403 ao scraper — Cloudflare/WAF barrando o IP do
+  runner do GitHub Actions (do IP local o mesmo request recebe 200), não questão de header/coletor.
+  Mitigação disponível pra rodar sob demanda: `scraper/run-local.ps1` (ver `06-riscos-e-legal.md`).
 - **Sharding com 4 shards** dá conta de ~50 lojas; a 100+ subir a lista `shard:` e
   `SCRAPER_SHARD_TOTAL` juntos (10 ou 12).
 - **País está ausente em ~700 de 1319 produtos**, e a regra "completar pela marca" não tem efeito
