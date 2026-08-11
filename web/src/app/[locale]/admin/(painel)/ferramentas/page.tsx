@@ -219,6 +219,15 @@ export default async function FerramentasPage({
     .filter((grupo) => !isGroupIgnored(grupo.map((p) => p.id), ignoredPairs))
     .map((grupo) => toGroup(`nome:${grupo[0].id}`, grupo, stats));
 
+  // Fonte única pros banners abaixo: o número que eles mostram tem que ser o
+  // que está de fato renderizado nas duas listas, senão a mensagem promete um
+  // "resolva abaixo" que não existe. Antes cada banner reaproveitava o mesmo
+  // `?conflitos=` calculado por uma conta DIFERENTE em cada Server Action
+  // (contagem crua do plano, ou "pulados" do resync/normalize) — nenhuma batia
+  // com o que sobrava depois de filtrar pares já marcados como "ignorar" e
+  // agrupar por chave, e a tela prometia N conflitos sem mostrar nenhum.
+  const totalPendingConflicts = gruposPorNome.length + gruposDeRegra.length;
+
   // Lista de desfazer: ignorar é permanente, então sem isto um clique errado
   // esconderia uma duplicata real pra sempre.
   const ignoradas = ignoredRows
@@ -248,7 +257,7 @@ export default async function FerramentasPage({
         <p className={okBanner}>
           {t("normalizeResult", {
             count: Number(sp.normalized),
-            conflicts: Number(sp.conflitos ?? 0),
+            conflicts: totalPendingConflicts,
           })}
         </p>
       )}
@@ -259,7 +268,7 @@ export default async function FerramentasPage({
         <p className={okBanner}>
           {t("applyResult", {
             count: Number(sp.aplicados),
-            conflicts: Number(sp.conflitos ?? 0),
+            conflicts: totalPendingConflicts,
             merged: Number(sp.mesclados ?? 0),
           })}
         </p>
@@ -268,7 +277,7 @@ export default async function FerramentasPage({
         <p className={okBanner}>
           {t("resyncResult", {
             count: Number(sp.ressincronizados),
-            conflicts: Number(sp.conflitos ?? 0),
+            conflicts: totalPendingConflicts,
           })}
         </p>
       )}
@@ -276,7 +285,7 @@ export default async function FerramentasPage({
         <p className={okBanner}>
           {t("rebrandResult", {
             count: Number(sp.remarcados),
-            conflicts: Number(sp.conflitos ?? 0),
+            conflicts: totalPendingConflicts,
           })}
         </p>
       )}
@@ -295,7 +304,7 @@ export default async function FerramentasPage({
             updated: Number(sp.aplicados ?? 0),
             merged: Number(sp.mesclados ?? 0),
             resynced: Number(sp.ressincronizados ?? 0),
-            conflicts: Number(sp.conflitos ?? 0),
+            conflicts: totalPendingConflicts,
           })}
         </p>
       )}
