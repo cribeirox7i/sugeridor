@@ -24,6 +24,7 @@ import {
   unignoreDuplicate,
 } from "./actions";
 import ConflictList, { type ConflictGroup, type ConflictSide } from "./ConflictList";
+import ActiveToggle from "@/components/admin/ActiveToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -527,21 +528,12 @@ export default async function FerramentasPage({
                               {t("applyRule", { count: n.aplicaveis })}
                             </button>
                           </form>
-                          <form action={toggleReplacement}>
-                            <input type="hidden" name="id" value={rule.id} />
-                            <input type="hidden" name="active" value={String(rule.active)} />
-                            <button
-                              type="submit"
-                              className={
-                                rule.active
-                                  ? "rounded border border-green-300 bg-green-100 px-2 py-1 text-xs text-green-700 hover:bg-green-200 dark:border-green-800 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900"
-                                  : "rounded border border-neutral-300 bg-neutral-100 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
-                              }
-                              title={t("toggleRuleHint")}
-                            >
-                              {rule.active ? t("active") : t("inactive")}
-                            </button>
-                          </form>
+                          <ActiveToggle
+                            action={toggleReplacement}
+                            id={rule.id}
+                            active={rule.active}
+                            label={rule.active ? t("active") : t("inactive")}
+                          />
                           <DeleteButton
                             action={deleteReplacement}
                             id={rule.id}
