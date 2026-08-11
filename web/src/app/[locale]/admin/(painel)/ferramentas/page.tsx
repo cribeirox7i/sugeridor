@@ -472,23 +472,25 @@ export default async function FerramentasPage({
               <tbody>
                 {rules.map((rule) => {
                   const n = perRule.get(rule.id) ?? { afeta: 0, aplicaveis: 0, conflitos: 0 };
+                  // Apagado só nas colunas informativas: a coluna de ações não
+                  // pode ficar com aparência de desabilitada, senão o único
+                  // jeito de reativar a regra parece que não dá pra clicar.
+                  const dim = rule.active ? "" : "opacity-50";
                   return (
                     <tr
                       key={rule.id}
-                      className={`border-t border-neutral-200 dark:border-neutral-800 ${
-                        rule.active ? "" : "opacity-50"
-                      }`}
+                      className="border-t border-neutral-200 dark:border-neutral-800"
                     >
-                      <td className="px-4 py-2 text-neutral-500">
+                      <td className={`px-4 py-2 text-neutral-500 ${dim}`}>
                         {rule.target === "name" ? t("targetName") : t("targetBrand")}
                       </td>
-                      <td className="px-4 py-2 font-mono">
+                      <td className={`px-4 py-2 font-mono ${dim}`}>
                         &quot;{rule.search}&quot;
                       </td>
-                      <td className="px-4 py-2 font-mono">
+                      <td className={`px-4 py-2 font-mono ${dim}`}>
                         {rule.replace ? `"${rule.replace}"` : t("removes")}
                       </td>
-                      <td className="px-4 py-2">
+                      <td className={`px-4 py-2 ${dim}`}>
                         {n.afeta === 0 ? (
                           <span className="text-amber-600 dark:text-amber-400">
                             {t("affectsNothing")}
@@ -532,9 +534,10 @@ export default async function FerramentasPage({
                               type="submit"
                               className={
                                 rule.active
-                                  ? "rounded bg-green-100 px-2 py-1 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                                  : "rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400"
+                                  ? "rounded border border-green-300 bg-green-100 px-2 py-1 text-xs text-green-700 hover:bg-green-200 dark:border-green-800 dark:bg-green-900/50 dark:text-green-300 dark:hover:bg-green-900"
+                                  : "rounded border border-neutral-300 bg-neutral-100 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700"
                               }
+                              title={t("toggleRuleHint")}
                             >
                               {rule.active ? t("active") : t("inactive")}
                             </button>
