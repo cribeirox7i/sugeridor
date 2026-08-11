@@ -7,6 +7,13 @@
       "runtimeArgs": ["/c", "set PATH=C:\\Program Files\\nodejs;%PATH% && cd /d C:\\Claude\\Sugeridor\\web && npm run dev"],
       "port": 3010,
       "autoPort": true
+    },
+    {
+      "name": "arenaapp-web",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": ["/c", "set PATH=C:\\Program Files\\nodejs;%PATH% && cd /d C:\\Claude\\ArenaApp\\web && npm run dev"],
+      "port": 3020,
+      "autoPort": true
     }
   ]
 }
