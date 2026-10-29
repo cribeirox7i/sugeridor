@@ -4,6 +4,7 @@ import { formatPrice } from "@/lib/format";
 import StoreOffersPopover from "@/components/StoreOffersPopover";
 import ProductCardLink from "@/components/ProductCardLink";
 import StoreLogo from "@/components/StoreLogo";
+import ProductImage from "@/components/ProductImage";
 
 export default function OfferCard({
   offer,
@@ -26,12 +27,7 @@ export default function OfferCard({
             fundo branco fixo por trás resolve as duas, dando visual padrão. */}
         <div className="flex aspect-square items-center justify-center bg-white p-3">
           {product.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={product.image_url}
-              alt={product.name}
-              className="h-full w-full object-contain"
-            />
+            <ProductImage src={product.image_url} alt={product.name} />
           ) : (
             <span className="text-4xl">🍺</span>
           )}
