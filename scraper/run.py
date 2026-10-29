@@ -195,12 +195,20 @@ def run() -> int:
             if future.result():
                 total_failures += 1
 
+    if total_failures:
+        print(
+            f"{total_failures} loja(s) falharam (403/timeout/config) — "
+            "detalhes acima e em ingestion_jobs. As demais foram coletadas normalmente."
+        )
+
     # Sem sharding, a execução é única e já pode enriquecer aqui mesmo. Com
     # sharding, quem faz isso é o job final do workflow (--enrich-only).
     if SHARD_TOTAL <= 1:
         run_enrichment()
 
-    return 1 if total_failures else 0
+    # Falha de loja individual não derruba o job: já está registrado em
+    # ingestion_jobs e logado acima. Só retorna 1 se houver crash fora do loop.
+    return 0
 
 
 if __name__ == "__main__":
