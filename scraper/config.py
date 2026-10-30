@@ -53,6 +53,13 @@ SHARD_TOTAL = int(os.environ.get("SCRAPER_SHARD_TOTAL", "1"))
 # processa a fatia dele DENTRO da seleção.
 STORE_IDS = [s.strip() for s in os.environ.get("SCRAPER_STORE_IDS", "").split(",") if s.strip()]
 
+# ── Mercado Livre (plataforma mercadolivre) ───────────────────────────────────
+# Obter em developers.mercadolivre.com.br → seu app → Client ID / Secret.
+# Adicionar como secrets no GitHub Actions: ML_CLIENT_ID, ML_CLIENT_SECRET.
+# O próprio conector (platforms/mercadolivre.py) lê essas vars diretamente.
+ML_CLIENT_ID = os.environ.get("ML_CLIENT_ID", "")
+ML_CLIENT_SECRET = os.environ.get("ML_CLIENT_SECRET", "")
+
 
 def require_config() -> None:
     missing = [

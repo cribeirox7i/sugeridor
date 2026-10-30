@@ -52,6 +52,10 @@ jobs:
           # Vazio na coleta normal; preenchido pelo botão "Coletar
           # selecionadas" do admin. O filtro é aplicado antes do sharding.
           SCRAPER_STORE_IDS: ${{ inputs.store_ids }}
+          # Mercado Livre (plataforma mercadolivre) — obter em
+          # developers.mercadolivre.com.br → seu app → Client ID / Secret.
+          ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
+          ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
         run: python -m scraper.run
 
   # Expiração de ofertas velhas e unificação de marca/país olham o catálogo
