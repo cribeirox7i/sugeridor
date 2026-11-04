@@ -216,6 +216,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
 
     # 2. Buscar detalhes em lotes de 20 via /items?ids=...
     candidates: list[Candidate] = []
+    batch_errors: list[str] = []
     batch_size = 20
     attrs = "id,title,price,thumbnail,permalink,available_quantity"
 
@@ -227,24 +228,35 @@ def collect(store: StoreRecord) -> list[Candidate]:
         try:
             items_data = _get(f"/items?ids={ids_str}&attributes={attrs}")
         except Exception as e:  # noqa: BLE001
-            print(f"  ! ML [{store.name}]: falha ao buscar lote {i // batch_size + 1} ({e})")
+            msg = str(e)
+            print(f"  ! ML [{store.name}]: falha ao buscar lote {i // batch_size + 1}: {msg}")
+            batch_errors.append(msg)
             continue
 
         # /items?ids= retorna [{code, body}, ...] ou diretamente [...items...]
         rows = items_data if isinstance(items_data, list) else [items_data]
+        print(f"  ML [{store.name}]: lote {i // batch_size + 1} → {len(rows)} rows, tipos: {[type(r).__name__ for r in rows[:3]]}")
         for row in rows:
             if isinstance(row, dict) and "body" in row:
-                if row.get("code", 200) != 200:
+                code = row.get("code", 200)
+                if code != 200:
+                    print(f"    item {row.get('id','?')}: code={code}")
                     continue
                 item = row["body"]
             elif isinstance(row, dict) and "id" in row:
                 item = row
             else:
+                print(f"    row inesperado: {str(row)[:100]}")
                 continue
             cand = _candidate_from_item(item)
             if cand:
                 candidates.append(cand)
                 if len(candidates) >= max_items:
                     break
+
+    if batch_errors and not candidates:
+        raise RuntimeError(
+            f"Todos os lotes de /items falharam. Primeiro erro: {batch_errors[0]}"
+        )
 
     return candidates
