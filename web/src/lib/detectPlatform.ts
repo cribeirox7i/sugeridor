@@ -199,6 +199,16 @@ export async function detectPlatform(inputUrl: string): Promise<DetectResult> {
     return { platform: null, config: {}, confidence: "low", note: "URL inválida." };
   }
 
+  // Mercado Livre: detectado pelo hostname, sem precisar buscar a página.
+  if (/mercadolivre\.com(\.br)?$/i.test(new URL(inputUrl).hostname)) {
+    return {
+      platform: "meli",
+      config: {},
+      confidence: "high",
+      note: "Mercado Livre detectado. Certifique-se de usar a URL da loja do vendedor (mercadolivre.com.br/loja/nome-do-vendedor).",
+    };
+  }
+
   // Logo/descrição vêm da home da loja (metadados de site, não da listagem),
   // buscada uma vez aqui independente de qual plataforma for detectada.
   const homeHtml = await fetchText(origin);
