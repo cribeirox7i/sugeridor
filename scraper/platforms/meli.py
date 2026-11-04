@@ -66,28 +66,32 @@ def _get(path: str) -> dict:
 
 
 def _resolve_seller_id(site_url: str) -> str:
-    """Extrai nickname da URL e resolve o seller_id via API de busca do ML."""
+    """Extrai nickname da URL e resolve o seller_id via /users/search."""
     m = re.search(r"/loja/([^/?#]+)", site_url, re.IGNORECASE)
     if not m:
         raise ValueError(f"Não foi possível extrair nickname de loja de '{site_url}'.")
     nickname = m.group(1)
-    # Uma busca por nickname com limit=1 é a forma mais simples de resolver
-    # o id numérico do vendedor sem depender de um endpoint de perfil.
-    data = _get(f"/sites/MLB/search?nickname={nickname}&limit=1")
-    results = data.get("results", [])
+    data = _get(f"/users/search?nickname={nickname}")
+    # A API retorna lista direta ou objeto com campo results
+    results = data if isinstance(data, list) else data.get("results", [])
     if not results:
-        raise ValueError(f"Vendedor '{nickname}' não encontrado ou sem produtos no ML.")
-    seller_id = str(results[0]["seller"]["id"])
-    print(f"  ML: nickname '{nickname}' → seller_id {seller_id} "
-          f"(dica: salve em config.seller_id pra evitar esse lookup nas próximas coletas)")
+        raise ValueError(
+            f"Vendedor '{nickname}' não encontrado. "
+            "Verifique o nickname ou cadastre o seller_id manualmente em config."
+        )
+    seller_id = str(results[0]["id"])
+    print(
+        f"  ML: nickname '{nickname}' → seller_id {seller_id} "
+        f"(dica: salve em config.seller_id pra evitar esse lookup nas próximas coletas)"
+    )
     return seller_id
 
 
 def collect(store: StoreRecord) -> list[Candidate]:
     if not _CLIENT_ID or not _CLIENT_SECRET:
         raise RuntimeError(
-            "ML_CLIENT_ID e ML_CLIENT_SECRET não configurados — "
-            "adicione-os como secrets no GitHub Actions."
+            "ML_CLIENT_ID e ML_CLIENT_SECRET não configurados nos secrets do GitHub Actions. "
+            f"CLIENT_ID={_CLIENT_ID!r} SECRET={'***' if _CLIENT_SECRET else repr(_CLIENT_SECRET)}"
         )
 
     cfg = store.config or {}
