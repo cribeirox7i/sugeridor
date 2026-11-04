@@ -65,6 +65,20 @@ def _get(path: str) -> dict:
     return resp.json()
 
 
+def _get_public(path: str) -> dict:
+    """Endpoints públicos da ML (ex: /sites/MLB/search) — sem token.
+
+    client_credentials tem escopo limitado; enviá-lo em endpoints públicos
+    pode gerar 403 mesmo que a requisição sem auth funcione normalmente.
+    """
+    resp = _requests.get(
+        f"{_API}{path}",
+        timeout=15,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
 def _resolve_seller_id_from_page(nickname: str) -> str | None:
     """Fallback: busca seller_id no HTML da página pública da loja.
 
@@ -162,7 +176,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
             path += f"&category={category_id}"
 
         try:
-            data = _get(path)
+            data = _get_public(path)
         except Exception as e:  # noqa: BLE001
             print(f"  ! {store.name}: falha na página offset={offset} ({e}) — parando aqui, mantendo o já coletado.")
             break
