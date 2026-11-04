@@ -65,19 +65,6 @@ def _get(path: str) -> dict:
     return resp.json()
 
 
-def _get_public(path: str) -> dict:
-    """Endpoints públicos da ML (ex: /sites/MLB/search) — sem token.
-
-    client_credentials tem escopo limitado; enviá-lo em endpoints públicos
-    pode gerar 403 mesmo que a requisição sem auth funcione normalmente.
-    """
-    resp = _requests.get(
-        f"{_API}{path}",
-        timeout=15,
-    )
-    resp.raise_for_status()
-    return resp.json()
-
 
 def _resolve_seller_id_from_page(nickname: str) -> str | None:
     """Fallback: busca seller_id no HTML da página pública da loja.
@@ -150,7 +137,64 @@ def _resolve_seller_id(site_url: str) -> str:
     )
 
 
+def _fetch_store_page_ids(site_url: str) -> list[str]:
+    """Extrai IDs de itens MLB do HTML inicial (SSR) da página pública da loja.
+
+    A API de busca /sites/MLB/search?seller_id=... exige token de usuário
+    (authorization_code) — não funciona com client_credentials. Como alternativa,
+    a página pública da loja embarca os IDs dos itens em destaque no HTML SSR do
+    Next.js, sem precisar de auth. Os IDs são então buscados via /items?ids=...
+    com nosso token de app (que SÍ funciona para leitura de itens públicos).
+    """
+    try:
+        resp = _requests.get(
+            site_url,
+            timeout=15,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Sugeridor/1.0)"},
+            allow_redirects=True,
+        )
+        if resp.status_code != 200:
+            print(f"  ML: página da loja retornou {resp.status_code}")
+            return []
+        # IDs de item ML: MLB + 8+ dígitos. IDs de categoria são menores (ex: MLB174).
+        ids = list(dict.fromkeys(re.findall(r"MLB\d{8,}", resp.text)))
+        return ids
+    except Exception as e:
+        print(f"  ML: falha ao buscar HTML da loja ({e})")
+        return []
+
+
+def _candidate_from_item(item: dict) -> "Candidate | None":
+    price = parse_price(item.get("price"))
+    if not price:
+        return None
+    name = clean_product_name(str(item.get("title", "")).strip())
+    if not name:
+        return None
+    attributes: dict = {}
+    vol = parse_volume_ml(name)
+    if vol:
+        attributes["volume_ml"] = vol
+    available = int(item.get("available_quantity", 0)) > 0
+    thumbnail = item.get("thumbnail") or ""
+    image_url = thumbnail.replace("-I.jpg", "-O.jpg") if thumbnail else None
+    return Candidate(
+        product_name=name,
+        price=price,
+        url=item.get("permalink", ""),
+        image_url=image_url,
+        available=available,
+        attributes=attributes,
+    )
+
+
 def collect(store: StoreRecord) -> list[Candidate]:
+    """Coleta produtos da loja do vendedor no Mercado Livre.
+
+    Estratégia (a API de search por seller_id exige auth de usuário):
+    1. Busca o HTML SSR da página pública da loja → extrai IDs de itens MLB
+    2. Chama GET /items?ids=... com nosso token de app → obtém título/preço/etc.
+    """
     if not _CLIENT_ID or not _CLIENT_SECRET:
         raise RuntimeError(
             "ML_CLIENT_ID e ML_CLIENT_SECRET não configurados nos secrets do GitHub Actions. "
@@ -159,67 +203,48 @@ def collect(store: StoreRecord) -> list[Candidate]:
 
     cfg = store.config or {}
     max_items = int(cfg.get("max_items", DEFAULT_MAX_ITEMS_PER_STORE))
-    category_id = str(cfg.get("category_id", "")).strip()
 
-    seller_id = str(cfg.get("seller_id", "")).strip()
-    if not seller_id:
-        seller_id = _resolve_seller_id(store.site_url)
-    print(f"  ML [{store.name}]: seller_id={seller_id}")
+    # 1. Extrair IDs de itens do HTML SSR da loja
+    item_ids = _fetch_store_page_ids(store.site_url)
+    if not item_ids:
+        raise RuntimeError(
+            f"Nenhum ID de produto encontrado no HTML da loja ({store.site_url}). "
+            "Verifique se a URL é a página da loja do vendedor no ML "
+            "(ex: https://www.mercadolivre.com.br/loja/nome-do-vendedor)."
+        )
+    print(f"  ML [{store.name}]: {len(item_ids)} IDs no HTML → buscando detalhes via /items")
 
+    # 2. Buscar detalhes em lotes de 20 via /items?ids=...
     candidates: list[Candidate] = []
-    limit = 50
-    offset = 0
+    batch_size = 20
+    attrs = "id,title,price,thumbnail,permalink,available_quantity"
 
-    while len(candidates) < max_items:
-        path = f"/sites/MLB/search?seller_id={seller_id}&limit={limit}&offset={offset}"
-        if category_id:
-            path += f"&category={category_id}"
-
+    for i in range(0, min(len(item_ids), max_items), batch_size):
+        if len(candidates) >= max_items:
+            break
+        batch = item_ids[i : i + batch_size]
+        ids_str = ",".join(batch)
         try:
-            data = _get_public(path)
+            items_data = _get(f"/items?ids={ids_str}&attributes={attrs}")
         except Exception as e:  # noqa: BLE001
-            print(f"  ! {store.name}: falha na página offset={offset} ({e}) — parando aqui, mantendo o já coletado.")
-            break
+            print(f"  ! ML [{store.name}]: falha ao buscar lote {i // batch_size + 1} ({e})")
+            continue
 
-        paging = data.get("paging", {})
-        results = data.get("results", [])
-        if offset == 0:
-            print(f"  ML [{store.name}]: total={paging.get('total', '?')} resultados, primeiro lote={len(results)}")
-        if not results:
-            break
-
-        for item in results:
-            price = parse_price(item.get("price"))
-            if not price:
+        # /items?ids= retorna [{code, body}, ...] ou diretamente [...items...]
+        rows = items_data if isinstance(items_data, list) else [items_data]
+        for row in rows:
+            if isinstance(row, dict) and "body" in row:
+                if row.get("code", 200) != 200:
+                    continue
+                item = row["body"]
+            elif isinstance(row, dict) and "id" in row:
+                item = row
+            else:
                 continue
-
-            name = clean_product_name(str(item.get("title", "")).strip())
-            attributes: dict = {}
-            vol = parse_volume_ml(name)
-            if vol:
-                attributes["volume_ml"] = vol
-
-            available = int(item.get("available_quantity", 0)) > 0
-
-            # ML retorna thumbnail com sufixo -I (190x190); -O é a versão original
-            thumbnail = item.get("thumbnail") or ""
-            image_url = thumbnail.replace("-I.jpg", "-O.jpg") if thumbnail else None
-
-            candidates.append(
-                Candidate(
-                    product_name=name,
-                    price=price,
-                    url=item.get("permalink", ""),
-                    image_url=image_url,
-                    available=available,
-                    attributes=attributes,
-                )
-            )
-            if len(candidates) >= max_items:
-                return candidates
-
-        offset += len(results)
-        if offset >= paging.get("total", 0):
-            break
+            cand = _candidate_from_item(item)
+            if cand:
+                candidates.append(cand)
+                if len(candidates) >= max_items:
+                    break
 
     return candidates
