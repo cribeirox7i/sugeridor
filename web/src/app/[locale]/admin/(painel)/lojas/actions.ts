@@ -93,10 +93,7 @@ export async function saveStore(formData: FormData) {
   const locale = await getLocale();
 
   if (error) {
-    // Erro de verdade no banco (ex: RLS, constraint) — antes disso era
-    // ignorado em silêncio e o modal só reabria vazio, parecendo "não fez
-    // nada" (foi exatamente isso que gerou lojas duplicadas: o usuário
-    // clicava de novo achando que não tinha salvo).
+    console.error("[saveStore] erro Supabase:", JSON.stringify(error));
     redirect(
       adminUrlFromForm(`/${locale}/admin/lojas`, formData, {
         ...(id ? { edit: id } : { new: "1" }),
