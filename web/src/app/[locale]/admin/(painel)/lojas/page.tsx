@@ -1,3 +1,4 @@
+import type React from "react";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -18,13 +19,13 @@ export const dynamic = "force-dynamic";
 
 type Job = {
   id: string;
+  store_id: string;
   status: "running" | "success" | "partial" | "failed";
   items_found: number;
   items_new: number;
   error_message: string | null;
   started_at: string;
   finished_at: string | null;
-  store: { name: string } | null;
 };
 
 const STATUS_STYLE: Record<Job["status"], string> = {
@@ -52,13 +53,20 @@ export default async function LojasPage({
     supabase.from("site_settings").select("offer_expiration_days").eq("id", 1).maybeSingle(),
     supabase
       .from("ingestion_jobs")
-      .select("*, store:stores ( name )")
+      .select("id, store_id, status, items_found, items_new, error_message, started_at, finished_at")
       .order("started_at", { ascending: false })
-      .limit(20),
+      .limit(500),
   ]);
   const allStores = (data ?? []) as Store[];
   const globalExpirationDays = settings?.offer_expiration_days ?? 45;
   const jobs = (jobsData ?? []) as unknown as Job[];
+  // Mapeia store_id → job mais recente (os jobs já vêm ordenados por started_at DESC)
+  const latestJobByStore = new Map<string, Job>();
+  for (const job of jobs) {
+    if (!latestJobByStore.has(job.store_id)) {
+      latestJobByStore.set(job.store_id, job);
+    }
+  }
   // Contagem correta: a tela antiga contava lojas com `platform` definido, o
   // que superestimava quando alguma estava desmarcada.
   const includedCount = allStores.filter((s) => s.platform && s.include_in_collection).length;
@@ -263,39 +271,67 @@ export default async function LojasPage({
               </tr>
             </thead>
             <tbody>
-              {jobs.length === 0 && (
+              {allStores.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">
                     {t("noRuns")}
                   </td>
                 </tr>
               )}
-              {jobs.map((j) => (
-                <tr
-                  key={j.id}
-                  className="border-t border-neutral-200 align-top dark:border-neutral-800"
-                >
-                  <td className="px-4 py-2">{j.store?.name ?? "—"}</td>
-                  <td className="px-4 py-2">
-                    <span className={`rounded px-2 py-0.5 text-xs ${STATUS_STYLE[j.status]}`}>
-                      {j.status}
+              {allStores.map((s) => {
+                const job = latestJobByStore.get(s.id);
+                const neutralBadge =
+                  "rounded px-2 py-0.5 text-xs bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400";
+
+                let badge: React.ReactNode;
+                let errorDetail: React.ReactNode = null;
+                let itemsFound: React.ReactNode = "—";
+                let itemsNew: React.ReactNode = "—";
+                let startedAt: React.ReactNode = "—";
+                let finishedAt: React.ReactNode = "—";
+
+                if (!s.active) {
+                  badge = <span className={neutralBadge}>{t("activeOff")}</span>;
+                } else if (!s.include_in_collection || !s.platform) {
+                  badge = <span className={neutralBadge}>{t("outOfCollection")}</span>;
+                } else if (!job) {
+                  badge = <span className={neutralBadge}>{t("neverCollected")}</span>;
+                } else {
+                  badge = (
+                    <span className={`rounded px-2 py-0.5 text-xs ${STATUS_STYLE[job.status]}`}>
+                      {job.status}
                     </span>
-                    {j.error_message && (
+                  );
+                  if (job.error_message) {
+                    errorDetail = (
                       <div className="mt-1 max-w-xs text-xs text-red-600 dark:text-red-400">
-                        {j.error_message}
+                        {job.error_message}
                       </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-2">{j.items_found}</td>
-                  <td className="px-4 py-2">{j.items_new}</td>
-                  <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
-                    {fmtDate(j.started_at)}
-                  </td>
-                  <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
-                    {fmtDate(j.finished_at)}
-                  </td>
-                </tr>
-              ))}
+                    );
+                  }
+                  itemsFound = job.items_found;
+                  itemsNew = job.items_new;
+                  startedAt = fmtDate(job.started_at);
+                  finishedAt = fmtDate(job.finished_at);
+                }
+
+                return (
+                  <tr
+                    key={s.id}
+                    className="border-t border-neutral-200 align-top dark:border-neutral-800"
+                  >
+                    <td className="px-4 py-2">{s.name}</td>
+                    <td className="px-4 py-2">
+                      {badge}
+                      {errorDetail}
+                    </td>
+                    <td className="px-4 py-2">{itemsFound}</td>
+                    <td className="px-4 py-2">{itemsNew}</td>
+                    <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{startedAt}</td>
+                    <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">{finishedAt}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
