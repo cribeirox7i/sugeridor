@@ -6,7 +6,7 @@ realmente novas (ou sites fora do padrão) precisam de um módulo novo aqui.
 from collections.abc import Callable
 
 from ..models import Candidate, StoreRecord
-from . import vtex, shopify, tray, jsonld, html, txt, mercadolivre
+from . import vtex, shopify, tray, jsonld, html, txt, meli
 
 # platform -> collect(store) -> list[Candidate]
 REGISTRY: dict[str, Callable[[StoreRecord], list[Candidate]]] = {
@@ -16,7 +16,7 @@ REGISTRY: dict[str, Callable[[StoreRecord], list[Candidate]]] = {
     "jsonld": jsonld.collect,
     "html": html.collect,
     "txt": txt.collect,
-    "mercadolivre": mercadolivre.collect,
+    "meli": meli.collect,
 }
 
 

@@ -54,7 +54,7 @@ export const PLATFORMS: {
 }`,
   },
   {
-    key: "mercadolivre",
+    key: "meli",
     label: "Mercado Livre",
     hint: "site_url = URL da loja do vendedor no ML (ex: https://www.mercadolivre.com.br/loja/nome-do-vendedor). seller_id é opcional mas recomendado após a primeira coleta.",
     configExample: `{"seller_id": "123456789", "category_id": "MLB174"}`,
