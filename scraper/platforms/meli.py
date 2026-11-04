@@ -150,6 +150,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
     seller_id = str(cfg.get("seller_id", "")).strip()
     if not seller_id:
         seller_id = _resolve_seller_id(store.site_url)
+    print(f"  ML [{store.name}]: seller_id={seller_id}")
 
     candidates: list[Candidate] = []
     limit = 50
@@ -166,7 +167,10 @@ def collect(store: StoreRecord) -> list[Candidate]:
             print(f"  ! {store.name}: falha na página offset={offset} ({e}) — parando aqui, mantendo o já coletado.")
             break
 
+        paging = data.get("paging", {})
         results = data.get("results", [])
+        if offset == 0:
+            print(f"  ML [{store.name}]: total={paging.get('total', '?')} resultados, primeiro lote={len(results)}")
         if not results:
             break
 
@@ -200,7 +204,6 @@ def collect(store: StoreRecord) -> list[Candidate]:
             if len(candidates) >= max_items:
                 return candidates
 
-        paging = data.get("paging", {})
         offset += len(results)
         if offset >= paging.get("total", 0):
             break
