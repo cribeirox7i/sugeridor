@@ -65,26 +65,75 @@ def _get(path: str) -> dict:
     return resp.json()
 
 
+def _resolve_seller_id_from_page(nickname: str) -> str | None:
+    """Fallback: busca seller_id no HTML da página pública da loja.
+
+    /users/search requer token de usuário (authorization_code), não funciona com
+    client_credentials desde meados de 2025. A página da loja é pública e embute o
+    seller_id no JSON do Next.js (__NEXT_DATA__ ou script inline).
+    """
+    try:
+        url = f"https://www.mercadolivre.com.br/loja/{nickname}"
+        resp = _requests.get(
+            url,
+            timeout=15,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Sugeridor/1.0)"},
+            allow_redirects=True,
+        )
+        if resp.status_code != 200:
+            return None
+        text = resp.text
+        for pattern in [
+            r'"sellerId"\s*:\s*"?(\d+)"?',
+            r'"seller_id"\s*:\s*"?(\d+)"?',
+            r'"id"\s*:\s*(\d+)\s*,\s*"nickname"\s*:\s*"' + re.escape(nickname) + '"',
+            r'"nickname"\s*:\s*"' + re.escape(nickname) + r'"[^}]*?"id"\s*:\s*(\d+)',
+        ]:
+            m = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if m:
+                return m.group(1)
+    except Exception:
+        pass
+    return None
+
+
 def _resolve_seller_id(site_url: str) -> str:
-    """Extrai nickname da URL e resolve o seller_id via /users/search."""
+    """Extrai nickname da URL e resolve o seller_id.
+
+    Tenta /users/search primeiro; faz fallback para scraping da página pública da
+    loja caso o endpoint retorne 403 (exige token de usuário com client_credentials).
+    """
     m = re.search(r"/loja/([^/?#]+)", site_url, re.IGNORECASE)
     if not m:
         raise ValueError(f"Não foi possível extrair nickname de loja de '{site_url}'.")
     nickname = m.group(1)
-    data = _get(f"/users/search?nickname={nickname}")
-    # A API retorna lista direta ou objeto com campo results
-    results = data if isinstance(data, list) else data.get("results", [])
-    if not results:
-        raise ValueError(
-            f"Vendedor '{nickname}' não encontrado. "
-            "Verifique o nickname ou cadastre o seller_id manualmente em config."
+
+    try:
+        data = _get(f"/users/search?nickname={nickname}")
+        results = data if isinstance(data, list) else data.get("results", [])
+        if results:
+            seller_id = str(results[0]["id"])
+            print(
+                f"  ML: nickname '{nickname}' → seller_id {seller_id} "
+                f"(dica: salve em config.seller_id pra evitar esse lookup)"
+            )
+            return seller_id
+    except Exception as exc:
+        print(f"  ML: /users/search falhou ({exc}) — tentando fallback via página da loja...")
+
+    seller_id = _resolve_seller_id_from_page(nickname)
+    if seller_id:
+        print(
+            f"  ML: nickname '{nickname}' → seller_id {seller_id} "
+            f"(via página pública; salve em config.seller_id pra evitar esse lookup)"
         )
-    seller_id = str(results[0]["id"])
-    print(
-        f"  ML: nickname '{nickname}' → seller_id {seller_id} "
-        f"(dica: salve em config.seller_id pra evitar esse lookup nas próximas coletas)"
+        return seller_id
+
+    raise ValueError(
+        f"Não foi possível resolver seller_id para '{nickname}'. "
+        "Cadastre o seller_id manualmente em config da loja no admin "
+        "(abra qualquer produto da loja no ML e procure o número do vendedor na URL ou na API)."
     )
-    return seller_id
 
 
 def collect(store: StoreRecord) -> list[Candidate]:
