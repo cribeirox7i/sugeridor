@@ -1,9 +1,41 @@
+import { fold } from "./slug";
+
 // Padroniza travessão (—) e meia-risca (–) pra hífen simples em texto
 // digitado no admin, antes de gravar — mesmo padrão do scraper
 // (scraper/normalize.py normalize_dashes), ver migration 0008 pro backfill
 // do que já existia.
 export function normalizeDashes(text: string): string {
   return text.replace(/[—–‑]/g, "-");
+}
+
+// Palavras que saem do NOME EXIBIDO do produto. NÃO confundir com as listas de
+// match_key em slug.ts, que saem só da CHAVE de agrupamento: esta é um
+// subconjunto deliberado, porque errar aqui o usuário LÊ.
+//
+// Ficam de FORA de propósito, mesmo estando na lista da chave:
+// especial/artesanal/nacional/importada — aparecem em nome de produto de
+// verdade ("Reserva Especial la Milnueve"). Tirar da chave é inofensivo (os
+// dois lados perdem igual); tirar do nome mutila.
+//
+// Espelha _NAME_NOISE de scraper/normalize.py.
+const NAME_NOISE = new Set([
+  "brasileira", "brasileiro", "argentina", "argentino",
+  "espanhola", "espanhol", "holandesa", "holandes",
+  "inglesa", "ingles", "escocesa", "escoces",
+  "irlandesa", "irlandes", "tcheca", "tcheco",
+  "italiana", "italiano", "mexicana", "mexicano",
+  "japonesa", "japones", "portuguesa", "portugues",
+  "austriaca", "austriaco", "dinamarquesa", "dinamarques",
+  "americana", "francesa", "belga", "belgas", "alema", "alemao",
+  "garrafa", "garrafas", "lata", "latas",
+]);
+
+// Tira as palavras de ruído do nome exibido, comparando sem acento/caixa.
+// Nunca devolve vazio: se TUDO fosse ruído, mantém o original — produto sem
+// nome é pior que nome sujo. Espelha scraper/normalize.py::strip_name_noise.
+export function stripNameNoise(name: string): string {
+  const kept = name.split(/\s+/).filter((w) => w && !NAME_NOISE.has(fold(w)));
+  return kept.length ? kept.join(" ") : name;
 }
 
 // Artigos/preposições/conjunções comuns em pt/es que ficam minúsculos no

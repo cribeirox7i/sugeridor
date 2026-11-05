@@ -5,7 +5,7 @@ import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { productSlug, slugify } from "@/lib/slug";
 import { revalidateAllLocales } from "@/lib/revalidate";
-import { normalizeDashes, separateUnits, titleCaseProductName } from "@/lib/text";
+import { normalizeDashes, separateUnits, stripNameNoise, titleCaseProductName } from "@/lib/text";
 import { patchProducts } from "@/lib/adminBatch";
 import { adminUrlFromForm } from "@/lib/adminNav";
 import { buildBrandIndex, lookupBrand, type Brand, type BrandAlias } from "@/lib/brands";
@@ -179,7 +179,11 @@ export async function normalizeExistingProductNames(formData: FormData) {
 
   const changed: { id: string; name: string; canonical_slug: string }[] = [];
   for (const p of products) {
-    const name = titleCaseProductName(separateUnits(normalizeDashes(p.name)));
+    // stripNameNoise primeiro: tira nacionalidade ("Belga", "Brasileira") e
+    // embalagem ("Garrafa", "Lata") que a loja põe no nome, igual a coleta já
+    // faz em scraper/normalize.py::clean_product_name. Não mexe na match_key
+    // (essas palavras já saíam da chave), só no que o usuário lê e no slug.
+    const name = titleCaseProductName(separateUnits(normalizeDashes(stripNameNoise(p.name))));
     const canonical_slug = productSlug(p.brand, name);
     if (name !== p.name || canonical_slug !== p.canonical_slug) {
       changed.push({ id: p.id, name, canonical_slug });

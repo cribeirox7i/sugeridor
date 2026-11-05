@@ -74,6 +74,42 @@ def separate_units(name: str) -> str:
     return _GLUED_UNIT.sub(lambda m: " " + _UNIT_CANONICAL[m.group(1).lower()], out)
 
 
+# Palavras que saem do NOME EXIBIDO. Não confundir com _MATCH_NOISE (lá
+# embaixo), que sai só da CHAVE de agrupamento: esta lista é um subconjunto
+# deliberado, porque errar aqui o usuário LÊ.
+#
+# Ficam de FORA de propósito, mesmo estando na lista da chave:
+#   especial/artesanal/nacional/importada -> aparecem em nome de produto de
+#   verdade ("Märzen Puro Malte 1906 Reserva Especial la Milnueve"). Tirar da
+#   chave é inofensivo (os dois lados perdem igual); tirar do nome mutila.
+#
+# Nacionalidade é ruído puro de loja ("Brasileira Barbarella Morango"), já
+# conferida contra o catálogo — as perigosas (russa/americano/frances) nunca
+# entraram, ver _MATCH_DESCRIPTORS. Embalagem sai porque o produto agrega
+# ofertas de garrafa E lata na mesma página: manter no nome engana.
+_NAME_NOISE = {
+    "brasileira", "brasileiro", "argentina", "argentino",
+    "espanhola", "espanhol", "holandesa", "holandes",
+    "inglesa", "ingles", "escocesa", "escoces",
+    "irlandesa", "irlandes", "tcheca", "tcheco",
+    "italiana", "italiano", "mexicana", "mexicano",
+    "japonesa", "japones", "portuguesa", "portugues",
+    "austriaca", "austriaco", "dinamarquesa", "dinamarques",
+    "americana", "francesa", "belga", "belgas", "alema", "alemao",
+    "garrafa", "garrafas", "lata", "latas",
+}
+
+
+def strip_name_noise(name: str) -> str:
+    """Tira as palavras de ruído do nome exibido, comparando sem acento/caixa.
+
+    Nunca devolve vazio: se TUDO fosse ruído, mantém o nome original — um
+    produto sem nome é pior que um nome sujo. Espelhada em
+    web/src/lib/text.ts::stripNameNoise."""
+    kept = [w for w in name.split() if _fold(w) not in _NAME_NOISE]
+    return " ".join(kept) if kept else name
+
+
 # Remove prefixo "Cerveja " que o site costuma colocar no nome, pra o slug ficar
 # mais próximo do que um humano digitaria no admin.
 def clean_product_name(name: str) -> str:
@@ -82,7 +118,9 @@ def clean_product_name(name: str) -> str:
     # com o "&amp;" literal.
     name = _html.unescape(name)
     return separate_units(
-        normalize_dashes(re.sub(r"^\s*cerveja\s+", "", name, flags=re.IGNORECASE).strip())
+        normalize_dashes(
+            strip_name_noise(re.sub(r"^\s*cerveja\s+", "", name, flags=re.IGNORECASE).strip())
+        )
     )
 
 
@@ -251,11 +289,28 @@ _MATCH_PACKAGING = {
 }
 
 # Tier 2 — descritores de nacionalidade/qualificação que algumas lojas
-# prefixam. Mais arriscado que o Tier 1; o dry-run não achou merge falso, mas é
-# aqui que mora o risco de over-merge — mexer com cuidado.
+# prefixam ("Belga Delirium", "Pack 6 Cervejas Tcheca Pilsner Urquell"). Mais
+# arriscado que o Tier 1; é aqui que mora o risco de over-merge.
+#
+# Cada palavra foi conferida contra o catálogo real antes de entrar (ver
+# scratchpad vet_descritores.py): entra só a que aparece como RUÍDO de loja, não
+# como parte do nome/marca. EXCLUÍDAS de propósito, não esquecer o porquê:
+#   russa/russo  -> 60 dos 64 usos são a MARCA "Roleta Russa";
+#   americano    -> "Hocus Pocus Copo Americano" (o produto é um copo);
+#   frances      -> "Carvalho Francês" (o barril, informação real da cerveja).
+# A forma feminina dessas duas últimas entra, porque o padrão de prefixo de loja
+# é "cerveja <nacionalidade>" e o uso perigoso é o masculino.
 _MATCH_DESCRIPTORS = {
     "belga", "belgas", "alema", "alemao", "importada", "importado",
     "artesanal", "nacional", "especial",
+    "brasileira", "brasileiro", "argentina", "argentino",
+    "espanhola", "espanhol", "holandesa", "holandes",
+    "inglesa", "ingles", "escocesa", "escoces",
+    "irlandesa", "irlandes", "tcheca", "tcheco",
+    "italiana", "italiano", "mexicana", "mexicano",
+    "japonesa", "japones", "portuguesa", "portugues",
+    "austriaca", "austriaco", "dinamarquesa", "dinamarques",
+    "americana", "francesa",
 }
 
 # Estilos genéricos: não identificam um produto sozinhos. Quando TODAS as

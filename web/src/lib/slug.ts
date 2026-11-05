@@ -88,9 +88,23 @@ const MATCH_PACKAGING = new Set([
 
 // Tier 2 — descritores de nacionalidade/qualificação prefixados por algumas
 // lojas. Mais arriscado que o Tier 1; é onde mora o risco de over-merge.
+//
+// Cada palavra foi conferida contra o catálogo real antes de entrar: entra só a
+// que aparece como RUÍDO de loja, não como parte do nome/marca. EXCLUÍDAS de
+// propósito: russa/russo (60 dos 64 usos são a MARCA "Roleta Russa"),
+// americano ("Copo Americano" — o produto é um copo), frances ("Carvalho
+// Francês" — o barril). Espelha _MATCH_DESCRIPTORS de scraper/normalize.py.
 const MATCH_DESCRIPTORS = new Set([
   "belga", "belgas", "alema", "alemao", "importada", "importado",
   "artesanal", "nacional", "especial",
+  "brasileira", "brasileiro", "argentina", "argentino",
+  "espanhola", "espanhol", "holandesa", "holandes",
+  "inglesa", "ingles", "escocesa", "escoces",
+  "irlandesa", "irlandes", "tcheca", "tcheco",
+  "italiana", "italiano", "mexicana", "mexicano",
+  "japonesa", "japones", "portuguesa", "portugues",
+  "austriaca", "austriaco", "dinamarquesa", "dinamarques",
+  "americana", "francesa",
 ]);
 
 // Estilos genéricos: não identificam um produto sozinhos. Quando TODAS as
