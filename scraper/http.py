@@ -27,7 +27,16 @@ def _session() -> requests.Session:
     session = getattr(_thread_local, "session", None)
     if session is None:
         session = requests.Session()
-        session.headers.update({"User-Agent": USER_AGENT})
+        session.headers.update({
+            "User-Agent": USER_AGENT,
+            # urllib3>=2 com brotli instalado adiciona "br" ao Accept-Encoding e
+            # o servidor responde em Brotli; requests.Response.text não
+            # descomprime Brotli automaticamente (fetch_json tem fallback, fetch
+            # não), então BeautifulSoup recebe bytes garbled e encontra 0
+            # elementos. Excluir "br" faz o servidor servir gzip/deflate, que o
+            # requests já trata nativamente.
+            "Accept-Encoding": "gzip, deflate",
+        })
         _thread_local.session = session
     return session
 
