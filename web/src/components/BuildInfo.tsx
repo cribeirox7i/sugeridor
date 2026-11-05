@@ -15,17 +15,17 @@ function formatBuildTime(iso: string): string {
 
 export default function BuildInfo({ className }: { className?: string }) {
   const sha = process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev";
-  const num = process.env.NEXT_PUBLIC_BUILD_NUMBER;
   const time = process.env.NEXT_PUBLIC_BUILD_TIME;
 
+  // "dev" = build sem sha de commit (rodando local). Nesse caso não há build
+  // identificável pra mostrar, então o rodapé fica sem a linha.
   if (sha === "dev") return null;
 
-  const label = num ? `build #${num} · ${sha}` : sha;
   const dateStr = time ? formatBuildTime(time) : null;
 
   return (
     <p className={className ?? "mt-1 text-neutral-600"}>
-      {label}
+      {sha}
       {dateStr && ` · ${dateStr}`}
     </p>
   );
