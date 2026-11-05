@@ -235,7 +235,17 @@ def collect(store: StoreRecord) -> list[Candidate]:
 
         # /items?ids= retorna [{code, body}, ...] ou diretamente [...items...]
         rows = items_data if isinstance(items_data, list) else [items_data]
-        print(f"  ML [{store.name}]: lote {i // batch_size + 1} → {len(rows)} rows, tipos: {[type(r).__name__ for r in rows[:3]]}")
+        # Log do primeiro item pra diagnóstico de estrutura/preço
+        if rows and i == 0:
+            first = rows[0]
+            body = first.get("body", first) if isinstance(first, dict) else first
+            print(
+                f"  ML [{store.name}]: primeiro item → "
+                f"id={body.get('id','?')} price={body.get('price','?')} "
+                f"title={str(body.get('title','?'))[:50]} "
+                f"code={first.get('code','?') if 'body' in first else 'direct'}"
+            )
+        print(f"  ML [{store.name}]: lote {i // batch_size + 1} → {len(rows)} rows")
         for row in rows:
             if isinstance(row, dict) and "body" in row:
                 code = row.get("code", 200)
