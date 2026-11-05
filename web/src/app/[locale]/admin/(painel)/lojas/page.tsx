@@ -13,6 +13,7 @@ import { saveStore, deleteStore } from "./actions";
 import StoreForm from "./StoreForm";
 import StoresTable from "./StoresTable";
 import RunScrapeButton from "./RunScrapeButton";
+import RefreshStatusButton from "./RefreshStatusButton";
 import DetectPlatformCardButton from "./DetectPlatformCardButton";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,10 @@ export default async function LojasPage({
       .order("started_at", { ascending: false })
       .limit(500),
   ]);
+  // Momento desta leitura: a página é force-dynamic, então cada render (o
+  // inicial e cada router.refresh()) produz um valor novo, que é exatamente o
+  // "de quando é o que está na tela" mostrado ao lado do botão de atualizar.
+  const fetchedAt = new Date().toISOString();
   const allStores = (data ?? []) as Store[];
   const globalExpirationDays = settings?.offer_expiration_days ?? 45;
   const jobs = (jobsData ?? []) as unknown as Job[];
@@ -256,7 +261,10 @@ export default async function LojasPage({
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-medium">{t("lastRuns")}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-medium">{t("lastRuns")}</h2>
+          <RefreshStatusButton fetchedAt={fetchedAt} />
+        </div>
         {/* overflow-x-auto (não hidden) — ver comentário em StoresTable.tsx. */}
         <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
           <table className="w-full text-[13px]">

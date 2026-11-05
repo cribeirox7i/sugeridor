@@ -217,7 +217,10 @@
       "txtManualNeedsRequired": "Fill in all three delimiters for Name and Price to be able to test.",
       "txtManualFilled": "{count, plural, =0 {no complete field} =1 {1 complete field} other {# complete fields}}",
       "txtTagOptional": "optional",
-      "txtTagInsideIni": "The tag for {fields} appears in the MIDDLE of the start text. That makes the collector skip to the next product and scramble the fields, with no error. Leave the tag blank on those rows (it falls back to the start text)."
+      "txtTagInsideIni": "The tag for {fields} appears in the MIDDLE of the start text. That makes the collector skip to the next product and scramble the fields, with no error. Leave the tag blank on those rows (it falls back to the start text).",
+      "refresh": "Refresh",
+      "refreshing": "Refreshing...",
+      "updatedAt": "updated at {time}"
     },
     "products": {
       "title": "Products",

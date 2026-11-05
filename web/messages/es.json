@@ -217,7 +217,10 @@
       "txtManualNeedsRequired": "Rellena los tres delimitadores de Nombre y Precio para poder probar.",
       "txtManualFilled": "{count, plural, =0 {ningún campo completo} =1 {1 campo completo} other {# campos completos}}",
       "txtTagOptional": "opcional",
-      "txtTagInsideIni": "La tag de {fields} aparece en el MEDIO del inicio. Eso hace que el recolector salte al producto siguiente y mezcle los campos, sin dar error. Deja la tag en blanco en esas filas (usa el propio inicio)."
+      "txtTagInsideIni": "La tag de {fields} aparece en el MEDIO del inicio. Eso hace que el recolector salte al producto siguiente y mezcle los campos, sin dar error. Deja la tag en blanco en esas filas (usa el propio inicio).",
+      "refresh": "Actualizar",
+      "refreshing": "Actualizando...",
+      "updatedAt": "actualizado a las {time}"
     },
     "products": {
       "title": "Productos",
