@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { OfferListItem } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
@@ -14,9 +17,12 @@ export default function OfferCard({
   dropPercent?: number;
 }) {
   const t = useTranslations("offerCard");
+  const [imageOk, setImageOk] = useState(true);
   const { product, store } = offer;
   const estilo = product.attributes?.estilo as string | undefined;
   const pais = product.attributes?.pais as string | undefined;
+
+  if (!imageOk) return null;
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
@@ -27,7 +33,11 @@ export default function OfferCard({
             fundo branco fixo por trás resolve as duas, dando visual padrão. */}
         <div className="flex aspect-square items-center justify-center bg-white p-3">
           {product.image_url ? (
-            <ProductImage src={product.image_url} alt={product.name} />
+            <ProductImage
+              src={product.image_url}
+              alt={product.name}
+              onFailed={() => setImageOk(false)}
+            />
           ) : (
             <span className="text-4xl">🍺</span>
           )}
