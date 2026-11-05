@@ -120,23 +120,44 @@ function parseVolumeMl(name: string): number | null {
   return null;
 }
 
-// Chave de AGRUPAMENTO (não é a URL — essa é productSlug). Dois produtos com a
-// mesma match_key são "o mesmo produto" pra fins de agregar ofertas.
-export function matchKey(brand: string | null, name: string): string {
+// Partes da match_key ANTES de virar string: tokens de conteúdo (ordenados,
+// sem repetição) e o volume. Separado de matchKey porque o detector de
+// "possíveis duplicatas" (lib/duplicates.ts::groupByContainedMatchKey) precisa
+// comparar os CONJUNTOS de tokens, não só as strings — um nome cuja loja
+// embutiu a cervejaria ("Argentum Huyghe Delirium") ganha um token a mais e
+// nunca bateria com "Delirium Argentum" por string. Não há equivalente em
+// Python: esse detector é só do admin, a coleta usa a match_key inteira.
+export function matchKeyParts(
+  brand: string | null,
+  name: string,
+): { tokens: string[]; volume: number | null } {
   const base = name.replace(/\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|kg|oz|l|g)\b/gi, " ");
   let tokens = fold(base)
     .split(" ")
     .filter((t) => t && !MATCH_NOISE.has(t));
   const content = tokens.filter((t) => !MATCH_GENERIC_STYLE.has(t));
   if (content.length === 0) {
-    const brandTokens = fold(brand ?? "")
-      .split(" ")
-      .filter((t) => t.length > 2 && !GENERIC_BRAND_WORDS.has(t));
-    tokens = [...brandTokens, ...tokens];
+    tokens = [...brandTokens(brand), ...tokens];
   }
-  const keyTokens = [...new Set(tokens)].sort();
-  let key = keyTokens.length ? keyTokens.join("-") : slugify(name);
-  const vol = parseVolumeMl(name);
-  if (vol) key += `-${vol}ml`;
+  return { tokens: [...new Set(tokens)].sort(), volume: parseVolumeMl(name) };
+}
+
+// Palavras DISTINTIVAS da marca (sem as genéricas de cervejaria, sem as de 1-2
+// letras). Exportada porque o detector de "possíveis duplicatas" precisa saber
+// se a palavra que sobra entre dois nomes é o nome de uma CERVEJARIA (ruído) ou
+// uma variante do produto ("dunkel", "alkoholfrei") — ver
+// lib/duplicates.ts::groupByContainedMatchKey.
+export function brandTokens(brand: string | null): string[] {
+  return fold(brand ?? "")
+    .split(" ")
+    .filter((t) => t.length > 2 && !GENERIC_BRAND_WORDS.has(t));
+}
+
+// Chave de AGRUPAMENTO (não é a URL — essa é productSlug). Dois produtos com a
+// mesma match_key são "o mesmo produto" pra fins de agregar ofertas.
+export function matchKey(brand: string | null, name: string): string {
+  const { tokens, volume } = matchKeyParts(brand, name);
+  let key = tokens.length ? tokens.join("-") : slugify(name);
+  if (volume) key += `-${volume}ml`;
   return key;
 }

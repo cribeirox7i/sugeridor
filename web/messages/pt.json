@@ -410,6 +410,8 @@
       "rebrandResult": "{count, plural, =0 {Nenhuma marca precisou de ajuste} =1 {1 produto remarcado} other {# produtos remarcados}}. {conflicts, plural, =0 {} =1 {1 caso ficou de fora por conflito de identificador.} other {# casos ficaram de fora por conflito de identificador.}}",
       "conflictsTitle": "Duplicatas que as substituições criariam",
       "conflictsHint": "Estes registros ficariam com o mesmo identificador depois das substituições, ou seja, são o mesmo produto cadastrado duas vezes. Enquanto não forem mesclados, a regra que os afeta não tem o que gravar. Mesclar move as ofertas para um único produto (é o que faz o preço de várias lojas aparecer junto) e apaga o outro — não tem como desfazer.",
+      "containedDuplicatesTitle": "Possíveis duplicatas (um nome contém o outro)",
+      "containedDuplicatesHint": "Sinal mais fraco que a lista acima, então confira cada grupo antes de mesclar. Pega o caso em que a loja embutiu a cervejaria no NOME do produto (\"Argentum Huyghe Delirium\" vs \"Delirium Argentum\"): sobra uma palavra a mais e os dois nunca batem por chave exata. Só agrupa produtos do mesmo volume e quando um nome contém inteiro o outro.",
       "nameDuplicatesTitle": "Duplicatas (mesmo produto)",
       "nameDuplicatesHint": "O MESMO produto cadastrado mais de uma vez porque as lojas o escrevem diferente: \"Garrafa\"/\"Lata\", prefixo \"Belga\"/\"Alemã\", ordem das palavras, marca da cervejaria vs rótulo. Cada registro vira um card separado no site. Agrupados pela match_key — rode \"Recalcular agrupamento\" acima antes, pra a chave estar preenchida.",
       "mergeButton": "Mesclar",

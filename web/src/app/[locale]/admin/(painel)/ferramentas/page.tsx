@@ -8,7 +8,12 @@ import {
   type Replacement,
 } from "@/lib/replacements";
 import { chooseKeeper, type MergeCandidate } from "@/lib/merge";
-import { groupByMatchKey, isGroupIgnored, pairKey } from "@/lib/duplicates";
+import {
+  groupByContainedMatchKey,
+  groupByMatchKey,
+  isGroupIgnored,
+  pairKey,
+} from "@/lib/duplicates";
 import { formatPrice } from "@/lib/format";
 import { normalizeExistingProductNames } from "../produtos/actions";
 import { reclassifyExistingProducts } from "../classificacao/actions";
@@ -223,6 +228,16 @@ export default async function FerramentasPage({
     .filter((grupo) => !isGroupIgnored(grupo.map((p) => p.id), ignoredPairs))
     .map((grupo) => toGroup(`match:${grupo[0].id}`, grupo, stats));
 
+  // ── Possíveis duplicatas: um nome CONTÉM o outro ──
+  // Sinal mais fraco que a match_key exata, em seção própria: pega o produto
+  // cuja loja embutiu a cervejaria no nome ("Argentum Huyghe Delirium" vs
+  // "Delirium Argentum"), que ganha um token a mais e por isso nunca bate por
+  // chave exata. Pode se sobrepor à lista acima quando o grupo tem os dois
+  // tipos de relação — mesclar num lugar resolve no outro.
+  const gruposPorContencao = groupByContainedMatchKey(products)
+    .filter((grupo) => !isGroupIgnored(grupo.map((p) => p.id), ignoredPairs))
+    .map((grupo) => toGroup(`contido:${grupo[0].id}`, grupo, stats));
+
   // Fonte única pros banners abaixo: o número que eles mostram tem que ser o
   // que está de fato renderizado nas duas listas, senão a mensagem promete um
   // "resolva abaixo" que não existe. Antes cada banner reaproveitava o mesmo
@@ -390,6 +405,12 @@ export default async function FerramentasPage({
         groups={gruposPorNome}
         title={t("nameDuplicatesTitle")}
         hint={t("nameDuplicatesHint")}
+      />
+
+      <ConflictList
+        groups={gruposPorContencao}
+        title={t("containedDuplicatesTitle")}
+        hint={t("containedDuplicatesHint")}
       />
 
       <ConflictList

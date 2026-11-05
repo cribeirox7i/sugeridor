@@ -410,6 +410,8 @@
       "rebrandResult": "{count, plural, =0 {Ninguna marca necesitó ajuste} =1 {1 producto regrabado} other {# productos regrabados}}. {conflicts, plural, =0 {} =1 {1 caso quedó fuera por conflicto de identificador.} other {# casos quedaron fuera por conflicto de identificador.}}",
       "conflictsTitle": "Duplicados que crearían las sustituciones",
       "conflictsHint": "Estos registros quedarían con el mismo identificador tras las sustituciones, o sea, son el mismo producto registrado dos veces. Mientras no se fusionen, la regla que los afecta no tiene nada seguro que grabar. Fusionar mueve las ofertas a un único producto (es lo que hace que el precio de varias tiendas aparezca junto) y borra el otro. No se puede deshacer.",
+      "containedDuplicatesTitle": "Posibles duplicados (un nombre contiene al otro)",
+      "containedDuplicatesHint": "Señal más débil que la lista de arriba, así que revisa cada grupo antes de fusionar. Detecta el caso en que la tienda metió la cervecería en el NOMBRE del producto (\"Argentum Huyghe Delirium\" vs \"Delirium Argentum\"): sobra una palabra y los dos nunca coinciden por clave exacta. Solo agrupa productos del mismo volumen y cuando un nombre contiene entero al otro.",
       "nameDuplicatesTitle": "Duplicados (mismo producto)",
       "nameDuplicatesHint": "El MISMO producto registrado más de una vez porque las tiendas lo escriben distinto: \"botella\"/\"lata\", prefijo \"Belga\"/\"Alemana\", orden de las palabras, marca de la cervecería vs etiqueta. Cada registro se vuelve una tarjeta aparte en el sitio. Agrupados por match_key — ejecuta \"Recalcular agrupamiento\" arriba primero, para que la clave esté cargada.",
       "mergeButton": "Fusionar",

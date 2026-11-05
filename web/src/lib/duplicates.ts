@@ -1,7 +1,7 @@
 // Detecção de produtos que são o MESMO produto sob identificadores diferentes.
 // Lógica pura, sem I/O, pra dar pra conferir contra o catálogo real sem banco —
 // mesmo padrão de `planReplacements` e `planMerge`.
-import { fold, matchKey } from "./slug";
+import { brandTokens, fold, matchKey, matchKeyParts } from "./slug";
 
 export type DuplicateCandidate = {
   id: string;
@@ -74,6 +74,113 @@ export function groupByMatchKey<T extends DuplicateCandidate>(products: T[]): T[
 
   const groups: T[][] = [];
   for (const list of byKey.values()) {
+    if (list.length < 2) continue;
+    if (new Set(list.map((p) => p.canonical_slug)).size < 2) continue;
+    groups.push(list);
+  }
+
+  return groups.sort((a, b) => a[0].name.localeCompare(b[0].name, "pt-BR"));
+}
+
+// Agrupa produtos cujo CONJUNTO de tokens da match_key é superconjunto estrito
+// de outro, no mesmo volume — o caso que a match_key exata não pega: uma loja
+// embutiu a cervejaria no nome ("Argentum Huyghe Delirium" vs "Delirium
+// Argentum"), então um token a mais separa produtos iguais. É sinal MAIS FRACO
+// que groupByMatchKey (daí uma seção própria, "possíveis duplicatas"): nada é
+// mesclado sozinho, é sempre revisão humana.
+//
+// Guardas contra over-merge (todas necessárias — medidas contra o catálogo
+// real, onde a versão sem a última regra juntava coisas MUITO diferentes):
+//  * mesmo volume (330ml e 750ml do "mesmo" rótulo são produtos diferentes);
+//  * o lado MENOR precisa de >= 2 tokens — sem isso um nome genérico de 1 token
+//    ("delirium") engoliria todo produto específico que o contém
+//    ("delirium-nocturnum", "delirium-tremens"), que é o oposto do certo;
+//  * contenção ESTRITA (um conjunto contém todo o outro e é maior), não só
+//    "compartilham 2 palavras";
+//  * **a palavra que SOBRA tem que ser nome de cervejaria** (estar na marca de
+//    um dos dois). Sem esta, "um token a mais" pegava variante e SKU como se
+//    fosse duplicata: Paulaner Hefe Weiss + "Dunkel" (cerveja escura),
+//    + "Alkoholfrei" (sem álcool), + "Pack 6 Cervejas" (outro SKU) caíam todos
+//    no mesmo grupo. Cervejaria no nome é ruído; variante não é.
+//
+// Componentes conexos por essa relação (A⊂C e B⊂C caem no mesmo grupo), via
+// union-find. Só entra grupo com >= 2 slugs distintos, igual às outras listas.
+export function groupByContainedMatchKey<T extends DuplicateCandidate>(products: T[]): T[][] {
+  type Item = { p: T; tokens: Set<string>; volKey: string; brand: Set<string> };
+  const items: Item[] = [];
+  for (const p of products) {
+    const { tokens, volume } = matchKeyParts(p.brand, p.name);
+    // Lado menor precisa de >= 2 tokens, então só produtos com >= 2 tokens
+    // podem formar aresta — descarta os de 1 token (genéricos/marca pelada).
+    if (tokens.length < 2) continue;
+    items.push({
+      p,
+      tokens: new Set(tokens),
+      volKey: volume ? `${volume}ml` : "",
+      brand: new Set(brandTokens(p.brand)),
+    });
+  }
+
+  // union-find sobre índices
+  const parent = items.map((_, i) => i);
+  const find = (i: number): number => {
+    while (parent[i] !== i) {
+      parent[i] = parent[parent[i]];
+      i = parent[i];
+    }
+    return i;
+  };
+  const union = (a: number, b: number) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[rb] = ra;
+  };
+
+  // `small` cabe inteiro em `big` E tudo que sobra em `big` é nome de
+  // cervejaria (da marca de um dos dois). O segundo teste é o que separa
+  // "Argentum Huyghe Delirium" (sobra "huyghe" = a marca do outro: ruído) de
+  // "Paulaner Hefe Weiss Dunkel" (sobra "dunkel": variante, produto diferente).
+  const contains = (small: Item, big: Item): boolean => {
+    if (small.tokens.size >= big.tokens.size) return false;
+    for (const t of small.tokens) if (!big.tokens.has(t)) return false;
+    for (const t of big.tokens) {
+      if (small.tokens.has(t)) continue;
+      if (!small.brand.has(t) && !big.brand.has(t)) return false;
+    }
+    return true;
+  };
+
+  // Só compara dentro do mesmo balde de volume — produtos de volumes
+  // diferentes nunca são a mesma unidade de venda.
+  const byVol = new Map<string, number[]>();
+  items.forEach((it, i) => {
+    const list = byVol.get(it.volKey);
+    if (list) list.push(i);
+    else byVol.set(it.volKey, [i]);
+  });
+
+  for (const idxs of byVol.values()) {
+    for (let a = 0; a < idxs.length; a++) {
+      for (let b = a + 1; b < idxs.length; b++) {
+        const i = idxs[a];
+        const j = idxs[b];
+        if (contains(items[i], items[j]) || contains(items[j], items[i])) {
+          union(i, j);
+        }
+      }
+    }
+  }
+
+  const byRoot = new Map<number, T[]>();
+  items.forEach((it, i) => {
+    const r = find(i);
+    const list = byRoot.get(r);
+    if (list) list.push(it.p);
+    else byRoot.set(r, [it.p]);
+  });
+
+  const groups: T[][] = [];
+  for (const list of byRoot.values()) {
     if (list.length < 2) continue;
     if (new Set(list.map((p) => p.canonical_slug)).size < 2) continue;
     groups.push(list);
