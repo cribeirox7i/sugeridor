@@ -36,6 +36,9 @@ def _session() -> requests.Session:
             # elementos. Excluir "br" faz o servidor servir gzip/deflate, que o
             # requests já trata nativamente.
             "Accept-Encoding": "gzip, deflate",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Upgrade-Insecure-Requests": "1",
         })
         _thread_local.session = session
     return session
