@@ -65,6 +65,17 @@ def _get(path: str) -> dict:
     return resp.json()
 
 
+def _get_public(path: str) -> dict:
+    """GET sem token — para endpoints públicos de leitura de itens."""
+    resp = _requests.get(
+        f"{_API}{path}",
+        headers={"User-Agent": "Mozilla/5.0 (compatible; Sugeridor/1.0)"},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
 
 def _resolve_seller_id_from_page(nickname: str) -> str | None:
     """Fallback: busca seller_id no HTML da página pública da loja.
@@ -226,7 +237,7 @@ def collect(store: StoreRecord) -> list[Candidate]:
         batch = item_ids[i : i + batch_size]
         ids_str = ",".join(batch)
         try:
-            items_data = _get(f"/items?ids={ids_str}&attributes={attrs}")
+            items_data = _get_public(f"/items?ids={ids_str}&attributes={attrs}")
         except Exception as e:  # noqa: BLE001
             msg = str(e)
             print(f"  ! ML [{store.name}]: falha ao buscar lote {i // batch_size + 1}: {msg}")
