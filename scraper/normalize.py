@@ -1,6 +1,7 @@
 """Normalização de dados — precisa espelhar o slugify do frontend
 (web/src/lib/slug.ts) pra que produtos criados no admin e pelo scraper
 dedupliquem consistentemente."""
+import html as _html
 import re
 import unicodedata
 
@@ -76,6 +77,10 @@ def separate_units(name: str) -> str:
 # Remove prefixo "Cerveja " que o site costuma colocar no nome, pra o slug ficar
 # mais próximo do que um humano digitaria no admin.
 def clean_product_name(name: str) -> str:
+    # Fontes que servem o nome dentro de HTML (JSON-LD inclusive) entregam
+    # entidades cruas: sem o unescape, "Trouble &amp; Doubts" ia pro catálogo
+    # com o "&amp;" literal.
+    name = _html.unescape(name)
     return separate_units(
         normalize_dashes(re.sub(r"^\s*cerveja\s+", "", name, flags=re.IGNORECASE).strip())
     )

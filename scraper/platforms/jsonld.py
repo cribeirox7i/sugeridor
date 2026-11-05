@@ -98,6 +98,53 @@ def _first_image_url(image) -> str | None:
     return image if isinstance(image, str) and image else None
 
 
+def _iter_objects(data):
+    """Objetos do bloco ld+json, achatando `@graph`.
+
+    WordPress/WooCommerce (via Yoast) não publica o Product na raiz: envolve
+    tudo num `{"@context":..., "@graph":[...]}`. Sem desembrulhar, o Product
+    fica invisível e a loja coleta zero em silêncio.
+    """
+    for obj in data if isinstance(data, list) else [data]:
+        if not isinstance(obj, dict):
+            continue
+        graph = obj.get("@graph")
+        if isinstance(graph, list):
+            for inner in graph:
+                if isinstance(inner, dict):
+                    yield inner
+        else:
+            yield obj
+
+
+def _is_product(obj: dict) -> bool:
+    # `@type` pode vir como string ou lista (ex: ["WebPage", "ItemPage"]).
+    raw = obj.get("@type")
+    types = raw if isinstance(raw, list) else [raw]
+    return any(str(t).lower() == "product" for t in types)
+
+
+def _offer_price(offers: dict):
+    """Preço da oferta.
+
+    O caminho usual é `offers.price`, mas o WooCommerce costuma publicar só
+    `offers.priceSpecification[].price` — sem esse fallback, o produto é
+    descartado como se não tivesse preço.
+    """
+    raw = offers.get("price")
+    if raw in (None, ""):
+        spec = offers.get("priceSpecification") or {}
+        if isinstance(spec, list):
+            spec = spec[0] if spec else {}
+        raw = spec.get("price") if isinstance(spec, dict) else None
+    if raw in (None, ""):
+        return None
+    try:
+        return float(str(raw).replace(",", "."))
+    except ValueError:
+        return None
+
+
 def _parse_product(html_text: str, fallback_url: str) -> Candidate | None:
     soup = BeautifulSoup(html_text, "html.parser")
     for tag in soup.find_all("script", type="application/ld+json"):
@@ -107,19 +154,15 @@ def _parse_product(html_text: str, fallback_url: str) -> Candidate | None:
         except (json.JSONDecodeError, TypeError):
             continue
 
-        for obj in data if isinstance(data, list) else [data]:
-            if not isinstance(obj, dict) or obj.get("@type") not in ("Product", "product"):
+        for obj in _iter_objects(data):
+            if not _is_product(obj):
                 continue
 
             offers = obj.get("offers") or {}
             if isinstance(offers, list):
                 offers = offers[0] if offers else {}
-            price_raw = offers.get("price")
-            if price_raw in (None, ""):
-                continue
-            try:
-                price = float(str(price_raw).replace(",", "."))
-            except ValueError:
+            price = _offer_price(offers)
+            if price is None:
                 continue
 
             brand = obj.get("brand")
