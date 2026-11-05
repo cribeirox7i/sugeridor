@@ -4,6 +4,7 @@ import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import BuildInfo from "@/components/BuildInfo";
 import { signOut } from "./actions";
 
 export default async function PainelLayout({
@@ -83,6 +84,9 @@ export default async function PainelLayout({
       </header>
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1140px] px-6 py-8">{children}</div>
+        <div className="mx-auto max-w-[1140px] border-t border-neutral-200 px-6 py-3 dark:border-neutral-800">
+          <BuildInfo className="text-xs text-neutral-400 dark:text-neutral-600" />
+        </div>
       </main>
     </div>
   );

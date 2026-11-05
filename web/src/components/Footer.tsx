@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { PUBLIC_CONTAINER } from "@/lib/layout";
+import BuildInfo from "./BuildInfo";
 
 // Sempre escuro (barra preta), independente do tema claro/escuro do site —
 // pedido explícito, funciona como assinatura visual fixa da marca.
@@ -36,7 +37,8 @@ export default async function Footer() {
         </div>
 
         <div className="mt-8 border-t border-neutral-800 pt-6 text-xs">
-          © {new Date().getFullYear()} Sugeridor. {t("rights")}
+          <p>© {new Date().getFullYear()} Sugeridor. {t("rights")}</p>
+          <BuildInfo />
         </div>
       </div>
     </footer>
