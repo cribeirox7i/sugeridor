@@ -18,7 +18,7 @@ export default function BuildInfo({ className }: { className?: string }) {
   const num = process.env.NEXT_PUBLIC_BUILD_NUMBER;
   const time = process.env.NEXT_PUBLIC_BUILD_TIME;
 
-  if (sha === "dev" && !time) return null;
+  if (sha === "dev") return null;
 
   const label = num ? `build #${num} · ${sha}` : sha;
   const dateStr = time ? formatBuildTime(time) : null;
