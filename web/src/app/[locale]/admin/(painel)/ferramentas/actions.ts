@@ -11,6 +11,7 @@ import { groupPairs } from "@/lib/duplicates";
 import { planCountryRewrite, type ProductForCountry } from "@/lib/countryRules";
 import { patchProducts } from "@/lib/adminBatch";
 import {
+  backfillMatchKeysWith,
   fetchAllProducts,
   mergeProductGroupsWith,
   resyncProductSlugsWith,
@@ -331,6 +332,23 @@ export async function resyncProductSlugs() {
   revalidateAllLocales("/admin/produtos");
   revalidateAllLocales("/");
   redirect(`/${locale}/admin/ferramentas?ressincronizados=${updated}&conflitos=${skipped}`);
+}
+
+// ── Recalcular a match_key (agrupamento) ──────────────────────────
+// Preenche/atualiza products.match_key em todo o catálogo com a fórmula atual
+// (lib/curation.ts::backfillMatchKeysWith). Rodar depois de cada deploy que
+// mexa na fórmula da chave; a coleta seguinte passa a reconhecer os produtos
+// por ela. Não mescla nada — as duplicatas que a nova chave revela aparecem na
+// lista "Duplicatas (mesmo produto)" abaixo, pra mesclar com revisão.
+export async function backfillMatchKeys() {
+  const supabase = await createClient();
+  const locale = await getLocale();
+  const { error, updated } = await backfillMatchKeysWith(supabase);
+  if (error) redirect(`/${locale}/admin/ferramentas?erro=matchkey`);
+
+  revalidateAllLocales("/admin/ferramentas");
+  revalidateAllLocales("/");
+  redirect(`/${locale}/admin/ferramentas?matchkeys=${updated}`);
 }
 
 // ── Regravar países (duas regras) ─────────────────────────────────

@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from . import brands, db
 from .categorize import classify_category
 from .models import Candidate, StoreRecord
-from .normalize import normalize_dashes, prefix_brand, product_slug, title_case_pt
+from .normalize import match_key, normalize_dashes, prefix_brand, product_slug, title_case_pt
 
 _type_cache: dict[str, str] = {}
 _type_cache_lock = threading.Lock()
@@ -119,7 +119,7 @@ def process_candidates(
     da verdade sobre o que a loja vende agora. Padrão `False` por segurança:
     quem não souber afirmar isso não varre nada."""
     prepared: list[dict] = []
-    seen_slugs: set[str] = set()
+    seen_keys: set[str] = set()
 
     for cand in candidates:
         if cand.price <= 0:
@@ -129,42 +129,62 @@ def process_candidates(
         # passa por lá); aqui ele pode ganhar a marca na frente.
         name, brand, attributes = _resolve_identity(cand, store)
         slug = product_slug(brand, name)
-        # Dois candidatos com o mesmo slug seriam o mesmo produto: mantém o
-        # primeiro. Sem isso o insert em lote quebraria no unique do slug e o
-        # upsert de ofertas quebraria no par (product_id, store_id).
-        if slug in seen_slugs:
+        mk = match_key(brand, name)
+        # A IDENTIDADE DE AGRUPAMENTO é a match_key, não o slug: lojas diferentes
+        # escrevem o mesmo produto de formas diferentes ("Garrafa", "Belga",
+        # ordem, marca cervejaria vs rótulo) e o slug exato nunca agregaria. Dois
+        # candidatos com a mesma match_key são o mesmo produto: mantém o
+        # primeiro (uma loja listando o produto duas vezes vira uma oferta só).
+        if mk in seen_keys:
             continue
-        seen_slugs.add(slug)
+        seen_keys.add(mk)
         prepared.append(
-            {"cand": cand, "name": name, "brand": brand, "attributes": attributes, "slug": slug}
+            {"cand": cand, "name": name, "brand": brand, "attributes": attributes,
+             "slug": slug, "mk": mk, "row": None}
         )
 
     if not prepared:
         return 0
 
-    # ── 1. Quais produtos já existem? (uma consulta por lote de slugs) ──
-    existing: dict[str, dict] = {}
+    # ── 1. Quais produtos já existem? ──
+    # Primeiro pela match_key (a identidade de agrupamento); depois pelo
+    # canonical_slug, que cobre a TRANSIÇÃO (produtos ainda sem match_key
+    # preenchida, antes do backfill) e garante nunca piorar o comportamento
+    # anterior. A match_key NÃO é unique no banco enquanto as duplicatas atuais
+    # não foram mescladas, então o lookup pode devolver VÁRIAS linhas pra mesma
+    # chave — vence a mais ANTIGA (created_at), igual ao chooseKeeper do admin,
+    # pra a oferta sempre pousar no mesmo registro canônico até a mesclagem
+    # colapsar o grupo.
+    _select = "id,canonical_slug,match_key,image_url,attributes,brand,created_at"
+    by_mk: dict[str, dict] = {}
+    mks = [p["mk"] for p in prepared]
+    for i in range(0, len(mks), _SLUG_LOOKUP_BATCH):
+        quoted = ",".join(f'"{s}"' for s in mks[i : i + _SLUG_LOOKUP_BATCH])
+        for row in db.select("products", {"match_key": f"in.({quoted})", "select": _select}):
+            key = row.get("match_key")
+            if not key:
+                continue
+            prev = by_mk.get(key)
+            if prev is None or (row.get("created_at") or "") < (prev.get("created_at") or ""):
+                by_mk[key] = row
+
+    by_slug: dict[str, dict] = {}
     slugs = [p["slug"] for p in prepared]
     for i in range(0, len(slugs), _SLUG_LOOKUP_BATCH):
-        batch = slugs[i : i + _SLUG_LOOKUP_BATCH]
-        quoted = ",".join(f'"{s}"' for s in batch)
-        rows = db.select(
-            "products",
-            {
-                "canonical_slug": f"in.({quoted})",
-                "select": "id,canonical_slug,image_url,attributes,brand",
-            },
-        )
-        for row in rows:
-            existing[row["canonical_slug"]] = row
+        quoted = ",".join(f'"{s}"' for s in slugs[i : i + _SLUG_LOOKUP_BATCH])
+        for row in db.select("products", {"canonical_slug": f"in.({quoted})", "select": _select}):
+            by_slug[row["canonical_slug"]] = row
 
-    # ── 2. Backfill dos que já existiam (marca/imagem/atributos que faltavam) ──
+    for p in prepared:
+        p["row"] = by_mk.get(p["mk"]) or by_slug.get(p["slug"])
+
+    # ── 2. Backfill dos que já existiam (marca/imagem/atributos/match_key) ──
     # Só completa chaves ausentes, nunca sobrescreve o que já está lá (pode
     # ter sido curado à mão no admin) — exceção é a loja 'propria', cujo
     # país/marca são autoridade e já vieram resolvidos acima.
     patches: list[dict] = []
     for p in prepared:
-        row = existing.get(p["slug"])
+        row = p["row"]
         if not row:
             continue
         patch: dict = {}
@@ -176,12 +196,15 @@ def process_candidates(
         # coleta em que a fonte não trazia a marca ficava sem marca PARA SEMPRE,
         # mesmo com a marca chegando em toda coleta seguinte — foi o que deixou
         # produtos aparecendo no site sem marca depois de o coletor Tray passar a
-        # ler o campo. Preencher aqui é seguro justamente porque o produto foi
-        # encontrado POR ESTE slug: o slug já foi calculado com esta marca (ela
-        # entra nele quando o nome não a contém), então gravá-la não deixa o
-        # identificador fora de sincronia.
+        # ler o campo.
         if not (row.get("brand") or "").strip() and p["brand"]:
             patch["brand"] = p["brand"]
+
+        # match_key auto-cura: produto antigo (sem a coluna preenchida) ou achado
+        # pelo slug com chave divergente passa a carregar a match_key atual, pra
+        # a coleta seguinte reconhecê-lo POR ELA e não recriar a duplicata.
+        if row.get("match_key") != p["mk"]:
+            patch["match_key"] = p["mk"]
 
         current_attrs = dict(row.get("attributes") or {})
         missing = {k: v for k, v in p["attributes"].items() if k not in current_attrs}
@@ -203,16 +226,18 @@ def process_candidates(
 
     # ── 3. Cria os produtos novos, num insert em lote ──
     #
-    # `ON CONFLICT DO NOTHING` (ver db.insert_many_ignore_conflicts) e não um
-    # insert simples: entre a consulta do passo 1 e este insert, OUTRA loja
-    # rodando em paralelo (thread do mesmo shard ou outro shard inteiro) pode ter
-    # criado o mesmo produto. É comum justamente onde o catálogo se sobrepõe —
-    # que é o caso desejado, o que faz as ofertas agregarem numa página só.
-    to_create = [p for p in prepared if p["slug"] not in existing]
+    # `ON CONFLICT DO NOTHING` em canonical_slug (ver db.insert_many_ignore_
+    # conflicts) e não um insert simples: entre a consulta do passo 1 e este
+    # insert, OUTRA loja rodando em paralelo pode ter criado o mesmo produto com
+    # o mesmo slug. O conflito é no slug (que é unique) e não na match_key (que
+    # não é) — a corrida em que dois shards criam a mesma match_key com NOMES
+    # diferentes escapa aqui e é resolvida depois pela mesclagem, igual ao resto
+    # das duplicatas; é raro (exige primeira aparição simultânea de um produto
+    # novo em duas lojas com nomes distintos) e não é pior que antes.
+    to_create = [p for p in prepared if not p["row"]]
     # Quantos produtos ESTA execução criou de fato. Não é `len(to_create)`: com
     # `ON CONFLICT DO NOTHING`, parte do lote pode ter sido criada por outra
-    # loja/shard em paralelo. Reportar a intenção em vez do resultado é
-    # justamente o tipo de log que já enganou antes.
+    # loja/shard em paralelo.
     created_count = 0
     if to_create:
         type_id = product_type_id(to_create[0]["cand"].product_type_slug)
@@ -229,6 +254,7 @@ def process_candidates(
                     "attributes": p["attributes"],
                     "image_url": p["cand"].image_url,
                     "canonical_slug": p["slug"],
+                    "match_key": p["mk"],
                     # Categoria pelo nome ORIGINAL da fonte: o prefixo de
                     # marca poderia introduzir uma palavra-chave por acidente
                     # (uma cervejaria chamada "Copo" classificaria tudo como
@@ -240,36 +266,51 @@ def process_candidates(
             on_conflict="canonical_slug",
         )
         created_count = len(created)
-        for row in created:
-            existing[row["canonical_slug"]] = row
+        created_by_slug = {row["canonical_slug"]: row for row in created}
+        for p in to_create:
+            row = created_by_slug.get(p["slug"])
+            if row:
+                p["row"] = row
 
         # O insert devolve só o que ele criou, então o que ficou de fora é
-        # exatamente o que outra execução criou nesse meio-tempo. Buscar o id
-        # agora é o que garante que a oferta DESTA loja seja gravada mesmo
-        # assim — sem isso o produto existiria sem a oferta dela até a coleta
-        # seguinte.
-        racing = [p["slug"] for p in to_create if p["slug"] not in existing]
+        # exatamente o que outra execução criou nesse meio-tempo (mesmo slug).
+        # Buscar o id agora é o que garante que a oferta DESTA loja seja gravada
+        # mesmo assim — sem isso o produto existiria sem a oferta dela até a
+        # coleta seguinte.
+        racing = [p for p in to_create if not p["row"]]
         if racing:
             print(
                 f"[{store.name}] {len(racing)} produto(s) criados em paralelo por outra "
                 f"loja/shard — reaproveitando em vez de duplicar."
             )
-            for i in range(0, len(racing), _SLUG_LOOKUP_BATCH):
-                quoted = ",".join(f'"{s}"' for s in racing[i : i + _SLUG_LOOKUP_BATCH])
+            racing_slugs = [p["slug"] for p in racing]
+            found: dict[str, dict] = {}
+            for i in range(0, len(racing_slugs), _SLUG_LOOKUP_BATCH):
+                quoted = ",".join(f'"{s}"' for s in racing_slugs[i : i + _SLUG_LOOKUP_BATCH])
                 for row in db.select(
-                    "products",
-                    {"canonical_slug": f"in.({quoted})", "select": "id,canonical_slug"},
+                    "products", {"canonical_slug": f"in.({quoted})", "select": "id,canonical_slug"}
                 ):
-                    existing[row["canonical_slug"]] = row
+                    found[row["canonical_slug"]] = row
+            for p in racing:
+                p["row"] = found.get(p["slug"])
 
     # ── 4. Ofertas e histórico de preço, também em lote ──
     now = _now()
     offer_rows = []
     price_by_product: dict[str, float] = {}
+    seen_product_ids: set[str] = set()
     for p in prepared:
-        row = existing.get(p["slug"])
+        row = p["row"]
         if not row:
             continue  # produto não criado (ex: lote rejeitado) — nada a fazer
+        # Dedup por product_id: dois candidatos com match_keys diferentes podem
+        # resolver pro MESMO produto existente (um pela match_key, outro pelo
+        # slug, numa transição). Sem isto o upsert de ofertas repetiria o par
+        # (product_id, store_id) e o Postgres recusaria o lote inteiro
+        # ("ON CONFLICT DO UPDATE cannot affect row a second time").
+        if row["id"] in seen_product_ids:
+            continue
+        seen_product_ids.add(row["id"])
         offer_rows.append(
             {
                 "product_id": row["id"],

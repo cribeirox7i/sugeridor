@@ -1,7 +1,7 @@
 // Detecção de produtos que são o MESMO produto sob identificadores diferentes.
 // Lógica pura, sem I/O, pra dar pra conferir contra o catálogo real sem banco —
 // mesmo padrão de `planReplacements` e `planMerge`.
-import { fold } from "./slug";
+import { fold, matchKey } from "./slug";
 
 export type DuplicateCandidate = {
   id: string;
@@ -45,6 +45,35 @@ export function groupByName<T extends DuplicateCandidate>(products: T[]): T[][] 
     // Mais de um registro com o mesmo nome só é duplicata se os slugs
     // divergirem — e como o slug é unique, dois registros nunca compartilham o
     // mesmo. A checagem fica como documentação da invariante.
+    if (list.length < 2) continue;
+    if (new Set(list.map((p) => p.canonical_slug)).size < 2) continue;
+    groups.push(list);
+  }
+
+  return groups.sort((a, b) => a[0].name.localeCompare(b[0].name, "pt-BR"));
+}
+
+// Agrupa pela match_key: o MESMO produto sob nomes diferentes entre lojas
+// ("Garrafa"/"Belga"/ordem/marca cervejaria vs rótulo). É um SUPERCONJUNTO de
+// groupByName — nomes idênticos têm match_key idêntica, então tudo que
+// groupByName pegaria, este também pega, e mais os casos que só diferem por
+// embalagem/descritor/ordem. É a razão de esta tela existir: sem agregar esses,
+// o mesmo produto aparece como N cards no site.
+//
+// Mesma regra de groupByName: só é duplicata se os canonical_slug divergirem
+// (slug é unique, então registros distintos nunca compartilham o mesmo).
+export function groupByMatchKey<T extends DuplicateCandidate>(products: T[]): T[][] {
+  const byKey = new Map<string, T[]>();
+  for (const p of products) {
+    const key = matchKey(p.brand, p.name);
+    if (!key) continue;
+    const list = byKey.get(key);
+    if (list) list.push(p);
+    else byKey.set(key, [p]);
+  }
+
+  const groups: T[][] = [];
+  for (const list of byKey.values()) {
     if (list.length < 2) continue;
     if (new Set(list.map((p) => p.canonical_slug)).size < 2) continue;
     groups.push(list);

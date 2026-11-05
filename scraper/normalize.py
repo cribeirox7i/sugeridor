@@ -226,3 +226,80 @@ def parse_volume_ml(name: str) -> int | None:
     if m:
         return int(m.group(1))
     return None
+
+
+# ── match_key: identidade de AGRUPAMENTO ───────────────────────────────
+# DIFERENTE de product_slug/canonical_slug (que é a URL única do produto). O
+# slug exige nome idêntico entre lojas pra agregar ofertas, e num agregador
+# cada loja escreve o mesmo produto de um jeito — "Garrafa"/"Lata", prefixo
+# "Belga"/"Alemã", ordem das palavras, marca cervejaria vs rótulo (Huyghe vs
+# Delirium). Resultado: o mesmo produto virava N produtos no site. A match_key
+# normaliza isso: tira tokens de embalagem/descritor, ORDENA o resto (ordem das
+# palavras deixa de importar) e põe o volume como discriminador forte.
+#
+# Espelhada em web/src/lib/slug.ts::matchKey — mudar de um lado só dessincroniza
+# o agrupamento que a coleta calcula do que o admin calcula, e as duplicatas
+# voltam. As listas abaixo foram validadas num dry-run contra o catálogo real
+# (2026-11-05): 2917 -> 2514 produtos, zero merge falso nos descritores Tier-2.
+
+# Tier 1 — formato/embalagem. Remoção segura: nunca distingue um produto.
+_MATCH_PACKAGING = {
+    "garrafa", "garrafas", "lata", "latas", "latao", "longneck", "long",
+    "neck", "pack", "growler", "barril", "unidade", "unidades", "un", "und",
+    "unid", "pet", "descartavel", "retornavel", "caixa", "cx", "display",
+    "kit", "combo", "gfa",
+}
+
+# Tier 2 — descritores de nacionalidade/qualificação que algumas lojas
+# prefixam. Mais arriscado que o Tier 1; o dry-run não achou merge falso, mas é
+# aqui que mora o risco de over-merge — mexer com cuidado.
+_MATCH_DESCRIPTORS = {
+    "belga", "belgas", "alema", "alemao", "importada", "importado",
+    "artesanal", "nacional", "especial",
+}
+
+# Estilos genéricos: não identificam um produto sozinhos. Quando TODAS as
+# palavras de conteúdo do nome são estilo, o nome precisa da marca pra
+# identificar (o "IPA" da Dogma vira "dogma-ipa") — mesma ideia do prefix_brand,
+# aplicada só pra decidir a chave de match. O estilo CONTINUA na chave; só a
+# decisão de "preciso da marca?" olha pra essa lista.
+_MATCH_GENERIC_STYLE = {
+    "ipa", "apa", "neipa", "dipa", "tipa", "ipl", "xipa", "session",
+    "lager", "pilsen", "pilsner", "puro", "malte", "weiss", "weissbier",
+    "witbier", "weizen", "hefeweizen", "hefe", "stout", "porter", "ale",
+    "pale", "blonde", "blond", "bock", "dunkel", "helles", "saison",
+    "tripel", "dubbel", "quadrupel", "amber", "red", "brown", "golden",
+    "imperial", "double", "sour", "gose", "berliner", "kolsch", "marzen",
+    "vienna", "schwarzbier", "barleywine", "cream", "milk", "dry", "strong",
+    "dark", "light", "black", "white", "wheat", "trigo",
+}
+
+_MATCH_NOISE = _MATCH_PACKAGING | _MATCH_DESCRIPTORS
+
+# Número + unidade em qualquer parte do nome — removido ANTES de tokenizar, pra
+# o volume não virar os tokens soltos "330"/"ml" (e pra "Abt 12", sem unidade,
+# ficar intacto). O volume real entra como um token único no fim da chave.
+_VOLUME_SUBSTR = re.compile(r"\d+(?:[.,]\d+)?\s*(?:ml|cl|dl|kg|oz|l|g)\b", re.IGNORECASE)
+
+
+def match_key(brand: str | None, name: str) -> str:
+    """Chave de AGRUPAMENTO do produto (não é a URL — essa é product_slug).
+
+    Dois produtos com a mesma match_key são "o mesmo produto" pra fins de
+    agregar ofertas. Espelhada em web/src/lib/slug.ts::matchKey."""
+    base = _VOLUME_SUBSTR.sub(" ", name)
+    tokens = [t for t in _fold(base).split() if t not in _MATCH_NOISE]
+    content = [t for t in tokens if t not in _MATCH_GENERIC_STYLE]
+    if not content:
+        # Nome só de estilo (ou vazio): precisa da marca pra identificar.
+        brand_tokens = [
+            t for t in _fold(brand or "").split()
+            if len(t) > 2 and t not in _GENERIC_BRAND_WORDS
+        ]
+        tokens = brand_tokens + tokens
+    key_tokens = sorted(set(tokens))
+    key = "-".join(key_tokens) if key_tokens else slugify(name)
+    vol = parse_volume_ml(name)
+    if vol:
+        key += f"-{vol}ml"
+    return key

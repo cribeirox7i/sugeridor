@@ -8,7 +8,7 @@ import {
   type Replacement,
 } from "@/lib/replacements";
 import { chooseKeeper, type MergeCandidate } from "@/lib/merge";
-import { groupByName, isGroupIgnored, pairKey } from "@/lib/duplicates";
+import { groupByMatchKey, isGroupIgnored, pairKey } from "@/lib/duplicates";
 import { formatPrice } from "@/lib/format";
 import { normalizeExistingProductNames } from "../produtos/actions";
 import { reclassifyExistingProducts } from "../classificacao/actions";
@@ -18,6 +18,7 @@ import {
   toggleReplacement,
   applyReplacementsAction,
   applyAllReplacementsAction,
+  backfillMatchKeys,
   rebrandOwnStoreProducts,
   resyncProductSlugs,
   rewriteProductCountries,
@@ -144,6 +145,7 @@ export default async function FerramentasPage({
     reclassified?: string;
     paisesLoja?: string;
     paisesMarca?: string;
+    matchkeys?: string;
     erro?: string;
   }>;
 }) {
@@ -211,14 +213,15 @@ export default async function FerramentasPage({
     gruposDeRegra.push(toGroup(key, linhas, stats));
   }
 
-  // ── Duplicatas por nome, independentes de regra ──
-  // Pega o produto que ficou com dois registros porque o IDENTIFICADOR mudou
-  // (marca descoberta depois, nome corrigido à mão, fórmula do slug alterada) —
-  // caso em que os dois aparecem no site, um deles sem marca, sem imagem e com o
-  // preço da última coleta que o viu. Ver lib/duplicates.ts.
-  const gruposPorNome = groupByName(products)
+  // ── Duplicatas por produto equivalente (match_key), independentes de regra ──
+  // Agrupa pelo MESMO produto sob nomes diferentes entre lojas: "Garrafa"/
+  // "Belga", ordem das palavras, marca cervejaria vs rótulo. Superconjunto do
+  // antigo "por nome" (nomes idênticos têm a mesma match_key), então cobre
+  // também o caso do identificador que mudou (marca descoberta depois, nome
+  // corrigido à mão). Ver lib/duplicates.ts::groupByMatchKey.
+  const gruposPorNome = groupByMatchKey(products)
     .filter((grupo) => !isGroupIgnored(grupo.map((p) => p.id), ignoredPairs))
-    .map((grupo) => toGroup(`nome:${grupo[0].id}`, grupo, stats));
+    .map((grupo) => toGroup(`match:${grupo[0].id}`, grupo, stats));
 
   // Fonte única pros banners abaixo: o número que eles mostram tem que ser o
   // que está de fato renderizado nas duas listas, senão a mensagem promete um
@@ -298,6 +301,14 @@ export default async function FerramentasPage({
           })}
         </p>
       )}
+      {sp.matchkeys !== undefined && (
+        <p className={okBanner}>
+          {t("backfillMatchKeysResult", {
+            count: Number(sp.matchkeys),
+            conflicts: totalPendingConflicts,
+          })}
+        </p>
+      )}
       {sp.regrasAplicadas !== undefined && (
         <p className={okBanner}>
           {t("applyAllResult", {
@@ -360,6 +371,11 @@ export default async function FerramentasPage({
           <form action={resyncProductSlugs}>
             <button type="submit" className={btnCls}>
               {t("resync")}
+            </button>
+          </form>
+          <form action={backfillMatchKeys}>
+            <button type="submit" className={btnCls} title={t("backfillMatchKeysHint")}>
+              {t("backfillMatchKeys")}
             </button>
           </form>
           <form action={rewriteProductCountries}>

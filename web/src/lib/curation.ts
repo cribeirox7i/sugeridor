@@ -7,7 +7,7 @@
 // As Server Actions em ferramentas/actions.ts são wrappers finos em cima
 // destas duas funções.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { productSlug } from "./slug";
+import { productSlug, matchKey } from "./slug";
 import { type ProductForReplace } from "./replacements";
 import { chooseKeeper, planMerge, type MergeCandidate, type MergeOffer } from "./merge";
 import { patchProducts } from "./adminBatch";
@@ -34,6 +34,42 @@ export async function fetchAllProducts(supabase: SupabaseClient): Promise<Produc
     all.push(...page);
     if (page.length < PAGE_SIZE) return all;
   }
+}
+
+// ── Backfill da match_key ─────────────────────────────────────────
+// Preenche products.match_key (migration 0025) usando a MESMA função que a
+// coleta (espelhada em scraper/normalize.py::match_key). Idempotente: só grava
+// onde a chave calculada difere da gravada. É o que a coleta precisa pra
+// reconhecer um produto existente pela match_key já na PRÓXIMA execução — sem
+// o backfill, a coleta seguinte não acharia os produtos renomeados entre lojas
+// e recriaria a duplicata.
+//
+// NÃO trata colisão (ao contrário do resync de slug): a match_key não é unique
+// de propósito — várias linhas compartilharem a mesma chave é exatamente o que
+// a tela "Duplicatas (mesmo produto)" mostra pra mesclar.
+export async function backfillMatchKeysWith(
+  supabase: SupabaseClient,
+): Promise<{ updated: number; error: string | null }> {
+  const all: { id: string; name: string; brand: string | null; match_key: string | null }[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, name, brand, match_key")
+      .order("created_at")
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) return { updated: 0, error: error.message };
+    const page = (data ?? []) as typeof all;
+    all.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+
+  const changed = all
+    .map((p) => ({ id: p.id, match_key: matchKey(p.brand, p.name), current: p.match_key }))
+    .filter((p) => p.match_key !== p.current)
+    .map(({ id, match_key }) => ({ id, match_key }));
+
+  const { error, updated } = await patchProducts(supabase, changed);
+  return { updated, error };
 }
 
 // ── Ressincronizar identificadores (slug) ─────────────────────────
