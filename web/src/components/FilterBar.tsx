@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 
 type Props = {
@@ -68,6 +68,15 @@ export default function FilterBar({ estilos, paises, marcas, stores, hideStore, 
     current.precoMax,
     current.ordenar && current.ordenar !== "preco",
   ].filter(Boolean).length;
+
+  // Live search: auto-submete 400ms após o usuário parar de digitar.
+  useEffect(() => {
+    if (q === (current.q ?? "")) return;
+    const timer = setTimeout(() => {
+      inputRef.current?.form?.requestSubmit();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [q, current.q]);
 
   // Auto-submit dos selects (ver comentário do componente).
   const submitOnChange = (e: React.ChangeEvent<HTMLSelectElement>) =>

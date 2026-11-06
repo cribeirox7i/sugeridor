@@ -14,7 +14,7 @@ function DealCard({ deal, tOffer }: { deal: FeaturedDeal; tOffer: ReturnType<typ
   if (!visible) return null;
 
   return (
-    <div className="w-40 flex-none snap-start overflow-hidden rounded-lg border border-neutral-200 bg-white sm:w-48 dark:border-neutral-800 dark:bg-neutral-900">
+    <div className="w-[157px] flex-none snap-start overflow-hidden rounded-lg border border-neutral-200 bg-white sm:w-[188px] dark:border-neutral-800 dark:bg-neutral-900">
       <ProductCardLink slug={deal.product.canonical_slug} className="group relative block">
         <span className="absolute left-2 top-2 z-10 rounded bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white">
           -{Math.round(deal.dropPercent)}%
