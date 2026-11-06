@@ -18,7 +18,7 @@ export default async function SearchBox({
     <form method="get" className="flex gap-2">
       {view && <input type="hidden" name="view" value={view} />}
       <ClearableInput
-        type="search"
+        type="text"
         name="q"
         placeholder={placeholder}
         defaultValue={defaultValue ?? ""}
