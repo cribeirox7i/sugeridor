@@ -1,12 +1,68 @@
 "use client";
 
-import { useRef } from "react";
+import { useState, useRef } from "react";
 import { useTranslations } from "next-intl";
 import type { FeaturedDeal } from "@/lib/queries";
 import { formatPrice } from "@/lib/format";
 import ProductCardLink from "@/components/ProductCardLink";
 import StoreOffersPopover from "@/components/StoreOffersPopover";
 import ProductImage from "@/components/ProductImage";
+
+function DealCard({ deal, tOffer }: { deal: FeaturedDeal; tOffer: ReturnType<typeof useTranslations> }) {
+  const [visible, setVisible] = useState(!!deal.product.image_url);
+
+  if (!visible) return null;
+
+  return (
+    <div className="w-40 flex-none snap-start overflow-hidden rounded-lg border border-neutral-200 bg-white sm:w-48 dark:border-neutral-800 dark:bg-neutral-900">
+      <ProductCardLink slug={deal.product.canonical_slug} className="group relative block">
+        <span className="absolute left-2 top-2 z-10 rounded bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+          -{Math.round(deal.dropPercent)}%
+        </span>
+        {/* Fundo branco FIXO (não dark:bg-*) — mesmo motivo de
+            OfferCard.tsx: dá visual padrão pra imagem venha com fundo
+            transparente ou branco embutido, nos dois temas. */}
+        <div className="flex aspect-square items-center justify-center bg-white">
+          <ProductImage
+            src={deal.product.image_url!}
+            alt={deal.product.name}
+            onFailed={() => setVisible(false)}
+          />
+        </div>
+      </ProductCardLink>
+      <div className="flex flex-col gap-2 p-3">
+        <ProductCardLink
+          slug={deal.product.canonical_slug}
+          className="line-clamp-2 text-sm font-medium leading-tight hover:text-amber-600 dark:hover:text-amber-400"
+        >
+          {deal.product.name}
+        </ProductCardLink>
+        <div className="flex items-baseline gap-2">
+          <span className="font-semibold text-amber-600 dark:text-amber-400">
+            {formatPrice(deal.price, deal.currency)}
+          </span>
+          <span className="text-xs text-neutral-400 line-through">
+            {formatPrice(deal.referencePrice, deal.currency)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <span className="min-w-0 truncate text-neutral-500" title={deal.store.name}>
+            {deal.store.name}
+          </span>
+          <StoreOffersPopover productId={deal.product.id} currentOfferId={deal.id} />
+        </div>
+        <a
+          href={`/go/${deal.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block w-full rounded bg-amber-600 py-1.5 text-center text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
+        >
+          {tOffer("viewOffer")}
+        </a>
+      </div>
+    </div>
+  );
+}
 
 export default function FeaturedDeals({ deals }: { deals: FeaturedDeal[] }) {
   const t = useTranslations("home");
@@ -34,60 +90,7 @@ export default function FeaturedDeals({ deals }: { deals: FeaturedDeal[] }) {
               é HTML inválido — mesmo motivo do OfferCard só linkar a imagem e
               o nome via ProductCardLink, com o resto como irmãos. */}
           {deals.map((deal) => (
-            <div
-              key={deal.id}
-              className="w-40 flex-none snap-start overflow-hidden rounded-lg border border-neutral-200 bg-white sm:w-48 dark:border-neutral-800 dark:bg-neutral-900"
-            >
-              <ProductCardLink slug={deal.product.canonical_slug} className="group relative block">
-                <span className="absolute left-2 top-2 z-10 rounded bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white">
-                  -{Math.round(deal.dropPercent)}%
-                </span>
-                {/* Fundo branco FIXO (não dark:bg-*) — mesmo motivo de
-                    OfferCard.tsx: dá visual padrão pra imagem venha com fundo
-                    transparente ou branco embutido, nos dois temas. */}
-                <div className="flex aspect-square items-center justify-center bg-white">
-                  {deal.product.image_url ? (
-                    <ProductImage
-                      src={deal.product.image_url}
-                      alt={deal.product.name}
-                      fallback={<span className="text-3xl">🍺</span>}
-                    />
-                  ) : (
-                    <span className="text-3xl">🍺</span>
-                  )}
-                </div>
-              </ProductCardLink>
-              <div className="flex flex-col gap-2 p-3">
-                <ProductCardLink
-                  slug={deal.product.canonical_slug}
-                  className="line-clamp-2 text-sm font-medium leading-tight hover:text-amber-600 dark:hover:text-amber-400"
-                >
-                  {deal.product.name}
-                </ProductCardLink>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-semibold text-amber-600 dark:text-amber-400">
-                    {formatPrice(deal.price, deal.currency)}
-                  </span>
-                  <span className="text-xs text-neutral-400 line-through">
-                    {formatPrice(deal.referencePrice, deal.currency)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-2 text-xs">
-                  <span className="min-w-0 truncate text-neutral-500" title={deal.store.name}>
-                    {deal.store.name}
-                  </span>
-                  <StoreOffersPopover productId={deal.product.id} currentOfferId={deal.id} />
-                </div>
-                <a
-                  href={`/go/${deal.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full rounded bg-amber-600 py-1.5 text-center text-sm font-medium text-white hover:bg-amber-500 dark:text-neutral-950"
-                >
-                  {tOffer("viewOffer")}
-                </a>
-              </div>
-            </div>
+            <DealCard key={deal.id} deal={deal} tOffer={tOffer} />
           ))}
         </div>
 

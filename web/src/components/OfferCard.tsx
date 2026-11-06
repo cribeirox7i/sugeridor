@@ -17,8 +17,8 @@ export default function OfferCard({
   dropPercent?: number;
 }) {
   const t = useTranslations("offerCard");
-  const [imageOk, setImageOk] = useState(true);
   const { product, store } = offer;
+  const [imageOk, setImageOk] = useState(!!product.image_url);
   const estilo = product.attributes?.estilo as string | undefined;
   const pais = product.attributes?.pais as string | undefined;
 
@@ -32,14 +32,12 @@ export default function OfferCard({
             "sangrava" pro fundo do card e a branca destoava do resto. Um
             fundo branco fixo por trás resolve as duas, dando visual padrão. */}
         <div className="flex aspect-square items-center justify-center bg-white p-3">
-          {product.image_url ? (
+          {product.image_url && (
             <ProductImage
               src={product.image_url}
               alt={product.name}
               onFailed={() => setImageOk(false)}
             />
-          ) : (
-            <span className="text-4xl">🍺</span>
           )}
         </div>
       </ProductCardLink>
