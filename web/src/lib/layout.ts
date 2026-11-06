@@ -8,4 +8,6 @@
 // 976px = os 860px anteriores + 116px (~3cm na mesma escala usada quando o
 // admin foi de `max-w-5xl` para `max-w-[1140px]`). É o que faz caber 5 cards de
 // produto por linha no desktop.
-export const PUBLIC_CONTAINER = "mx-auto w-full max-w-[976px] px-6";
+// 1008px = 976px + 32px (+3,3%) para o carrossel de destaques não truncar o
+// card da direita.
+export const PUBLIC_CONTAINER = "mx-auto w-full max-w-[1008px] px-6";
