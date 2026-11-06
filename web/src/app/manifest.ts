@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Sugeridor",
-    short_name: "Sugeridor",
+    name: "FarejaBreja",
+    short_name: "FarejaBreja",
     description: "Hub de ofertas de cervejas artesanais e especiais.",
     start_url: "/",
     display: "standalone",

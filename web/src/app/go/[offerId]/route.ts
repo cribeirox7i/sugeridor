@@ -9,9 +9,9 @@ import { formatPrice } from "@/lib/format";
 // (`NEXT_LOCALE`, ver i18n/routing.ts) — não precisa da máquina de tradução
 // inteira pra isso.
 const WHATSAPP_MESSAGE: Record<string, (product: string, price: string) => string> = {
-  pt: (p, price) => `Olá, vi a oferta de ${p} por ${price} no Sugeridor. Ainda está disponível?`,
-  en: (p, price) => `Hi, I saw the offer for ${p} at ${price} on Sugeridor. Is it still available?`,
-  es: (p, price) => `Hola, vi la oferta de ${p} por ${price} en Sugeridor. ¿Todavía está disponible?`,
+  pt: (p, price) => `Olá, vi a oferta de ${p} por ${price} no FarejaBreja. Ainda está disponível?`,
+  en: (p, price) => `Hi, I saw the offer for ${p} at ${price} on FarejaBreja. Is it still available?`,
+  es: (p, price) => `Hola, vi la oferta de ${p} por ${price} en FarejaBreja. ¿Todavía está disponible?`,
 };
 
 // Redireciona pro link de venda da loja. Toda saída do site passa por aqui, pra

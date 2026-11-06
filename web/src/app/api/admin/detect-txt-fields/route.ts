@@ -16,7 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { detectTxtFields, type TxtField, type TxtSamples } from "@/lib/detectTxtFields";
 import { parseTxtConfig, evaluateTxtPreview, type TxtPreview } from "@/lib/parseTxtConfig";
 
-const UA = "SugeridorBot/1.0 (+https://sugeridor.vercel.app; detector de campos txt)";
+const UA = "FarejaBrejBot/1.0 (+https://sugeridor.vercel.app; detector de campos txt)";
 
 async function fetchListingHtml(url: string): Promise<string | null> {
   try {

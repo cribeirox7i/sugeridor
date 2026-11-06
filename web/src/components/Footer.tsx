@@ -15,7 +15,7 @@ export default async function Footer() {
       <div className={`${PUBLIC_CONTAINER} py-10`}>
         <div className="grid gap-8 sm:grid-cols-2">
           <div>
-            <p className="text-lg font-semibold text-neutral-100">Sugeridor</p>
+            <p className="text-lg font-semibold text-neutral-100">FarejaBreja</p>
             <p className="mt-2 max-w-sm text-sm">{t("tagline")}</p>
           </div>
           <div>
@@ -37,7 +37,7 @@ export default async function Footer() {
         </div>
 
         <div className="mt-8 border-t border-neutral-800 pt-6 text-xs">
-          <p>© {new Date().getFullYear()} Sugeridor. {t("rights")}</p>
+          <p>© {new Date().getFullYear()} FarejaBreja. {t("rights")}</p>
           <BuildInfo />
         </div>
       </div>

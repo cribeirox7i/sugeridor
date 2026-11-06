@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sugeridor",
+  title: "FarejaBreja",
   description: "Hub de ofertas de cervejas artesanais e especiais.",
 };
 

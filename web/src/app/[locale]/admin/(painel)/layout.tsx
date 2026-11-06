@@ -53,7 +53,7 @@ export default async function PainelLayout({
             e rola normalmente. No desktop tudo volta pra uma linha só
             (`lg:`), com as abas no meio via `order`. */}
         <div className="mx-auto flex max-w-[1140px] flex-wrap items-center gap-x-3 gap-y-2 px-6 py-3">
-          <span className="order-1 shrink-0 font-semibold">Sugeridor</span>
+          <span className="order-1 shrink-0 font-semibold">FarejaBreja</span>
 
           <div className="order-2 ml-auto flex shrink-0 items-center gap-3 lg:order-3">
             <span className="hidden text-sm text-neutral-500 sm:inline">{user.email}</span>
