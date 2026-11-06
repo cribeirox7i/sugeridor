@@ -3,7 +3,6 @@
 import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import StoreLogo from "@/components/StoreLogo";
 
 type StoreLite = { id: string; name: string; logo_url: string | null };
 
@@ -74,9 +73,6 @@ export default function StoreCarousel({
                     : "border-neutral-200 bg-white hover:border-amber-400 dark:border-neutral-800 dark:bg-neutral-900"
                 }`}
               >
-                {store.logo_url ? (
-                  <StoreLogo src={store.logo_url} alt="" size="h-4 w-4" />
-                ) : null}
                 <span className="whitespace-nowrap text-neutral-700 dark:text-neutral-300">
                   {store.name}
                 </span>

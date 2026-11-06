@@ -6,7 +6,6 @@ import type { OfferListItem } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 import StoreOffersPopover from "@/components/StoreOffersPopover";
 import ProductCardLink from "@/components/ProductCardLink";
-import StoreLogo from "@/components/StoreLogo";
 import ProductImage from "@/components/ProductImage";
 
 export default function OfferCard({
@@ -80,14 +79,7 @@ export default function OfferCard({
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 text-xs">
-          <div className="flex min-w-0 items-center gap-1.5" title={store.name}>
-            {store.logo_url ? (
-              <StoreLogo src={store.logo_url} alt={store.name} size="h-4 w-4" />
-            ) : (
-              <span className="truncate text-neutral-500">{store.name}</span>
-            )}
-          </div>
+        <div className="flex items-center justify-end gap-2 text-xs">
           <StoreOffersPopover productId={product.id} currentOfferId={offer.id} />
         </div>
 

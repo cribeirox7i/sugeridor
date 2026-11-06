@@ -21,6 +21,14 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Paleta amber customizada — ancoragem em amber-600: #CD7E0F (cor da marca).
+     Os demais tons são derivados proporcionalmente para manter coerência com
+     os usos de hover (500), dark-mode accent (400) e texto link (700). */
+  --color-amber-400: #e8a030;
+  --color-amber-500: #db9018;
+  --color-amber-600: #cd7e0f;
+  --color-amber-700: #a86808;
 }
 
 body {
