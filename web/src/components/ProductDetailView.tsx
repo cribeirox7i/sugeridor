@@ -3,6 +3,7 @@ import type { Product, PriceHistoryPoint } from "@/lib/types";
 import { formatPrice } from "@/lib/format";
 import { dropPercentByOffer } from "@/lib/queries";
 import PriceHistoryChart from "@/components/PriceHistoryChart";
+import ProductDetailImage from "@/components/ProductDetailImage";
 
 type OfferRow = {
   id: string;
@@ -50,8 +51,7 @@ export default async function ProductDetailView({
             branco embutido, nos dois temas. */}
         <div className="flex aspect-square items-center justify-center rounded-lg border border-neutral-200 bg-white dark:border-neutral-800">
           {product.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.image_url} alt={product.name} className="h-full w-full object-contain p-4" />
+            <ProductDetailImage src={product.image_url} alt={product.name} />
           ) : (
             <span className="text-6xl">🍺</span>
           )}

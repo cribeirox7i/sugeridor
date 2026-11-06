@@ -6,6 +6,7 @@ import type { FeaturedDeal } from "@/lib/queries";
 import { formatPrice } from "@/lib/format";
 import ProductCardLink from "@/components/ProductCardLink";
 import StoreOffersPopover from "@/components/StoreOffersPopover";
+import ProductImage from "@/components/ProductImage";
 
 export default function FeaturedDeals({ deals }: { deals: FeaturedDeal[] }) {
   const t = useTranslations("home");
@@ -46,11 +47,10 @@ export default function FeaturedDeals({ deals }: { deals: FeaturedDeal[] }) {
                     transparente ou branco embutido, nos dois temas. */}
                 <div className="flex aspect-square items-center justify-center bg-white">
                   {deal.product.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <ProductImage
                       src={deal.product.image_url}
                       alt={deal.product.name}
-                      className="h-full w-full object-contain"
+                      fallback={<span className="text-3xl">🍺</span>}
                     />
                   ) : (
                     <span className="text-3xl">🍺</span>

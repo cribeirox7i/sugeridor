@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 export default function ProductImage({
   src,
   alt,
   onFailed,
+  fallback,
 }: {
   src: string;
   alt: string;
   onFailed?: () => void;
+  fallback?: React.ReactNode;
 }) {
   const [failed, setFailed] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -24,7 +26,7 @@ export default function ProductImage({
     }
   }, [onFailed]);
 
-  if (failed) return null;
+  if (failed) return fallback ? <>{fallback}</> : null;
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
