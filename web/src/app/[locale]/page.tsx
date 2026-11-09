@@ -152,7 +152,7 @@ export default async function Home({
   // histórico de TODAS as ofertas ativas em cada renderização. Continua
   // vindo do array de ofertas (não do deduplicado): FeaturedDeals mostra a
   // queda por OFERTA, sem relação com o dedupe do grid abaixo.
-  const featuredDeals = storeMode ? [] : featuredDealsFromOffers(allOffers, 5);
+  const featuredDeals = storeMode ? [] : featuredDealsFromOffers(allOffers, 8);
   const dropByOffer = dropPercentByOffer(displayOffers);
 
   // storeId sempre vem preenchido em storeMode (é o que define o modo) — não
