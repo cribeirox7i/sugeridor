@@ -35,6 +35,7 @@ export default function ProductImage({
       src={src}
       alt={alt}
       className="h-full w-full object-contain"
+      referrerPolicy="no-referrer"
       onError={() => {
         setFailed(true);
         onFailed?.();
