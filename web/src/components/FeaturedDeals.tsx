@@ -82,7 +82,7 @@ export default function FeaturedDeals({ deals }: { deals: FeaturedDeal[] }) {
       <div className="relative">
         <div
           ref={scrollerRef}
-          className="flex snap-x snap-mandatory gap-[10px] overflow-x-auto scroll-smooth pb-2 sm:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory gap-[13px] overflow-x-auto scroll-smooth pb-2 sm:px-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {/* Não é mais um <Link> único cobrindo o card inteiro: precisava
               caber o botão "Ver oferta" e o popover "Outras lojas" (ambos
