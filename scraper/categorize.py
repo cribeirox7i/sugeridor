@@ -23,7 +23,7 @@ import threading
 
 from . import db
 
-_CATEGORY_ORDER = ["eventos", "kit", "copo", "souvenirs"]
+_CATEGORY_ORDER = ["eventos", "destilados", "kit", "copo", "souvenirs"]
 
 # Rede de segurança: usado só se load_keywords() não for chamado (ex. testes
 # isolados) ou se a leitura do banco falhar/vier vazia.
@@ -31,6 +31,13 @@ _FALLBACK_KEYWORDS = {
     "eventos": [
         "ingresso", "convite", "evento", "workshop", "confraria",
         "vale presente", "cartão presente", "cartao presente",
+    ],
+    # Destilados e bebidas não-cerveja — checado ANTES de "kit" pra que
+    # "Kit 3 Gin Secrets" vire destilados (não público) e não kit (público).
+    "destilados": [
+        "gin", "vodka", "rum", "whisky", "whiskey", "tequila",
+        "cachaça", "cachaca", "licor", "aguardente", "brandy",
+        "conhaque", "mezcal", "destilado", "bebida mista", "sidra",
     ],
     "kit": ["kit"],
     "copo": ["copo", "taça", "taca", "caldereta"],
