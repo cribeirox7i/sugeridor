@@ -54,9 +54,20 @@ export async function GET(
   // `url` vence quando presente (loja mista, improvável mas não proibida
   // pelo schema) — é o comportamento que já existia antes desta migration.
   if (offer.url) {
+    // Valida esquema antes de redirecionar — defesa contra eventual oferta
+    // cadastrada com URL maliciosa (javascript:, data:, URL interna, etc.).
+    let safeUrl: URL;
+    try {
+      safeUrl = new URL(offer.url);
+    } catch {
+      return NextResponse.redirect(new URL("/", _req.url));
+    }
+    if (safeUrl.protocol !== "https:" && safeUrl.protocol !== "http:") {
+      return NextResponse.redirect(new URL("/", _req.url));
+    }
     // Futuro: se offer.store.affiliate_program_id apontar pra um programa
     // ativo, montar a URL final com affiliate_programs.link_template.
-    return NextResponse.redirect(offer.url);
+    return NextResponse.redirect(safeUrl.toString());
   }
 
   const whatsappNumber = offer.store?.whatsapp_number;

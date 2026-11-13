@@ -13,7 +13,7 @@ export async function login(formData: FormData) {
   const locale = await getLocale();
 
   if (error) {
-    redirect(`/${locale}/admin/login?error=${encodeURIComponent(error.message)}`);
+    redirect(`/${locale}/admin/login?error=${encodeURIComponent("Credenciais inválidas.")}`);
   }
 
   // Tela Início foi removida (item 5 da leva de melhorias) — Lojas é o novo

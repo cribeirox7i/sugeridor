@@ -9,6 +9,9 @@ scraper/.env.local
 supabase/.temp/
 supabase/.branches/
 
+# Worktrees gerados pelo Claude Code (podem conter cópias do .env.local)
+.claude/worktrees/
+
 # Editor/OS
 .DS_Store
 .vscode/

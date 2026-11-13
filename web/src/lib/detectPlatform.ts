@@ -191,12 +191,78 @@ function guessPageParam(url: string): string {
   return "pagina";
 }
 
+// Bloqueia fetch para IPs privados/loopback/link-local e esquemas não-HTTP —
+// defesa contra SSRF via URL de loja fornecida pelo admin.
+// Nota: não protege contra DNS rebinding (hostname público que resolve para IP
+// privado no momento real do fetch). Para esse vetor, a mitigação mais eficaz
+// seria resolver o IP antes de conectar (não disponível no fetch padrão do
+// Node/Edge sem lib externa). O risco prático é baixo dado que a rota já exige
+// admin logado, mas a defesa em profundidade impede o caso trivial.
+function isSafeUrl(rawUrl: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+
+  const host = parsed.hostname.toLowerCase();
+
+  // localhost e sufixos de rede interna
+  if (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host.endsWith(".internal")
+  ) {
+    return false;
+  }
+
+  // IPv4: bloqueia loopback, privados, link-local e metadata da nuvem
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    if (
+      a === 0 ||                              // 0.0.0.0/8
+      a === 10 ||                             // 10.0.0.0/8
+      a === 127 ||                            // 127.0.0.0/8 (loopback)
+      (a === 100 && b >= 64 && b <= 127) ||   // 100.64.0.0/10 (shared)
+      (a === 169 && b === 254) ||             // 169.254.0.0/16 (link-local / metadata AWS/GCP/Azure)
+      (a === 172 && b >= 16 && b <= 31) ||    // 172.16.0.0/12
+      (a === 192 && b === 168) ||             // 192.168.0.0/16
+      (a === 198 && (b === 18 || b === 19)) || // 198.18.0.0/15 (benchmark)
+      a >= 240                                // 240.0.0.0/4 (reservado)
+    ) {
+      return false;
+    }
+  }
+
+  // IPv6: loopback e ranges privados/link-local
+  const bare = host.replace(/^\[|\]$/g, "");
+  if (
+    bare === "::1" ||
+    bare.startsWith("fc") ||  // ULA fc00::/7
+    bare.startsWith("fd") ||
+    bare.startsWith("fe80")   // link-local
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 export async function detectPlatform(inputUrl: string): Promise<DetectResult> {
   let origin: string;
   try {
     origin = new URL(inputUrl).origin;
   } catch {
     return { platform: null, config: {}, confidence: "low", note: "URL inválida." };
+  }
+
+  if (!isSafeUrl(inputUrl)) {
+    return { platform: null, config: {}, confidence: "low", note: "URL não permitida." };
   }
 
   // Mercado Livre: detectado pelo hostname, sem precisar buscar a página.
@@ -277,6 +343,9 @@ export async function detectPlatform(inputUrl: string): Promise<DetectResult> {
 
   const guess = guessListingPattern(html, inputUrl);
   if (guess) {
+    if (!isSafeUrl(guess.sampleLink)) {
+      return { platform: null, config: {}, confidence: "low", note: "Link de produto retornou URL interna — não foi possível detectar a plataforma.", ...branding };
+    }
     const productHtml = await fetchText(guess.sampleLink);
     if (productHtml && /"@type"\s*:\s*"Product"/i.test(productHtml)) {
       return {

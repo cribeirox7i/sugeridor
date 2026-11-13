@@ -18,7 +18,21 @@ export async function POST(request: Request) {
       { status: 503 },
     );
   }
-  if (request.headers.get("authorization") !== `Bearer ${token}`) {
+  const provided = request.headers.get("authorization") ?? "";
+  const expected = `Bearer ${token}`;
+  const enc = new TextEncoder();
+  const providedBytes = enc.encode(provided.padEnd(expected.length, "\0"));
+  const expectedBytes = enc.encode(expected.padEnd(provided.length, "\0"));
+  const lengthMatch = provided.length === expected.length;
+  // crypto.subtle.timingSafeEqual não existe no Edge Runtime; Buffer.compare
+  // também não — a abordagem portável no Web Crypto é comparar HMAC de ambos.
+  // Aqui usamos XOR manual com padding de mesmo tamanho, que evita early-exit
+  // e é suficiente para prevenir timing attack prático neste contexto.
+  let diff = lengthMatch ? 0 : 1;
+  for (let i = 0; i < Math.max(providedBytes.length, expectedBytes.length); i++) {
+    diff |= (providedBytes[i] ?? 0) ^ (expectedBytes[i] ?? 0);
+  }
+  if (diff !== 0) {
     return NextResponse.json({ error: "não autorizado" }, { status: 401 });
   }
 

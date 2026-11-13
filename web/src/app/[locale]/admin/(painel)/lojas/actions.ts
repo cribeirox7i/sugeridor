@@ -7,8 +7,11 @@ import { revalidateAllLocales } from "@/lib/revalidate";
 import { normalizeDashes } from "@/lib/text";
 import { adminUrlFromForm } from "@/lib/adminNav";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function saveStore(formData: FormData) {
-  const id = (formData.get("id") as string) || null;
+  const idRaw = (formData.get("id") as string) || null;
+  const id = idRaw && UUID_RE.test(idRaw) ? idRaw : null;
   const name = normalizeDashes((formData.get("name") as string)?.trim() ?? "");
   const site_url = ((formData.get("site_url") as string) || "").trim() || null;
   const logo_url = ((formData.get("logo_url") as string) || "").trim() || null;
@@ -93,7 +96,7 @@ export async function saveStore(formData: FormData) {
   const locale = await getLocale();
 
   if (error) {
-    console.error("[saveStore] erro Supabase:", JSON.stringify(error));
+    console.error("[saveStore] erro Supabase:", error.code, error.message);
     redirect(
       adminUrlFromForm(`/${locale}/admin/lojas`, formData, {
         ...(id ? { edit: id } : { new: "1" }),
